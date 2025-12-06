@@ -1,0 +1,31 @@
+{
+  "name": "hello-fastapi-frontend",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "fastapi-apps/hello-fastapi/frontend/src",
+  "projectType": "application",
+  "tags": ["type:frontend", "scope:fastapi"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run dev",
+        "cwd": "fastapi-apps/hello-fastapi/frontend"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run build",
+        "cwd": "fastapi-apps/hello-fastapi/frontend"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run preview",
+        "cwd": "fastapi-apps/hello-fastapi/frontend"
+      }
+    }
+  }
+}

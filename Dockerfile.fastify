@@ -1,0 +1,57 @@
+# Dockerfile.fastify - Node.js/Fastify applications
+# Multi-stage build for Node.js apps that serve frontends
+
+# Stage 1: Builder
+FROM node:22-slim AS builder
+
+# Install pnpm globally
+RUN npm install -g pnpm@latest
+
+WORKDIR /applications
+
+# Copy package files and workspace config
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig*.json ./
+
+# Copy common configs
+COPY common/ ./common/
+
+# Copy JavaScript packages
+COPY packages-mjs/ ./packages-mjs/
+
+# Copy Fastify apps
+COPY fastify-apps/ ./fastify-apps/
+
+# Install dependencies using pnpm
+RUN pnpm install --frozen-lockfile
+
+# Build all projects
+RUN pnpm build
+
+# Stage 2: Runtime
+FROM node:22-slim AS runtime
+
+WORKDIR /applications
+
+ARG BUILD_ID="v.0.0.1"
+ENV BUILD_ID=${BUILD_ID}
+
+# Create logs directory for runtime logging
+RUN mkdir -p /applications/logs
+
+# Copy built artifacts from builder
+COPY --from=builder /applications/fastify-apps ./fastify-apps
+COPY --from=builder /applications/common ./common
+COPY --from=builder /applications/packages-mjs ./packages-mjs
+COPY --from=builder /applications/node_modules ./node_modules
+COPY --from=builder /applications/package.json ./package.json
+COPY --from=builder /applications/tsconfig.json ./tsconfig.json
+
+# Expose default port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start server - adjust path as needed
+CMD ["node", "fastify-apps/hello-fastify/server.test.mjs"]

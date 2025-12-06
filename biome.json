@@ -1,0 +1,84 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.6/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "packages-mjs/**/src/**/*.ts",
+      "packages-mjs/**/src/**/*.tsx",
+      "packages-mjs/**/src/**/*.mjs",
+      "fastify-apps/**/*.ts",
+      "fastify-apps/**/*.tsx",
+      "fastify-apps/**/*.js",
+      "fastify-apps/**/*.mjs",
+      "fastapi-apps/**/frontend/src/**/*.ts",
+      "fastapi-apps/**/frontend/src/**/*.tsx",
+      "fastapi-apps/**/frontend/src/**/*.js",
+      "fastapi-apps/**/frontend/src/**/*.mjs",
+      "frontend-apps/**/*.ts",
+      "frontend-apps/**/*.tsx",
+      "frontend-apps/**/*.js",
+      "frontend-apps/**/*.mjs",
+      "common/**/*.ts",
+      "common/**/*.js"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noUselessFragments": "warn",
+        "useLiteralKeys": "warn",
+        "noStaticOnlyClass": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noUnusedVariables": "warn",
+        "noUnusedFunctionParameters": "warn",
+        "useExhaustiveDependencies": "off",
+        "noInvalidUseBeforeDeclaration": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useConst": "error",
+        "useImportType": "warn",
+        "useNodejsImportProtocol": "off",
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noConsole": "off",
+        "noArrayIndexKey": "off",
+        "noShadowRestrictedNames": "warn",
+        "noAssignInExpressions": "warn",
+        "useIterableCallbackReturn": "warn"
+      },
+      "a11y": {
+        "useButtonType": "off",
+        "noLabelWithoutControl": "off",
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "noAutofocus": "off",
+        "noSvgWithoutTitle": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "semicolons": "always"
+    }
+  }
+}

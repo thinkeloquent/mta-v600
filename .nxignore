@@ -1,0 +1,4 @@
+# Ignore spec and stage directories
+__SPECS__
+__STAGE__
+node_modules

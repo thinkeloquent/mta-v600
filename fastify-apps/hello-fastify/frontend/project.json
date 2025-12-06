@@ -1,0 +1,31 @@
+{
+  "name": "hello-fastify-frontend",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "fastify-apps/hello-fastify/frontend/src",
+  "projectType": "application",
+  "tags": ["type:frontend", "scope:fastify"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run dev",
+        "cwd": "fastify-apps/hello-fastify/frontend"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run build",
+        "cwd": "fastify-apps/hello-fastify/frontend"
+      },
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run preview",
+        "cwd": "fastify-apps/hello-fastify/frontend"
+      }
+    }
+  }
+}

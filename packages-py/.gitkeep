@@ -1,0 +1,7 @@
+# Shared Python packages
+# Add new packages here using the structure:
+# packages-py/package_name/
+#   ├── pyproject.toml
+#   └── src/
+#       └── package_name/
+#           └── __init__.py

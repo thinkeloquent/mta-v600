@@ -1,0 +1,27 @@
+# Server Configuration
+# Environment-specific overrides can be placed in server.{env}.yaml
+
+server:
+  host: "0.0.0.0"
+
+  # Fastify defaults
+  fastify:
+    port: 3000
+    logLevel: "info"
+
+  # FastAPI defaults
+  fastapi:
+    port: 8080
+    logLevel: "info"
+    workers: 1
+
+  # Frontend development servers
+  frontend:
+    fastifyPort: 5173
+    fastapiPort: 5174
+
+# Feature flags
+features:
+  enableSwagger: true
+  enableCors: true
+  enableHealthCheck: true

@@ -1,0 +1,30 @@
+{
+  "name": "@internal/fastify-hello-fastify",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "fastify-apps/hello-fastify/src",
+  "projectType": "application",
+  "tags": ["type:app", "scope:fastify"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run app:dev",
+        "cwd": "fastify-apps/hello-fastify"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run app:start",
+        "cwd": "fastify-apps/hello-fastify"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npm run test",
+        "cwd": "fastify-apps/hello-fastify"
+      }
+    }
+  }
+}
