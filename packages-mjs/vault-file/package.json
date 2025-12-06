@@ -1,0 +1,13 @@
+{
+  "name": "@mta/vault-file",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "src/core.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

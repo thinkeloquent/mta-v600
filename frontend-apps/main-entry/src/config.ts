@@ -16,6 +16,12 @@ export interface AppConfig {
   backendVersion: string;
   /** Application name */
   appName: string;
+  /** Build ID (set by CI/CD) */
+  buildId?: string;
+  /** Build version (set by CI/CD) */
+  buildVersion?: string;
+  /** Git commit hash */
+  gitCommit?: string;
   /** Additional custom config from backend */
   [key: string]: unknown;
 }

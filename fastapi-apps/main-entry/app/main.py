@@ -45,6 +45,10 @@ def get_ssr_config() -> dict:
         "backendType": "fastapi",
         "backendVersion": settings.APP_VERSION,
         "appName": "Main Entry (FastAPI)",
+        # Build parameters
+        "buildId": settings.BUILD_ID,
+        "buildVersion": settings.BUILD_VERSION,
+        "gitCommit": settings.GIT_COMMIT,
     }
 
 
@@ -82,6 +86,11 @@ async def startup_event():
 ╠════════════════════════════════════════════════════════════╣
 ║  Server running at: http://{settings.HOST}:{settings.PORT:<25}║
 ║                                                            ║
+║  Build Info:                                               ║
+║    BUILD_ID:      {settings.BUILD_ID:<33}║
+║    BUILD_VERSION: {settings.BUILD_VERSION:<33}║
+║    GIT_COMMIT:    {settings.GIT_COMMIT:<33}║
+║                                                            ║
 ║  API Endpoints:                                            ║
 ║    GET  /health              - Health check                ║
 ║    GET  /api/fastapi         - API info                    ║
@@ -118,7 +127,7 @@ if FRONTEND_DIR.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
 
-# Serve index.html with SSR config for root and SPA routes
+# Serve index.html with SSR config (includes build info)
 @app.get("/", response_class=HTMLResponse)
 async def serve_root():
     """Serve frontend with SSR config injection."""

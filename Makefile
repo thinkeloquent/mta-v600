@@ -5,6 +5,18 @@
 FASTIFY_PORT ?= 51000
 FASTAPI_PORT ?= 52000
 
+# Build parameters (set by CI/CD or manually)
+BUILD_ID ?= local
+BUILD_VERSION ?= 0.0.0-dev
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+SHARED_ID ?= placeholder-shared-id
+GLOBAL_ID ?= placeholder-global-id
+
+# Use local .venv if it exists, otherwise use system Python
+VENV_DIR := .venv
+PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
+UVICORN := $(if $(wildcard $(VENV_DIR)/bin/uvicorn),$(VENV_DIR)/bin/uvicorn,uvicorn)
+
 .PHONY: help install dev dev-frontend dev-fastify dev-fastapi build test lint format clean docker-up docker-down
 
 help:
@@ -55,11 +67,20 @@ dev-frontend:
 
 # Run Fastify backend
 dev-fastify:
-	cd fastify-apps/main-entry && PORT=$(FASTIFY_PORT) node server.test.mjs
+	cd fastify-apps/main-entry && \
+		PORT=$(FASTIFY_PORT) \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		node server.test.mjs
 
 # Run FastAPI backend
 dev-fastapi:
-	cd fastapi-apps/main-entry && uvicorn app.main:app --reload --host 0.0.0.0 --port $(FASTAPI_PORT)
+	cd fastapi-apps/main-entry && \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		$(UVICORN) app.main:app --reload --host 0.0.0.0 --port $(FASTAPI_PORT)
 
 # Build
 build:

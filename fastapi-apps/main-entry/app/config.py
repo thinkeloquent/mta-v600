@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
     DEBUG: bool = ENVIRONMENT == "development"
 
+    # Build parameters (set by CI/CD or Makefile)
+    BUILD_ID: str = os.environ.get("BUILD_ID", "local")
+    BUILD_VERSION: str = os.environ.get("BUILD_VERSION", "0.0.0-dev")
+    GIT_COMMIT: str = os.environ.get("GIT_COMMIT", "unknown")
+
     # Server
     HOST: str = os.environ.get("HOST", "0.0.0.0")
     PORT: int = int(os.environ.get("PORT", "52000"))

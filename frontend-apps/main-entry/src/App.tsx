@@ -93,6 +93,13 @@ function App() {
           {config.appName}
         </h1>
 
+        {/* Build Info */}
+        <div className="flex justify-center gap-4 mb-4 font-mono text-xs text-gray-500">
+          <span>BUILD_ID: {config.buildId || 'N/A'}</span>
+          <span>BUILD_VERSION: {config.buildVersion || 'N/A'}</span>
+          <span>GIT_COMMIT: {config.gitCommit || 'N/A'}</span>
+        </div>
+
         {/* Backend Info Badge */}
         <div className="flex justify-center gap-2 mb-8">
           <span className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-3 py-1 rounded-full text-sm font-medium`}>

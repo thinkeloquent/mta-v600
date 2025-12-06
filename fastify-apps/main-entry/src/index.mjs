@@ -20,6 +20,11 @@ const APP_NAME = 'main-entry';
 const APP_VERSION = '1.0.0';
 const API_PREFIX = '/api/fastify';
 
+// Build parameters (set by CI/CD or Makefile)
+const BUILD_ID = process.env.BUILD_ID || 'local';
+const BUILD_VERSION = process.env.BUILD_VERSION || '0.0.0-dev';
+const GIT_COMMIT = process.env.GIT_COMMIT || 'unknown';
+
 /**
  * Generate the SSR config script to inject into HTML
  */
@@ -29,6 +34,10 @@ function generateConfigScript(apiPrefix) {
     backendType: 'fastify',
     backendVersion: APP_VERSION,
     appName: 'Main Entry (Fastify)',
+    // Build parameters
+    buildId: BUILD_ID,
+    buildVersion: BUILD_VERSION,
+    gitCommit: GIT_COMMIT,
   };
   return `<script>window.__APP_CONFIG__ = ${JSON.stringify(config)};</script>`;
 }
@@ -88,7 +97,7 @@ async function mainEntryPlugin(fastify, options) {
     });
   }
 
-  // Serve index.html with SSR config
+  // Serve index.html with SSR config (includes build info)
   fastify.get('/', async (request, reply) => {
     if (indexHtml) {
       return reply.type('text/html').send(indexHtml);
@@ -109,6 +118,7 @@ async function mainEntryPlugin(fastify, options) {
 
   fastify.log.info(`Frontend serving from ${frontendDir}`);
   fastify.log.info(`Main Entry plugin registered at ${apiPrefix}`);
+  fastify.log.info(`Build info: BUILD_ID=${BUILD_ID}, BUILD_VERSION=${BUILD_VERSION}, GIT_COMMIT=${GIT_COMMIT}`);
 }
 
 export default fastifyPlugin(mainEntryPlugin, {
