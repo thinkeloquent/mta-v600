@@ -1,4 +1,4 @@
-"""Hello FastAPI Application - Main Entry Point.
+"""Main Entry FastAPI Application.
 
 Serves a shared frontend from frontend-apps with SSR config injection.
 """
@@ -34,17 +34,17 @@ app.add_middleware(
 )
 
 # Frontend configuration
-FRONTEND_APP = "hello-app"
+FRONTEND_APP = "main-entry"
 FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend-apps" / FRONTEND_APP / "dist"
 
 
 def get_ssr_config() -> dict:
     """Generate SSR config to inject into HTML."""
     return {
-        "apiBase": "/api/hello-fastapi",
+        "apiBase": "/api/fastapi",
         "backendType": "fastapi",
         "backendVersion": settings.APP_VERSION,
-        "appName": "Hello App (FastAPI)",
+        "appName": "Main Entry (FastAPI)",
     }
 
 
@@ -78,21 +78,21 @@ async def startup_event():
     frontend_status = "READY" if FRONTEND_DIR.exists() else "NOT BUILT"
     print(f"""
 ╔════════════════════════════════════════════════════════════╗
-║                    Hello FastAPI Server                    ║
+║                  Main Entry FastAPI Server                 ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Server running at: http://{settings.HOST}:{settings.PORT:<25}║
 ║                                                            ║
 ║  API Endpoints:                                            ║
-║    GET  /health                    - Health check          ║
-║    GET  /api/hello-fastapi         - API info              ║
-║    GET  /api/hello-fastapi/hello   - Hello endpoint        ║
-║    POST /api/hello-fastapi/echo    - Echo endpoint         ║
-║    GET  /docs                      - Swagger UI            ║
-║    GET  /redoc                     - ReDoc                 ║
+║    GET  /health              - Health check                ║
+║    GET  /api/fastapi         - API info                    ║
+║    GET  /api/fastapi/hello   - Hello endpoint              ║
+║    POST /api/fastapi/echo    - Echo endpoint               ║
+║    GET  /docs                - Swagger UI                  ║
+║    GET  /redoc               - ReDoc                       ║
 ║                                                            ║
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
-║    GET  /                          - SPA with SSR config   ║
+║    GET  /                    - SPA with SSR config         ║
 ╚════════════════════════════════════════════════════════════╝
     """)
 
@@ -107,7 +107,7 @@ async def health_check():
 
 
 # Register API routes
-app.include_router(hello.router, prefix="/api/hello-fastapi", tags=["hello"])
+app.include_router(hello.router, prefix="/api/fastapi", tags=["hello"])
 
 
 # Mount static files if frontend is built (must be after API routes)
@@ -126,7 +126,7 @@ async def serve_root():
     if html:
         return HTMLResponse(content=html)
     return HTMLResponse(
-        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/hello-app && pnpm build</p>",
+        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/main-entry && pnpm build</p>",
         status_code=404
     )
 
@@ -149,7 +149,7 @@ async def spa_fallback(path: str):
     if html:
         return HTMLResponse(content=html)
     return HTMLResponse(
-        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/hello-app && pnpm build</p>",
+        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/main-entry && pnpm build</p>",
         status_code=404
     )
 

@@ -51,15 +51,15 @@ dev:
 
 # Run frontend build in watch mode
 dev-frontend:
-	cd frontend-apps/hello-app && pnpm dev
+	cd frontend-apps/main-entry && pnpm dev
 
 # Run Fastify backend
 dev-fastify:
-	cd fastify-apps/hello-fastify && PORT=$(FASTIFY_PORT) node server.test.mjs
+	cd fastify-apps/main-entry && PORT=$(FASTIFY_PORT) node server.test.mjs
 
 # Run FastAPI backend
 dev-fastapi:
-	cd fastapi-apps/hello-fastapi && uvicorn app.main:app --reload --host 0.0.0.0 --port $(FASTAPI_PORT)
+	cd fastapi-apps/main-entry && uvicorn app.main:app --reload --host 0.0.0.0 --port $(FASTAPI_PORT)
 
 # Build
 build:

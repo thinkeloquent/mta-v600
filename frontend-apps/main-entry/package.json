@@ -1,5 +1,5 @@
 {
-  "name": "@internal/frontend-hello-app",
+  "name": "@internal/frontend-main-entry",
   "private": true,
   "version": "1.0.0",
   "type": "module",

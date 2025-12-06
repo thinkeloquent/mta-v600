@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Application
-    APP_NAME: str = "hello-fastapi"
+    APP_NAME: str = "main-entry"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
     DEBUG: bool = ENVIRONMENT == "development"

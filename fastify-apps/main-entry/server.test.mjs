@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Standalone development server for Hello Fastify
+ * Standalone development server for Main Entry Fastify
  *
- * Serves the shared frontend from frontend-apps/hello-app with SSR config injection.
+ * Serves the shared frontend from frontend-apps/main-entry with SSR config injection.
  *
  * Usage:
  *   node server.test.mjs
@@ -14,7 +14,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import 'dotenv/config';
 
-import helloFastifyPlugin from './src/index.mjs';
+import mainEntryPlugin from './src/index.mjs';
 
 // Parse command line arguments
 const args = process.argv.slice(2).reduce((acc, arg) => {
@@ -49,10 +49,10 @@ await fastify.register(cors, {
   credentials: true,
 });
 
-// Register hello-fastify plugin with shared frontend
-await fastify.register(helloFastifyPlugin, {
-  apiPrefix: '/api/hello-fastify',
-  frontendApp: 'hello-app', // Loads from frontend-apps/hello-app/dist
+// Register main-entry plugin with shared frontend
+await fastify.register(mainEntryPlugin, {
+  apiPrefix: '/api/fastify',
+  frontendApp: 'main-entry',
 });
 
 // Health check (before 404 handler takes over)
@@ -77,18 +77,18 @@ try {
   await fastify.listen({ port: PORT, host: HOST });
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║                    Hello Fastify Server                    ║
+║                  Main Entry Fastify Server                 ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Server running at: http://${HOST}:${PORT.toString().padEnd(25)}║
 ║                                                            ║
 ║  API Endpoints:                                            ║
-║    GET  /health                    - Health check          ║
-║    GET  /api/hello-fastify         - API info              ║
-║    GET  /api/hello-fastify/hello   - Hello endpoint        ║
-║    POST /api/hello-fastify/echo    - Echo endpoint         ║
+║    GET  /health              - Health check                ║
+║    GET  /api/fastify         - API info                    ║
+║    GET  /api/fastify/hello   - Hello endpoint              ║
+║    POST /api/fastify/echo    - Echo endpoint               ║
 ║                                                            ║
-║  Frontend: Served from frontend-apps/hello-app/dist        ║
-║    GET  /                          - SPA with SSR config   ║
+║  Frontend: Served from frontend-apps/main-entry/dist       ║
+║    GET  /                    - SPA with SSR config         ║
 ╚════════════════════════════════════════════════════════════╝
   `);
 } catch (err) {

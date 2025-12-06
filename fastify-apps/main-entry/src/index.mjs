@@ -1,7 +1,7 @@
 /**
- * Hello Fastify Plugin
+ * Main Entry Fastify Plugin
  *
- * A simple hello world Fastify plugin demonstrating the monorepo structure.
+ * Main entry point Fastify plugin demonstrating the monorepo structure.
  * Serves a shared frontend from frontend-apps with SSR config injection.
  */
 
@@ -13,12 +13,12 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// Navigate up: src -> hello-fastify -> fastify-apps -> project root
+// Navigate up: src -> main-entry -> fastify-apps -> project root
 const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 
-const APP_NAME = 'hello-fastify';
+const APP_NAME = 'main-entry';
 const APP_VERSION = '1.0.0';
-const API_PREFIX = `/api/${APP_NAME}`;
+const API_PREFIX = '/api/fastify';
 
 /**
  * Generate the SSR config script to inject into HTML
@@ -28,7 +28,7 @@ function generateConfigScript(apiPrefix) {
     apiBase: apiPrefix,
     backendType: 'fastify',
     backendVersion: APP_VERSION,
-    appName: 'Hello App (Fastify)',
+    appName: 'Main Entry (Fastify)',
   };
   return `<script>window.__APP_CONFIG__ = ${JSON.stringify(config)};</script>`;
 }
@@ -42,11 +42,11 @@ function injectConfig(html, apiPrefix) {
 }
 
 /**
- * Hello Fastify Plugin
+ * Main Entry Fastify Plugin
  */
-async function helloFastifyPlugin(fastify, options) {
+async function mainEntryPlugin(fastify, options) {
   const apiPrefix = options.apiPrefix || API_PREFIX;
-  const frontendApp = options.frontendApp || 'hello-app';
+  const frontendApp = options.frontendApp || 'main-entry';
   const frontendDir = options.frontendDir || resolve(PROJECT_ROOT, 'frontend-apps', frontendApp, 'dist');
 
   // Cache injected HTML
@@ -108,10 +108,10 @@ async function helloFastifyPlugin(fastify, options) {
   });
 
   fastify.log.info(`Frontend serving from ${frontendDir}`);
-  fastify.log.info(`Hello Fastify plugin registered at ${apiPrefix}`);
+  fastify.log.info(`Main Entry plugin registered at ${apiPrefix}`);
 }
 
-export default fastifyPlugin(helloFastifyPlugin, {
+export default fastifyPlugin(mainEntryPlugin, {
   name: APP_NAME,
   fastify: '5.x',
 });

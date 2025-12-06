@@ -1,7 +1,7 @@
 {
-  "name": "@internal/frontend-hello-app",
+  "name": "@internal/frontend-main-entry",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "frontend-apps/hello-app/src",
+  "sourceRoot": "frontend-apps/main-entry/src",
   "projectType": "application",
   "tags": ["type:frontend", "scope:shared"],
   "targets": {
@@ -9,14 +9,14 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run dev",
-        "cwd": "frontend-apps/hello-app"
+        "cwd": "frontend-apps/main-entry"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run build",
-        "cwd": "frontend-apps/hello-app"
+        "cwd": "frontend-apps/main-entry"
       },
       "outputs": ["{projectRoot}/dist"]
     },
@@ -24,7 +24,7 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run preview",
-        "cwd": "frontend-apps/hello-app"
+        "cwd": "frontend-apps/main-entry"
       }
     }
   }

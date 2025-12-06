@@ -1,7 +1,7 @@
 {
-  "name": "@internal/fastify-hello-fastify",
+  "name": "@internal/fastify-main-entry",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "fastify-apps/hello-fastify/src",
+  "sourceRoot": "fastify-apps/main-entry/src",
   "projectType": "application",
   "tags": ["type:app", "scope:fastify"],
   "targets": {
@@ -9,21 +9,21 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run app:dev",
-        "cwd": "fastify-apps/hello-fastify"
+        "cwd": "fastify-apps/main-entry"
       }
     },
     "start": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run app:start",
-        "cwd": "fastify-apps/hello-fastify"
+        "cwd": "fastify-apps/main-entry"
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run test",
-        "cwd": "fastify-apps/hello-fastify"
+        "cwd": "fastify-apps/main-entry"
       }
     }
   }

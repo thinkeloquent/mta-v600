@@ -36,7 +36,7 @@ class ApiInfoResponse(BaseModel):
 async def get_api_info() -> ApiInfoResponse:
     """Get API information and health status."""
     return ApiInfoResponse(
-        name="hello-fastapi",
+        name="main-entry",
         version="1.0.0",
         status="healthy",
         timestamp=datetime.now().isoformat(),

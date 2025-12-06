@@ -8,7 +8,7 @@
  */
 
 export interface AppConfig {
-  /** Base URL for API calls (e.g., '/api/hello-fastify' or '/api/hello-fastapi') */
+  /** Base URL for API calls (e.g., '/api/fastify' or '/api/fastapi') */
   apiBase: string;
   /** Backend type identifier */
   backendType: 'fastify' | 'fastapi' | 'unknown';
@@ -31,10 +31,10 @@ declare global {
  * Default config for local development (when not served by a backend)
  */
 const defaultConfig: AppConfig = {
-  apiBase: '/api/hello-fastify',
+  apiBase: '/api/fastify',
   backendType: 'unknown',
   backendVersion: 'dev',
-  appName: 'Hello App (Dev Mode)',
+  appName: 'Main Entry (Dev Mode)',
 };
 
 /**
