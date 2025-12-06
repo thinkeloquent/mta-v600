@@ -1,7 +1,11 @@
 # MTA-v600 Makefile
 # Development commands for the monorepo
 
-.PHONY: help install dev apps build test lint format clean docker-up docker-down
+# Default ports
+FASTIFY_PORT ?= 51000
+FASTAPI_PORT ?= 52000
+
+.PHONY: help install dev dev-frontend dev-fastify dev-fastapi build test lint format clean docker-up docker-down
 
 help:
 	@echo "MTA-v600 Development Commands"
@@ -10,12 +14,13 @@ help:
 	@echo "  make install       - Install all dependencies (pnpm + poetry)"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev           - Run frontend dev servers only"
-	@echo "  make apps NAME=... - Run backend server (e.g., NAME=@internal/fastify-hello-fastify)"
-	@echo "  make dev-fastapi   - Run FastAPI backend server"
+	@echo "  make dev           - Run frontend (watch) + all backends"
+	@echo "  make dev-frontend  - Run frontend build in watch mode"
+	@echo "  make dev-fastify   - Run Fastify backend only (port 51000)"
+	@echo "  make dev-fastapi   - Run FastAPI backend only (port 52000)"
 	@echo ""
 	@echo "Build:"
-	@echo "  make build         - Build all projects"
+	@echo "  make build         - Build all projects (frontend + backends)"
 	@echo "  make test          - Run all tests"
 	@echo ""
 	@echo "Code Quality:"
@@ -35,22 +40,26 @@ install:
 	pnpm install
 	poetry install --no-root
 
-# Development - frontends only
+# Development - run frontend watch + all backends in parallel
 dev:
-	pnpm dev
+	@echo "Starting development servers..."
+	@echo "  Frontend: watch mode (rebuilds on changes)"
+	@echo "  Fastify:  http://localhost:$(FASTIFY_PORT)"
+	@echo "  FastAPI:  http://localhost:$(FASTAPI_PORT)"
+	@echo ""
+	@$(MAKE) -j3 dev-frontend dev-fastify dev-fastapi
 
-# Run backend server by name
-# Usage: make apps NAME=@internal/fastify-hello-fastify
-apps:
-ifndef NAME
-	@echo "Usage: make apps NAME=<project-name>"
-	@echo "Example: make apps NAME=@internal/fastify-hello-fastify"
-	@exit 1
-endif
-	nx serve $(NAME)
+# Run frontend build in watch mode
+dev-frontend:
+	cd frontend-apps/hello-app && pnpm dev
 
+# Run Fastify backend
+dev-fastify:
+	cd fastify-apps/hello-fastify && PORT=$(FASTIFY_PORT) node server.test.mjs
+
+# Run FastAPI backend
 dev-fastapi:
-	cd fastapi-apps/hello-fastapi && uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
+	cd fastapi-apps/hello-fastapi && uvicorn app.main:app --reload --host 0.0.0.0 --port $(FASTAPI_PORT)
 
 # Build
 build:

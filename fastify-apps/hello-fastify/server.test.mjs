@@ -2,6 +2,8 @@
 /**
  * Standalone development server for Hello Fastify
  *
+ * Serves the shared frontend from frontend-apps/hello-app with SSR config injection.
+ *
  * Usage:
  *   node server.test.mjs
  *   node server.test.mjs --port=3001
@@ -22,7 +24,7 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 }, {});
 
 // Configuration
-const PORT = parseInt(args.port || process.env.PORT || '3000', 10);
+const PORT = parseInt(args.port || process.env.PORT || '51000', 10);
 const HOST = args.host || process.env.HOST || '0.0.0.0';
 const LOG_LEVEL = args['log-level'] || process.env.LOG_LEVEL || 'info';
 
@@ -47,23 +49,17 @@ await fastify.register(cors, {
   credentials: true,
 });
 
-// Register hello-fastify plugin
+// Register hello-fastify plugin with shared frontend
 await fastify.register(helloFastifyPlugin, {
   apiPrefix: '/api/hello-fastify',
-  frontendPrefix: '/apps/hello-fastify',
-  frontendDir: './frontend/dist',
+  frontendApp: 'hello-app', // Loads from frontend-apps/hello-app/dist
 });
 
-// Root health check
+// Health check (before 404 handler takes over)
 fastify.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
 }));
-
-// Root endpoint - serve frontend or redirect
-fastify.get('/', async (request, reply) => {
-  reply.redirect('/apps/hello-fastify');
-});
 
 // Request logging hook
 fastify.addHook('onResponse', (request, reply, done) => {
@@ -76,16 +72,6 @@ fastify.addHook('onResponse', (request, reply, done) => {
   done();
 });
 
-// Error handler
-fastify.setErrorHandler((error, request, reply) => {
-  fastify.log.error(error);
-  reply.status(error.statusCode || 500).send({
-    error: error.name || 'InternalServerError',
-    message: error.message,
-    statusCode: error.statusCode || 500,
-  });
-});
-
 // Start server
 try {
   await fastify.listen({ port: PORT, host: HOST });
@@ -95,12 +81,14 @@ try {
 ╠════════════════════════════════════════════════════════════╣
 ║  Server running at: http://${HOST}:${PORT.toString().padEnd(25)}║
 ║                                                            ║
-║  Endpoints:                                                ║
+║  API Endpoints:                                            ║
 ║    GET  /health                    - Health check          ║
 ║    GET  /api/hello-fastify         - API info              ║
 ║    GET  /api/hello-fastify/hello   - Hello endpoint        ║
 ║    POST /api/hello-fastify/echo    - Echo endpoint         ║
-║    GET  /apps/hello-fastify        - Frontend (if built)   ║
+║                                                            ║
+║  Frontend: Served from frontend-apps/hello-app/dist        ║
+║    GET  /                          - SPA with SSR config   ║
 ╚════════════════════════════════════════════════════════════╝
   `);
 } catch (err) {

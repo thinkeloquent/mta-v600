@@ -12,9 +12,7 @@
   "workspaces": [
     "packages-mjs/*",
     "fastify-apps/*",
-    "frontend-apps/*",
-    "fastapi-apps/*/frontend",
-    "fastify-apps/*/frontend"
+    "frontend-apps/*"
   ],
   "scripts": {
     "build": "pnpm nx run-many --skip-nx-cache --verbose --target=build --output-style=stream",

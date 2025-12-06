@@ -1,22 +1,22 @@
 {
-  "name": "hello-fastapi-frontend",
-  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "fastapi-apps/hello-fastapi/frontend/src",
+  "name": "@internal/frontend-hello-app",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "frontend-apps/hello-app/src",
   "projectType": "application",
-  "tags": ["type:frontend", "scope:fastapi"],
+  "tags": ["type:frontend", "scope:shared"],
   "targets": {
     "dev": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run dev",
-        "cwd": "fastapi-apps/hello-fastapi/frontend"
+        "cwd": "frontend-apps/hello-app"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run build",
-        "cwd": "fastapi-apps/hello-fastapi/frontend"
+        "cwd": "frontend-apps/hello-app"
       },
       "outputs": ["{projectRoot}/dist"]
     },
@@ -24,7 +24,7 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run preview",
-        "cwd": "fastapi-apps/hello-fastapi/frontend"
+        "cwd": "frontend-apps/hello-app"
       }
     }
   }

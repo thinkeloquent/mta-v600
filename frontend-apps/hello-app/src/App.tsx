@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getConfig, getApiBase, type AppConfig } from './config';
 
 interface HelloResponse {
   message: string;
@@ -17,9 +18,10 @@ interface ApiInfo {
   timestamp: string;
 }
 
-const API_BASE = '/api/hello-fastify';
-
 function App() {
+  const [config] = useState<AppConfig>(getConfig);
+  const apiBase = getApiBase();
+
   const [name, setName] = useState('World');
   const [helloResponse, setHelloResponse] = useState<HelloResponse | null>(null);
   const [echoInput, setEchoInput] = useState('{"message": "Hello from frontend!"}');
@@ -28,11 +30,16 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Fetch API info on mount
+  useEffect(() => {
+    fetchApiInfo();
+  }, []);
+
   const fetchApiInfo = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(API_BASE);
+      const res = await fetch(apiBase);
       const data = await res.json();
       setApiInfo(data);
     } catch (err) {
@@ -46,7 +53,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/hello?name=${encodeURIComponent(name)}`);
+      const res = await fetch(`${apiBase}/hello?name=${encodeURIComponent(name)}`);
       const data = await res.json();
       setHelloResponse(data);
     } catch (err) {
@@ -61,7 +68,7 @@ function App() {
     setError(null);
     try {
       const body = JSON.parse(echoInput);
-      const res = await fetch(`${API_BASE}/echo`, {
+      const res = await fetch(`${apiBase}/echo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -75,12 +82,29 @@ function App() {
     }
   };
 
+  // Dynamic colors based on backend type
+  const primaryColor = config.backendType === 'fastify' ? 'blue' :
+                       config.backendType === 'fastapi' ? 'green' : 'gray';
+
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold text-center text-blue-600 mb-8">
-          Hello Fastify
+        <h1 className={`text-4xl font-bold text-center text-${primaryColor}-600 mb-2`}>
+          {config.appName}
         </h1>
+
+        {/* Backend Info Badge */}
+        <div className="flex justify-center gap-2 mb-8">
+          <span className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-3 py-1 rounded-full text-sm font-medium`}>
+            {config.backendType.toUpperCase()}
+          </span>
+          <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+            v{config.backendVersion}
+          </span>
+          <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-mono">
+            {apiBase}
+          </span>
+        </div>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -94,9 +118,9 @@ function App() {
           <button
             onClick={fetchApiInfo}
             disabled={loading}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+            className={`bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
           >
-            {loading ? 'Loading...' : 'Get API Info'}
+            {loading ? 'Loading...' : 'Refresh API Info'}
           </button>
           {apiInfo && (
             <pre className="mt-4 bg-gray-50 p-4 rounded overflow-x-auto text-sm">
@@ -114,7 +138,7 @@ function App() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your name"
-              className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
             />
             <button
               onClick={fetchHello}
@@ -139,7 +163,7 @@ function App() {
             onChange={(e) => setEchoInput(e.target.value)}
             placeholder="Enter JSON to echo"
             rows={3}
-            className="w-full border border-gray-300 rounded px-3 py-2 mb-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full border border-gray-300 rounded px-3 py-2 mb-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
           />
           <button
             onClick={fetchEcho}
@@ -159,20 +183,31 @@ function App() {
         <section className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4">Available Endpoints</h2>
           <ul className="space-y-2 font-mono text-sm">
-            <li className="flex">
-              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">GET</span>
-              <span>/api/hello-fastify</span>
+            <li className="flex items-center">
+              <span className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-2 py-1 rounded mr-2`}>GET</span>
+              <span>{apiBase}</span>
             </li>
-            <li className="flex">
+            <li className="flex items-center">
               <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">GET</span>
-              <span>/api/hello-fastify/hello?name=World</span>
+              <span>{apiBase}/hello?name=World</span>
             </li>
-            <li className="flex">
+            <li className="flex items-center">
               <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2">POST</span>
-              <span>/api/hello-fastify/echo</span>
+              <span>{apiBase}/echo</span>
             </li>
           </ul>
         </section>
+
+        {/* Config Debug (dev only) */}
+        {config.backendType === 'unknown' && (
+          <section className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Development Mode</h3>
+            <p className="text-sm text-yellow-700">
+              No backend config detected. Using defaults. Start a backend server and access
+              through its URL to get injected configuration.
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );

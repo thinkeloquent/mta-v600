@@ -16,14 +16,13 @@ class Settings(BaseSettings):
 
     # Server
     HOST: str = os.environ.get("HOST", "0.0.0.0")
-    PORT: int = int(os.environ.get("PORT", "8080"))
+    PORT: int = int(os.environ.get("PORT", "52000"))
 
     # CORS
     CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
+        "http://localhost:51000",
+        "http://localhost:52000",
         "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:8080",
     ]
 
     class Config:

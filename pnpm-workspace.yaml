@@ -2,5 +2,3 @@ packages:
   - 'packages-mjs/*'
   - 'fastify-apps/*'
   - 'frontend-apps/*'
-  - 'fastapi-apps/*/frontend'
-  - 'fastify-apps/*/frontend'
