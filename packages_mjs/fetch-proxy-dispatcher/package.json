@@ -1,0 +1,59 @@
+{
+  "name": "@internal/fetch-proxy-dispatcher",
+  "version": "1.0.0",
+  "description": "Environment-aware proxy dispatcher for fetch/undici",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./config": {
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
+    },
+    "./agents": {
+      "import": "./dist/agents.mjs",
+      "default": "./dist/agents.mjs"
+    },
+    "./dispatcher": {
+      "import": "./dist/dispatcher.mjs",
+      "default": "./dist/dispatcher.mjs"
+    },
+    "./factory": {
+      "import": "./dist/factory.mjs",
+      "default": "./dist/factory.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "mta",
+    "fetch",
+    "proxy",
+    "dispatcher",
+    "undici",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "undici": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3"
+  }
+}
