@@ -20,8 +20,10 @@ pyyaml = "^6.0"
 # Local packages
 fetch-client = {path = "packages_py/fetch_client", develop = true}
 fetch-compose-rate-limiter = {path = "packages_py/fetch_compose_rate_limiter", develop = true}
+fetch-compose-retry = {path = "packages_py/fetch_compose_retry", develop = true}
 fetch-proxy-dispatcher = {path = "packages_py/fetch_proxy_dispatcher", develop = true}
 fetch-rate-limiter = {path = "packages_py/fetch_rate_limiter", develop = true}
+fetch-retry = {path = "packages_py/fetch_retry", develop = true}
 static-config-property-management = {path = "packages_py/static_config_property_management", develop = true}
 vault-file = {path = "packages_py/vault_file", develop = true}
 
