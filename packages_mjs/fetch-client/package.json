@@ -63,7 +63,7 @@
     "node": ">=22.0.0"
   },
   "peerDependencies": {
-    "@internal/fetch-proxy-dispatcher": "^1.0.0",
+    "@internal/fetch-proxy-dispatcher": "workspace:*",
     "undici": "^7.0.0"
   },
   "peerDependenciesMeta": {
