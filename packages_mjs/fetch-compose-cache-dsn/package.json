@@ -1,0 +1,60 @@
+{
+  "name": "@internal/fetch-compose-cache-dsn",
+  "version": "1.0.0",
+  "description": "DNS cache interceptor for undici's compose pattern",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./interceptor": {
+      "import": "./dist/interceptor.mjs",
+      "default": "./dist/interceptor.mjs"
+    },
+    "./factory": {
+      "import": "./dist/factory.mjs",
+      "default": "./dist/factory.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "mta",
+    "dns",
+    "cache",
+    "undici",
+    "interceptor",
+    "compose",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@internal/cache-dsn": "workspace:*"
+  },
+  "peerDependencies": {
+    "undici": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3",
+    "undici": "^7.0.0",
+    "vitest": "^2.1.0"
+  }
+}
