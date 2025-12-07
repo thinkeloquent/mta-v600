@@ -12,8 +12,11 @@ GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 SHARED_ID ?= placeholder-shared-id
 GLOBAL_ID ?= placeholder-global-id
 
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
 # Use local .venv if it exists, otherwise use system Python
-VENV_DIR := .venv
+VENV_DIR := $(MAKEFILE_DIR).venv
 PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
 UVICORN := $(if $(wildcard $(VENV_DIR)/bin/uvicorn),$(VENV_DIR)/bin/uvicorn,uvicorn)
 
@@ -72,7 +75,7 @@ dev-fastify:
 		BUILD_ID=$(BUILD_ID) \
 		BUILD_VERSION=$(BUILD_VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
-		node server.test.mjs
+		node src/main.mjs
 
 # Run FastAPI backend
 dev-fastapi:
