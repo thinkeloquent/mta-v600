@@ -4,3 +4,6 @@
 [submodule "__SPECS__/mta-SPECS"]
 	path = __SPECS__/mta-SPECS
 	url = git@github.com:thinkeloquent/mta-SPECS.git
+[submodule "__STAGE__/discovery-ai-gemini-openai-compatibility"]
+	path = __STAGE__/discovery-ai-gemini-openai-compatibility
+	url = https://github.com/thinkeloquent/discovery-ai-gemini-openai-compatibility
