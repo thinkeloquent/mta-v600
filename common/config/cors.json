@@ -1,8 +1,140 @@
 {
-  "origins": ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:8080"],
-  "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  "allowedHeaders": ["Content-Type", "Authorization", "X-Requested-With"],
-  "exposedHeaders": ["X-Total-Count", "X-Request-Id"],
-  "credentials": true,
-  "maxAge": 86400
+  "$schema": "./schemas/cors.schema.json",
+  "version": "1.0.0",
+  "description": "Enterprise Multi-Tenant CORS Configuration",
+
+  "global": {
+    "enabled": true,
+    "credentials": true,
+    "maxAge": 3600,
+    "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    "allowedHeaders": [
+      "Content-Type",
+      "Authorization",
+      "X-AI-Model",
+      "X-Tenant-Id",
+      "X-Request-Id"
+    ],
+    "exposedHeaders": [
+      "Content-Type",
+      "Authorization",
+      "X-Request-Id"
+    ],
+    "logging": {
+      "enabled": true,
+      "level": "warn",
+      "includeRejections": true,
+      "includeAllowances": false
+    }
+  },
+
+  "environments": {
+    "development": {
+      "description": "Local development with permissive localhost handling",
+      "origins": [
+        {
+          "type": "regex",
+          "pattern": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?$",
+          "description": "Any localhost port"
+        }
+      ],
+      "strictMode": false,
+      "logging": {
+        "level": "debug",
+        "includeAllowances": true
+      }
+    },
+    "staging": {
+      "description": "Staging environment with explicit origins",
+      "origins": [
+        {
+          "type": "exact",
+          "value": "https://staging.example.com"
+        },
+        {
+          "type": "wildcard",
+          "pattern": "*.staging.example.com",
+          "description": "All staging subdomains"
+        }
+      ],
+      "strictMode": true
+    },
+    "production": {
+      "description": "Production with strict origin validation",
+      "origins": [],
+      "strictMode": true,
+      "requireExplicitOrigins": true,
+      "logging": {
+        "level": "warn",
+        "includeRejections": true
+      }
+    }
+  },
+
+  "apps": {
+    "_comment": "App-specific CORS overrides. These extend/override global settings.",
+
+    "ai-sdk-chat": {
+      "description": "AI SDK chat",
+      "origins": [],
+      "additionalHeaders": ["X-AI-Model", "X-Stream-Protocol"],
+      "additionalExposedHeaders": ["X-Stream-Id"]
+    },
+
+    "chat-window": {
+      "description": "Chat interface application",
+      "origins": [],
+      "additionalHeaders": ["X-Conversation-Id"]
+    }
+  },
+
+  "domainMappings": {
+    "_comment": "Auto-map origins based on hosted domain patterns. Future enhancement.",
+
+    "*.example.com": {
+      "type": "wildcard",
+      "allowedOrigins": ["https://*.example.com"],
+      "description": "Example.com wildcard subdomain mapping"
+    }
+  },
+
+  "patterns": {
+    "_comment": "Reusable origin patterns that can be referenced by name",
+
+    "localhost": {
+      "type": "regex",
+      "pattern": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?$",
+      "description": "Any localhost origin with any port"
+    },
+    "localNetwork": {
+      "type": "regex",
+      "pattern": "^https?://(192\\.168\\.[0-9]+\\.[0-9]+|10\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:\\d+)?$",
+      "description": "Private network ranges (192.168.x.x, 10.x.x.x)"
+    }
+  },
+
+  "futureEnhancements": {
+    "_comment": "Documented future capabilities for enterprise expansion",
+
+    "hybridStorage": {
+      "description": "Database overrides for dynamic updates without restarts",
+      "implementation": "Add TenantCorsPolicy table with origin, tenant_id, priority fields. Policy engine queries at startup + caches with TTL."
+    },
+    "tenantLevel": {
+      "description": "Per-tenant origin restrictions (Global → Tenant → App)",
+      "implementation": "Add 'tenants' section similar to 'apps'. Extract tenant from X-Tenant-Id header or subdomain."
+    },
+    "routeLevel": {
+      "description": "Per-route CORS overrides (Global → Tenant → App → Route)",
+      "implementation": "Add route decorators/metadata that policy engine reads. Example: @cors({ origins: ['specific.com'] })"
+    },
+    "configurableActions": {
+      "description": "Different actions per policy violation (warn, reject, alert)",
+      "implementation": "Add 'action' field to origin rules: { type: 'exact', value: '...', action: 'warn' }"
+    },
+    "adminAPI": {
+      "description": "Runtime policy management without restarts",
+      "implementation": "REST endpoints: GET/POST/DELETE /api/admin/cors/policies with auth"
+    }
+  }
 }

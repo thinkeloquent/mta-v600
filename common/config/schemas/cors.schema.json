@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/cors.schema.json",
+  "title": "Enterprise CORS Configuration",
+  "description": "JSON Schema for multi-tenant, multi-app CORS policy configuration",
+  "type": "object",
+  "required": ["version", "global", "environments"],
+  "additionalProperties": true,
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Configuration version (semver)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this configuration"
+    },
+
+    "global": {
+      "$ref": "#/definitions/globalConfig"
+    },
+
+    "environments": {
+      "type": "object",
+      "description": "Environment-specific CORS settings",
+      "additionalProperties": {
+        "$ref": "#/definitions/environmentConfig"
+      },
+      "properties": {
+        "development": { "$ref": "#/definitions/environmentConfig" },
+        "staging": { "$ref": "#/definitions/environmentConfig" },
+        "production": { "$ref": "#/definitions/environmentConfig" }
+      }
+    },
+
+    "apps": {
+      "type": "object",
+      "description": "App-specific CORS overrides",
+      "additionalProperties": {
+        "$ref": "#/definitions/appConfig"
+      }
+    },
+
+    "domainMappings": {
+      "type": "object",
+      "description": "Auto-map origins based on hosted domain patterns",
+      "additionalProperties": {
+        "$ref": "#/definitions/domainMapping"
+      }
+    },
+
+    "patterns": {
+      "type": "object",
+      "description": "Reusable named origin patterns",
+      "additionalProperties": {
+        "$ref": "#/definitions/originPattern"
+      }
+    },
+
+    "futureEnhancements": {
+      "type": "object",
+      "description": "Documented future capabilities",
+      "additionalProperties": true
+    }
+  },
+
+  "definitions": {
+    "globalConfig": {
+      "type": "object",
+      "description": "Global CORS settings applied to all requests",
+      "required": ["enabled", "credentials", "methods", "allowedHeaders"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable CORS globally"
+        },
+        "credentials": {
+          "type": "boolean",
+          "description": "Allow credentials (cookies, authorization headers)"
+        },
+        "maxAge": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400,
+          "description": "Preflight cache duration in seconds"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
+          },
+          "description": "Allowed HTTP methods"
+        },
+        "allowedHeaders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Headers the client is allowed to send"
+        },
+        "exposedHeaders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Headers exposed to the client"
+        },
+        "logging": {
+          "$ref": "#/definitions/loggingConfig"
+        }
+      }
+    },
+
+    "environmentConfig": {
+      "type": "object",
+      "description": "Environment-specific CORS configuration",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "origins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/originPattern"
+          },
+          "description": "Allowed origins for this environment"
+        },
+        "strictMode": {
+          "type": "boolean",
+          "description": "Require explicit origin match (no wildcards)"
+        },
+        "requireExplicitOrigins": {
+          "type": "boolean",
+          "description": "Fail if no origins configured in production"
+        },
+        "logging": {
+          "$ref": "#/definitions/loggingConfig"
+        }
+      }
+    },
+
+    "appConfig": {
+      "type": "object",
+      "description": "App-specific CORS overrides",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "origins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/originPattern"
+          },
+          "description": "Additional origins for this app"
+        },
+        "additionalHeaders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional allowed headers for this app"
+        },
+        "additionalExposedHeaders": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Additional exposed headers for this app"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
+          },
+          "description": "Override allowed methods for this app"
+        }
+      }
+    },
+
+    "originPattern": {
+      "type": "object",
+      "description": "Origin matching pattern",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "exact" },
+            "value": {
+              "type": "string",
+              "format": "uri",
+              "description": "Exact origin URL to match"
+            },
+            "description": { "type": "string" }
+          },
+          "required": ["type", "value"]
+        },
+        {
+          "properties": {
+            "type": { "const": "wildcard" },
+            "pattern": {
+              "type": "string",
+              "description": "Wildcard pattern (e.g., *.example.com)"
+            },
+            "description": { "type": "string" }
+          },
+          "required": ["type", "pattern"]
+        },
+        {
+          "properties": {
+            "type": { "const": "regex" },
+            "pattern": {
+              "type": "string",
+              "description": "Regular expression pattern"
+            },
+            "description": { "type": "string" }
+          },
+          "required": ["type", "pattern"]
+        },
+        {
+          "properties": {
+            "type": { "const": "reference" },
+            "name": {
+              "type": "string",
+              "description": "Name of pattern in 'patterns' section"
+            },
+            "description": { "type": "string" }
+          },
+          "required": ["type", "name"]
+        }
+      ]
+    },
+
+    "domainMapping": {
+      "type": "object",
+      "description": "Domain-to-origin mapping",
+      "required": ["type", "allowedOrigins"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["exact", "wildcard", "regex"]
+        },
+        "allowedOrigins": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+
+    "loggingConfig": {
+      "type": "object",
+      "description": "CORS logging configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable CORS logging"
+        },
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "description": "Log level for CORS events"
+        },
+        "includeRejections": {
+          "type": "boolean",
+          "description": "Log rejected origins"
+        },
+        "includeAllowances": {
+          "type": "boolean",
+          "description": "Log allowed origins (verbose)"
+        }
+      }
+    }
+  }
+}

@@ -1,8 +1,5 @@
-# Server Configuration - TEMPLATE
+# Server Configuration - DEV Environment
 # Shared static configuration values for Python and MJS server packages
-#
-# NOTE: This file is NOT used as fallback - each environment MUST have its own
-# server.{APP_ENV}.yaml file. This serves as a template/reference only.
 
 # =============================================================================
 # Provider Configuration
@@ -66,12 +63,19 @@ display:
 # =============================================================================
 
 proxy:
-  # Proxy URL for this environment (null means no proxy)
-  url: null
+  # Default environment name for ProxyDispatcherFactory
+  # Used to select which proxy URL from proxy_urls to use
+  default_environment: "dev"
+  # Per-environment proxy URLs (keys are user-defined environment names)
+  # Keys can be anything: Live, STAGING, Preview, dev, qa, prod, etc.
+  proxy_urls: {}  # Empty dict = no per-env proxies configured
   # CA bundle path (null means use system default, missing means fall through to ENV)
   ca_bundle: null
   # Client certificate path (null means no cert, missing means fall through to ENV)
   cert: null
+  # SSL certificate verification (false = disable verification, true = enable)
+  # Default: false for dev/local environments behind corporate proxy
+  cert_verify: false
   # Agent proxy settings (null means no proxy)
   agent_proxy:
     http_proxy: null

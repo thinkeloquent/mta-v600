@@ -1,0 +1,67 @@
+{
+  "version": "5.0.0",
+  "apps": {
+    "ask-ai": {
+      "name": "ask-ai",
+      "displayName": "Ask AI",
+      "description": "AI chat application",
+      "port": 3001,
+      "type": "fastapi",
+      "hasBackend": true,
+      "hasFrontend": true,
+      "routes": ["/ask-ai"]
+    },
+    "aws-s3-files": {
+      "name": "aws-s3-files",
+      "displayName": "AWS S3 Files",
+      "description": "AWS S3 file manager",
+      "port": 3002,
+      "type": "fastapi",
+      "hasBackend": true,
+      "hasFrontend": true,
+      "routes": ["/aws-s3-files"]
+    },
+    "chat-window": {
+      "name": "chat-window",
+      "displayName": "Chat Window",
+      "description": "Chat window application",
+      "port": 3003,
+      "type": "fastapi",
+      "hasBackend": false,
+      "hasFrontend": true,
+      "routes": ["/chat-window"]
+    },
+    "figma-component-inspector": {
+      "name": "figma-component-inspector",
+      "displayName": "Figma Component Inspector",
+      "description": "Figma component inspection tool",
+      "port": 3004,
+      "type": "fastapi",
+      "hasBackend": true,
+      "hasFrontend": true,
+      "database": true,
+      "routes": ["/figma-component-inspector"]
+    },
+    "persona-editor": {
+      "name": "persona-editor",
+      "displayName": "Persona Editor",
+      "description": "Persona editing application",
+      "port": 3005,
+      "type": "fastapi",
+      "hasBackend": true,
+      "hasFrontend": true,
+      "database": true,
+      "routes": ["/persona-editor"]
+    },
+    "react-component-esm": {
+      "name": "react-component-esm",
+      "displayName": "React Component ESM",
+      "description": "React component viewer",
+      "port": 3006,
+      "type": "fastapi",
+      "hasBackend": false,
+      "hasFrontend": true,
+      "routes": ["/react-component-esm"]
+    }
+  }
+}

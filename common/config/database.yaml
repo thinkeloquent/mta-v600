@@ -1,0 +1,29 @@
+# Database Configuration
+# Uses system environment variables (per CLAUDE.md)
+
+postgres:
+  # Connection settings - use process.env.POSTGRES_* variables
+  host: ${POSTGRES_HOST}
+  port: ${POSTGRES_PORT}
+  user: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
+  database: ${POSTGRES_DB}
+  schema: ${POSTGRES_SCHEMA}
+
+  # Connection pool settings
+  pool:
+    min: 2
+    max: 10
+    idle_timeout: 30000
+    connection_timeout: 10000
+
+  # SQLAlchemy settings
+  echo: false
+  pool_pre_ping: true
+  pool_recycle: 3600
+
+# Alembic migration settings
+alembic:
+  script_location: "alembic"
+  version_locations: []
+  timezone: "UTC"

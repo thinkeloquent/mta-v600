@@ -1,0 +1,9 @@
+{
+  "HELLO": true,
+  "PERSONA_EDITOR": true,
+  "REACT_COMPONENT_ESM": true,
+  "AWS_S3_FILES": true,
+  "FIGMA_COMPONENT_INSPECTOR": true,
+  "AI_SDK_CHAT": true,
+  "GOOGLE_GEMINI_OPENAI_CHAT_COMPLETIONS": true
+}

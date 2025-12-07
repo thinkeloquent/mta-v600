@@ -1,0 +1,22 @@
+{
+  "environment": "staging",
+  "debug": false,
+  "logLevel": "INFO",
+  "cors": {
+    "enabled": true,
+    "origins": ["https://staging.example.com"]
+  },
+  "database": {
+    "host": "staging-db.example.com",
+    "port": 5432,
+    "pool_size": 10
+  },
+  "redis": {
+    "host": "staging-redis.example.com",
+    "port": 6379
+  },
+  "api": {
+    "baseUrl": "https://staging-api.example.com",
+    "timeout": 30000
+  }
+}
