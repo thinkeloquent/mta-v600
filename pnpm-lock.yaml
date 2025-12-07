@@ -81,6 +81,9 @@ importers:
       '@fastify/static':
         specifier: ^8.0.2
         version: 8.3.0
+      '@internal/vault-file':
+        specifier: workspace:*
+        version: link:../../packages-mjs/vault-file
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1

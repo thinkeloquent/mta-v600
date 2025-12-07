@@ -14,6 +14,7 @@
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/static": "^8.0.2",
+    "@internal/vault-file": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.0.0"

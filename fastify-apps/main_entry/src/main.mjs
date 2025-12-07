@@ -11,11 +11,35 @@
  *   node src/main.mjs --host=127.0.0.1 --log-level=debug
  */
 
+// ============================================================
+// IMPORTANT: Load vault secrets BEFORE any other imports
+// This ensures environment variables are set before config loads
+// ============================================================
+import { on_startup as loadVault, env as vaultEnv } from '@internal/vault-file';
+
+const VAULT_SECRET_FILE = process.env.VAULT_SECRET_FILE;
+let vaultLoaded = false;
+let vaultKeysCount = 0;
+
+if (VAULT_SECRET_FILE) {
+  try {
+    await loadVault({ location: VAULT_SECRET_FILE, override: false });
+    vaultLoaded = vaultEnv.isInitialized();
+    vaultKeysCount = Object.keys(vaultEnv.getAll()).length;
+  } catch (err) {
+    console.error(`Failed to load vault from ${VAULT_SECRET_FILE}:`, err.message);
+  }
+}
+
+// ============================================================
+// Now import the rest of the application
+// ============================================================
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import "dotenv/config";
 
 import mainEntryPlugin from "./index.mjs";
+import vaultRoutesPlugin from "./routes/vault.mjs";
 
 // Build parameters (set by CI/CD or Makefile)
 const BUILD_ID = process.env.BUILD_ID || "local";
@@ -55,6 +79,14 @@ await fastify.register(cors, {
   credentials: true,
 });
 
+// Expose vault service as a decorator
+fastify.decorate('vault', vaultEnv);
+
+// Register vault admin routes
+await fastify.register(vaultRoutesPlugin, {
+  prefix: "/healthz/admin/vault",
+});
+
 // Register main_entry plugin with shared frontend
 await fastify.register(mainEntryPlugin, {
   apiPrefix: "/api/fastify",
@@ -81,6 +113,7 @@ fastify.addHook("onResponse", (request, reply, done) => {
 // Start server
 try {
   await fastify.listen({ port: PORT, host: HOST });
+  const vaultStatus = vaultLoaded ? "LOADED" : "NOT CONFIGURED";
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                  Main Entry Fastify Server                 ║
@@ -92,11 +125,20 @@ try {
 ║    BUILD_VERSION: ${BUILD_VERSION.padEnd(33)}║
 ║    GIT_COMMIT:    ${GIT_COMMIT.padEnd(33)}║
 ║                                                            ║
+║  Vault:                                                    ║
+║    Status: ${vaultStatus.padEnd(41)}║
+║    Keys loaded: ${vaultKeysCount.toString().padEnd(36)}║
+║                                                            ║
 ║  API Endpoints:                                            ║
 ║    GET  /health              - Health check                ║
 ║    GET  /api/fastify         - API info                    ║
 ║    GET  /api/fastify/hello   - Hello endpoint              ║
 ║    POST /api/fastify/echo    - Echo endpoint               ║
+║                                                            ║
+║  Vault Admin:                                              ║
+║    GET  /healthz/admin/vault          - Vault status       ║
+║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
+║    GET  /healthz/admin/vault/:file    - File status        ║
 ║                                                            ║
 ║  Frontend: Served from frontend-apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║

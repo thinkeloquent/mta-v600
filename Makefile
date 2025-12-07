@@ -20,7 +20,7 @@ VENV_DIR := $(MAKEFILE_DIR).venv
 PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
 UVICORN := $(if $(wildcard $(VENV_DIR)/bin/uvicorn),$(VENV_DIR)/bin/uvicorn,uvicorn)
 
-.PHONY: help install dev dev-frontend dev-fastify dev-fastapi build test lint format clean docker-up docker-down
+.PHONY: help install dev dev-parallel dev-frontend dev-fastify dev-fastapi build test lint format clean clean-ports docker-up docker-down
 
 help:
 	@echo "MTA-v600 Development Commands"
@@ -29,10 +29,12 @@ help:
 	@echo "  make install       - Install all dependencies (pnpm + poetry)"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev           - Run frontend (watch) + all backends"
+	@echo "  make dev           - Run frontend (watch) + all backends (cleans ports first)"
+	@echo "  make dev-parallel  - Same as dev, using dev-parallel.sh script"
 	@echo "  make dev-frontend  - Run frontend build in watch mode"
 	@echo "  make dev-fastify   - Run Fastify backend only (port 51000)"
 	@echo "  make dev-fastapi   - Run FastAPI backend only (port 52000)"
+	@echo "  make clean-ports   - Kill processes on dev ports (51000, 52000)"
 	@echo ""
 	@echo "Build:"
 	@echo "  make build         - Build all projects (frontend + backends)"
@@ -55,14 +57,27 @@ install:
 	pnpm install
 	poetry install --no-root
 
-# Development - run frontend watch + all backends in parallel
-dev:
+# Clean development ports before starting
+clean-ports:
+	@bash .bin/clean-ports.sh
+
+# Development - run frontend watch + all backends in parallel (cleans ports first)
+dev: clean-ports
 	@echo "Starting development servers..."
 	@echo "  Frontend: watch mode (rebuilds on changes)"
 	@echo "  Fastify:  http://localhost:$(FASTIFY_PORT)"
 	@echo "  FastAPI:  http://localhost:$(FASTAPI_PORT)"
 	@echo ""
 	@$(MAKE) -j3 dev-frontend dev-fastify dev-fastapi
+
+# Development using dev-parallel.sh (with colored output and graceful shutdown)
+dev-parallel:
+	@FASTIFY_PORT=$(FASTIFY_PORT) \
+		FASTAPI_PORT=$(FASTAPI_PORT) \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		bash .bin/dev-parallel.sh
 
 # Run frontend build in watch mode
 dev-frontend:

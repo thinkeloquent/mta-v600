@@ -30,11 +30,13 @@ ARG PROJECT_ROOT
 ARG BUILD_ID="local"
 ARG BUILD_VERSION="0.0.0-dev"
 ARG GIT_COMMIT="unknown"
+ARG VAULT_SECRET_FILE=""
 
 # Set environment variables from build args
 ENV BUILD_ID=${BUILD_ID}
 ENV BUILD_VERSION=${BUILD_VERSION}
 ENV GIT_COMMIT=${GIT_COMMIT}
+ENV VAULT_SECRET_FILE=${VAULT_SECRET_FILE}
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /applications
@@ -51,7 +53,7 @@ RUN poetry config virtualenvs.create false && \
 
 # Copy application code
 COPY fastapi-apps/ ./fastapi-apps/
-COPY packages-py/ ./packages-py/
+COPY packages_py/ ./packages_py/
 COPY common/ ./common/
 
 # Copy built frontend from builder stage
@@ -60,8 +62,8 @@ COPY --from=frontend-builder /applications/frontend-apps ./frontend-apps
 # Create logs directory
 RUN mkdir -p /applications/logs && chmod 755 /applications/logs
 
-# Set PYTHONPATH to include the app directory (main-entry contains 'app' module)
-ENV PYTHONPATH="/applications/fastapi-apps/main_entry:/applications/packages-py:${PYTHONPATH}"
+# Set PYTHONPATH to include the app directory and packages
+ENV PYTHONPATH="/applications/fastapi-apps/main_entry:/applications/packages_py/vault_file/src:${PYTHONPATH}"
 
 # Working directory at project root
 WORKDIR /applications

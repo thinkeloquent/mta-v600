@@ -3,17 +3,47 @@
 Serves a shared frontend from frontend-apps with SSR config injection.
 """
 
+# ============================================================
+# IMPORTANT: Load vault secrets BEFORE any other imports
+# This ensures environment variables are set before config loads
+# ============================================================
+import os
+
+# Load vault file if VAULT_SECRET_FILE is set
+_vault_secret_file = os.environ.get("VAULT_SECRET_FILE")
+if _vault_secret_file:
+    from vault_file import env as vault_env
+    vault_env.load(location=_vault_secret_file, override=False)
+else:
+    vault_env = None
+
+# ============================================================
+# Now import the rest of the application
+# ============================================================
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import hello
+from app.routes import hello, vault
+
+# ============================================================
+# Vault service dependency for routes
+# ============================================================
+def get_vault_service():
+    """Dependency to get the vault service singleton."""
+    if vault_env is None:
+        # Return a minimal mock if vault not loaded
+        from vault_file import EnvStore
+        return EnvStore()
+    return vault_env
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -80,6 +110,8 @@ def get_index_html() -> str | None:
 async def startup_event():
     """Application startup event."""
     frontend_status = "READY" if FRONTEND_DIR.exists() else "NOT BUILT"
+    vault_status = "LOADED" if vault_env and vault_env.is_initialized() else "NOT CONFIGURED"
+    vault_keys = len(vault_env.get_all()) if vault_env and vault_env.is_initialized() else 0
     print(f"""
 ╔════════════════════════════════════════════════════════════╗
 ║                  Main Entry FastAPI Server                 ║
@@ -91,6 +123,10 @@ async def startup_event():
 ║    BUILD_VERSION: {settings.BUILD_VERSION:<33}║
 ║    GIT_COMMIT:    {settings.GIT_COMMIT:<33}║
 ║                                                            ║
+║  Vault:                                                    ║
+║    Status: {vault_status:<41}║
+║    Keys loaded: {vault_keys:<36}║
+║                                                            ║
 ║  API Endpoints:                                            ║
 ║    GET  /health              - Health check                ║
 ║    GET  /api/fastapi         - API info                    ║
@@ -98,6 +134,11 @@ async def startup_event():
 ║    POST /api/fastapi/echo    - Echo endpoint               ║
 ║    GET  /docs                - Swagger UI                  ║
 ║    GET  /redoc               - ReDoc                       ║
+║                                                            ║
+║  Vault Admin:                                              ║
+║    GET  /healthz/admin/vault          - Vault status       ║
+║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
+║    GET  /healthz/admin/vault/{{file}} - File status        ║
 ║                                                            ║
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
@@ -117,6 +158,7 @@ async def health_check():
 
 # Register API routes
 app.include_router(hello.router, prefix="/api/fastapi", tags=["hello"])
+app.include_router(vault.router, prefix="/healthz/admin/vault", tags=["vault"])
 
 
 # Mount static files if frontend is built (must be after API routes)
