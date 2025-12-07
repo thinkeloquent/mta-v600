@@ -1,0 +1,60 @@
+{
+  "name": "@internal/connection-pool",
+  "version": "1.0.0",
+  "description": "Standalone HTTP connection pool with configurable limits, health tracking, and statistics",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./types": {
+      "import": "./dist/types.mjs",
+      "default": "./dist/types.mjs"
+    },
+    "./config": {
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
+    },
+    "./pool": {
+      "import": "./dist/pool.mjs",
+      "default": "./dist/pool.mjs"
+    },
+    "./stores/memory": {
+      "import": "./dist/stores/memory.mjs",
+      "default": "./dist/stores/memory.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "mta",
+    "connection",
+    "pool",
+    "http",
+    "keep-alive",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.0"
+  }
+}

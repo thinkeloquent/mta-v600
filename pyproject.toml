@@ -18,7 +18,11 @@ httpx = "^0.28.1"
 pyyaml = "^6.0"
 
 # Local packages
+cache-dsn = {path = "packages_py/cache_dsn", develop = true}
+connection-pool = {path = "packages_py/connection_pool", develop = true}
 fetch-client = {path = "packages_py/fetch_client", develop = true}
+fetch-compose-cache-dsn = {path = "packages_py/fetch_compose_cache_dsn", develop = true}
+fetch-compose-connection-pool = {path = "packages_py/fetch_compose_connection_pool", develop = true}
 fetch-compose-rate-limiter = {path = "packages_py/fetch_compose_rate_limiter", develop = true}
 fetch-compose-retry = {path = "packages_py/fetch_compose_retry", develop = true}
 fetch-proxy-dispatcher = {path = "packages_py/fetch_proxy_dispatcher", develop = true}

@@ -147,6 +147,18 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.1)
 
+  packages_mjs/connection-pool:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.1)
+
   packages_mjs/fetch-client:
     dependencies:
       '@internal/fetch-proxy-dispatcher':
@@ -189,6 +201,25 @@ importers:
       '@internal/cache-dsn':
         specifier: workspace:*
         version: link:../cache-dsn
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      undici:
+        specifier: ^7.0.0
+        version: 7.16.0
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.19.1)
+
+  packages_mjs/fetch-compose-connection-pool:
+    dependencies:
+      '@internal/connection-pool':
+        specifier: workspace:*
+        version: link:../connection-pool
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
