@@ -4,8 +4,8 @@ import json
 import os
 from datetime import datetime, timedelta
 import uuid
-from packages_py.vault_file.core import VaultFile, VaultHeader, VaultMetadata, VaultPayload
-from packages_py.vault_file.validators import VaultValidationError
+from vault_file.core import VaultFile, VaultHeader, VaultMetadata, VaultPayload
+from vault_file.validators import VaultValidationError
 
 class TestVaultFile(unittest.TestCase):
 

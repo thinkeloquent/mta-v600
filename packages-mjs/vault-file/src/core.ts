@@ -1,7 +1,8 @@
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import path from 'path';
 import { z } from 'zod';
+import * as dotenv from 'dotenv';
 
 // Zod schemas for validation
 const VaultHeaderSchema = z.object({
@@ -130,3 +131,144 @@ export class VaultFile {
     return new VaultFile(parsed);
   }
 }
+
+export interface OnStartupOptions {
+  location: string;
+  pattern?: string;
+  override?: boolean;
+}
+
+export interface OnStartupResult {
+  loaded: string[];
+  errors: Array<{ file: string; error: string }>;
+}
+
+class EnvStore {
+  private static instance: EnvStore;
+  private values: Map<string, string> = new Map();
+  private initialized: boolean = false;
+  private loadResult: OnStartupResult = { loaded: [], errors: [] };
+
+  private constructor() {}
+
+  static getInstance(): EnvStore {
+    if (!EnvStore.instance) {
+      EnvStore.instance = new EnvStore();
+    }
+    return EnvStore.instance;
+  }
+
+  get(key: string): string | undefined {
+    return process.env[key] ?? this.values.get(key);
+  }
+
+  getOrThrow(key: string): string {
+    const value = this.get(key);
+    if (value === undefined) {
+      throw new Error(`Environment variable "${key}" is not defined`);
+    }
+    return value;
+  }
+
+  getAll(): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const [key, value] of this.values.entries()) {
+      result[key] = value;
+    }
+    return result;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  getLoadResult(): OnStartupResult {
+    return this.loadResult;
+  }
+
+  reset(): void {
+    this.values.clear();
+    this.initialized = false;
+    this.loadResult = { loaded: [], errors: [] };
+  }
+
+  async _loadFromLocation(options: OnStartupOptions): Promise<void> {
+    const { location, pattern = '.env*', override = false } = options;
+
+    logger.info(`Loading env files from: ${location}`);
+
+    if (!existsSync(location)) {
+      logger.error(`Location does not exist: ${location}`);
+      this.loadResult.errors.push({ file: location, error: 'Location does not exist' });
+      return;
+    }
+
+    try {
+      const stats = await fs.stat(location);
+
+      if (stats.isFile()) {
+        try {
+          const content = await fs.readFile(location, 'utf-8');
+          const parsed = dotenv.parse(content);
+
+          for (const [key, value] of Object.entries(parsed)) {
+            if (override || process.env[key] === undefined) {
+              process.env[key] = value;
+              this.values.set(key, value);
+            }
+          }
+
+          this.loadResult.loaded.push(location);
+          logger.info(`Loaded env file: ${location}`);
+        } catch (err: any) {
+          this.loadResult.errors.push({ file: location, error: err.message });
+          logger.error(`Failed to load env file ${location}: ${err.message}`);
+        }
+      } else if (stats.isDirectory()) {
+        const files = await fs.readdir(location);
+        const envFiles = files.filter((file) => {
+          if (pattern.includes('*')) {
+            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+            return regex.test(file);
+          }
+          return file === pattern;
+        });
+
+        for (const file of envFiles) {
+          const filePath = path.join(location, file);
+          try {
+            const content = await fs.readFile(filePath, 'utf-8');
+            const parsed = dotenv.parse(content);
+
+            for (const [key, value] of Object.entries(parsed)) {
+              if (override || process.env[key] === undefined) {
+                process.env[key] = value;
+                this.values.set(key, value);
+              }
+            }
+
+            this.loadResult.loaded.push(filePath);
+            logger.info(`Loaded env file: ${filePath}`);
+          } catch (err: any) {
+            this.loadResult.errors.push({ file: filePath, error: err.message });
+            logger.error(`Failed to load env file ${filePath}: ${err.message}`);
+          }
+        }
+      }
+    } catch (err: any) {
+      this.loadResult.errors.push({ file: location, error: err.message });
+      logger.error(`Failed to process location ${location}: ${err.message}`);
+    }
+
+    this.initialized = true;
+    logger.info(`Loaded ${this.loadResult.loaded.length} env file(s)`);
+  }
+}
+
+export async function on_startup(options: OnStartupOptions): Promise<EnvStore> {
+  const store = EnvStore.getInstance();
+  await store._loadFromLocation(options);
+  return store;
+}
+
+export const env = EnvStore.getInstance();

@@ -6,9 +6,15 @@ import {
   VaultFile,
   VaultValidationError,
   VaultSerializationError,
-  logger, // Import the actual logger
+  logger,
+  on_startup,
+  env,
+  OnStartupOptions,
 } from '../src/core';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { promises as fs } from 'fs';
+import path from 'path';
+import os from 'os';
 
 // Remove the jest.mock block, as we're directly manipulating the exported logger
 
@@ -179,5 +185,128 @@ describe('VaultFile', () => {
     vaultFile.header.id = 'not-a-valid-uuid-after-creation';
 
     expect(() => vaultFile.validateState()).toThrow(VaultValidationError);
+  });
+});
+
+describe('on_startup and env singleton', () => {
+  let tempDir: string;
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(async () => {
+    // Save original process.env
+    originalEnv = { ...process.env };
+
+    // Create temp directory for test files
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'vault-file-test-'));
+
+    // Reset the env singleton
+    env.reset();
+  });
+
+  afterEach(async () => {
+    // Restore original process.env
+    process.env = originalEnv;
+
+    // Clean up temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('should load env from a single file', async () => {
+    const envFile = path.join(tempDir, '.env');
+    await fs.writeFile(envFile, 'TEST_VAR=hello\nANOTHER_VAR=world');
+
+    const store = await on_startup({ location: envFile });
+
+    expect(store).toBe(env); // Should return singleton
+    expect(store.isInitialized()).toBe(true);
+    expect(store.get('TEST_VAR')).toBe('hello');
+    expect(store.get('ANOTHER_VAR')).toBe('world');
+    expect(store.getLoadResult().loaded).toContain(envFile);
+  });
+
+  it('should load env files from a directory', async () => {
+    await fs.writeFile(path.join(tempDir, '.env'), 'DIR_VAR=from_dir');
+    await fs.writeFile(path.join(tempDir, '.env.local'), 'LOCAL_VAR=from_local');
+
+    const store = await on_startup({ location: tempDir });
+
+    expect(store.get('DIR_VAR')).toBe('from_dir');
+    expect(store.get('LOCAL_VAR')).toBe('from_local');
+    expect(store.getLoadResult().loaded.length).toBe(2);
+  });
+
+  it('should respect pattern option', async () => {
+    await fs.writeFile(path.join(tempDir, '.env'), 'ENV_VAR=env');
+    await fs.writeFile(path.join(tempDir, '.env.prod'), 'PROD_VAR=prod');
+    await fs.writeFile(path.join(tempDir, 'config.txt'), 'CONFIG_VAR=config');
+
+    const store = await on_startup({ location: tempDir, pattern: '.env.prod' });
+
+    expect(store.get('PROD_VAR')).toBe('prod');
+    expect(store.get('ENV_VAR')).toBeUndefined();
+    expect(store.getLoadResult().loaded.length).toBe(1);
+  });
+
+  it('should not override existing env vars by default', async () => {
+    process.env.EXISTING_VAR = 'original';
+    await fs.writeFile(path.join(tempDir, '.env'), 'EXISTING_VAR=new_value');
+
+    await on_startup({ location: tempDir });
+
+    expect(env.get('EXISTING_VAR')).toBe('original');
+  });
+
+  it('should override existing env vars when override is true', async () => {
+    process.env.OVERRIDE_VAR = 'original';
+    await fs.writeFile(path.join(tempDir, '.env'), 'OVERRIDE_VAR=overridden');
+
+    await on_startup({ location: tempDir, override: true });
+
+    expect(env.get('OVERRIDE_VAR')).toBe('overridden');
+  });
+
+  it('should return error for non-existent location', async () => {
+    const store = await on_startup({ location: '/non/existent/path' });
+
+    expect(store.getLoadResult().errors.length).toBe(1);
+    expect(store.getLoadResult().errors[0].error).toBe('Location does not exist');
+  });
+
+  it('getOrThrow should throw for undefined keys', async () => {
+    await fs.writeFile(path.join(tempDir, '.env'), 'DEFINED_VAR=value');
+    await on_startup({ location: tempDir });
+
+    expect(env.getOrThrow('DEFINED_VAR')).toBe('value');
+    expect(() => env.getOrThrow('UNDEFINED_VAR')).toThrow('Environment variable "UNDEFINED_VAR" is not defined');
+  });
+
+  it('getAll should return all loaded values', async () => {
+    await fs.writeFile(path.join(tempDir, '.env'), 'VAR_A=a\nVAR_B=b');
+    await on_startup({ location: tempDir });
+
+    const all = env.getAll();
+    expect(all['VAR_A']).toBe('a');
+    expect(all['VAR_B']).toBe('b');
+  });
+
+  it('reset should clear the singleton state', async () => {
+    await fs.writeFile(path.join(tempDir, '.env'), 'RESET_VAR=value');
+    await on_startup({ location: tempDir });
+
+    expect(env.isInitialized()).toBe(true);
+    expect(env.getAll()['RESET_VAR']).toBe('value');
+
+    env.reset();
+
+    expect(env.isInitialized()).toBe(false);
+    expect(env.getAll()).toEqual({});
+  });
+
+  it('should return the same singleton instance', async () => {
+    const store1 = await on_startup({ location: tempDir });
+    const store2 = await on_startup({ location: tempDir });
+
+    expect(store1).toBe(store2);
+    expect(store1).toBe(env);
   });
 });

@@ -1,13 +1,18 @@
 # Dockerfile.fastify - Node.js/Fastify applications
 # Multi-stage build for Node.js apps that serve frontends
 
+# Project root name
+ARG PROJECT_ROOT=mta-v600
+
 # Stage 1: Builder
 FROM node:22-slim AS builder
+
+ARG PROJECT_ROOT
 
 # Install pnpm globally
 RUN npm install -g pnpm@latest
 
-WORKDIR /applications
+WORKDIR /applications/${PROJECT_ROOT}
 
 # Copy package files and workspace config
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig*.json ./
@@ -21,6 +26,9 @@ COPY packages-mjs/ ./packages-mjs/
 # Copy Fastify apps
 COPY fastify-apps/ ./fastify-apps/
 
+# Copy frontend apps (for building)
+COPY frontend-apps/ ./frontend-apps/
+
 # Install dependencies using pnpm
 RUN pnpm install --frozen-lockfile
 
@@ -30,7 +38,7 @@ RUN pnpm build
 # Stage 2: Runtime
 FROM node:22-slim AS runtime
 
-WORKDIR /applications
+ARG PROJECT_ROOT
 
 # Build arguments
 ARG BUILD_ID="local"
@@ -42,16 +50,19 @@ ENV BUILD_ID=${BUILD_ID}
 ENV BUILD_VERSION=${BUILD_VERSION}
 ENV GIT_COMMIT=${GIT_COMMIT}
 
+WORKDIR /applications/${PROJECT_ROOT}
+
 # Create logs directory for runtime logging
-RUN mkdir -p /applications/logs
+RUN mkdir -p /applications/${PROJECT_ROOT}/logs
 
 # Copy built artifacts from builder
-COPY --from=builder /applications/fastify-apps ./fastify-apps
-COPY --from=builder /applications/common ./common
-COPY --from=builder /applications/packages-mjs ./packages-mjs
-COPY --from=builder /applications/node_modules ./node_modules
-COPY --from=builder /applications/package.json ./package.json
-COPY --from=builder /applications/tsconfig.json ./tsconfig.json
+COPY --from=builder /applications/${PROJECT_ROOT}/fastify-apps ./fastify-apps
+COPY --from=builder /applications/${PROJECT_ROOT}/frontend-apps ./frontend-apps
+COPY --from=builder /applications/${PROJECT_ROOT}/common ./common
+COPY --from=builder /applications/${PROJECT_ROOT}/packages-mjs ./packages-mjs
+COPY --from=builder /applications/${PROJECT_ROOT}/node_modules ./node_modules
+COPY --from=builder /applications/${PROJECT_ROOT}/package.json ./package.json
+COPY --from=builder /applications/${PROJECT_ROOT}/tsconfig.json ./tsconfig.json
 
 # Expose default port
 EXPOSE 3000
@@ -61,4 +72,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start server
-CMD ["node", "fastify-apps/main-entry/src/main.mjs"]
+CMD ["node", "fastify-apps/main_entry/src/main.mjs"]

@@ -1,5 +1,5 @@
 {
-  "name": "@internal/fastify-main-entry",
+  "name": "@internal/fastify-main_entry",
   "version": "1.0.0",
   "type": "module",
   "private": true,

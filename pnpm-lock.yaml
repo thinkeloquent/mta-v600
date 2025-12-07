@@ -73,7 +73,7 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
 
-  fastify-apps/main-entry:
+  fastify-apps/main_entry:
     dependencies:
       '@fastify/cors':
         specifier: ^11.1.0
@@ -95,7 +95,7 @@ importers:
         specifier: ^13.0.0
         version: 13.1.2
 
-  frontend-apps/main-entry:
+  frontend-apps/main_entry:
     dependencies:
       react:
         specifier: ^18.3.1
@@ -131,6 +131,9 @@ importers:
 
   packages-mjs/vault-file:
     dependencies:
+      dotenv:
+        specifier: ^16.4.0
+        version: 16.6.1
       uuid:
         specifier: '*'
         version: 13.0.0

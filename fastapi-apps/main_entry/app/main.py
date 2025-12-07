@@ -34,7 +34,7 @@ app.add_middleware(
 )
 
 # Frontend configuration
-FRONTEND_APP = "main-entry"
+FRONTEND_APP = "main_entry"
 FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend-apps" / FRONTEND_APP / "dist"
 
 

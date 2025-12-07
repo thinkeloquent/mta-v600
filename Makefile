@@ -66,11 +66,11 @@ dev:
 
 # Run frontend build in watch mode
 dev-frontend:
-	cd frontend-apps/main-entry && pnpm dev
+	cd frontend-apps/main_entry && pnpm dev
 
 # Run Fastify backend
 dev-fastify:
-	cd fastify-apps/main-entry && \
+	cd fastify-apps/main_entry && \
 		PORT=$(FASTIFY_PORT) \
 		BUILD_ID=$(BUILD_ID) \
 		BUILD_VERSION=$(BUILD_VERSION) \
@@ -79,7 +79,7 @@ dev-fastify:
 
 # Run FastAPI backend
 dev-fastapi:
-	cd fastapi-apps/main-entry && \
+	cd fastapi-apps/main_entry && \
 		BUILD_ID=$(BUILD_ID) \
 		BUILD_VERSION=$(BUILD_VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \

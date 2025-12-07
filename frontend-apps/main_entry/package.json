@@ -1,5 +1,5 @@
 {
-  "name": "@internal/frontend-main-entry",
+  "name": "@internal/frontend-main_entry",
   "private": true,
   "version": "1.0.0",
   "type": "module",

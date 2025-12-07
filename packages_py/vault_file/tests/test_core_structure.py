@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from uuid import UUID
 from unittest.mock import patch, MagicMock
 
-from packages_py.vault_file.core import (
+from vault_file.core import (
     VaultHeader,
     VaultMetadata,
     VaultPayload,
     VaultFile,
+)
+from vault_file.validators import (
     VaultValidationError,
     VaultSerializationError,
 )
@@ -16,7 +18,7 @@ from packages_py.vault_file.core import (
 # Mocking the logger to capture logs
 @pytest.fixture
 def mock_logger():
-    with patch('packages_py.vault_file.core.logger') as mock_log:
+    with patch('vault_file.core.logger') as mock_log:
         yield mock_log
 
 def test_vault_header_instantiation():
