@@ -1,109 +1,153 @@
-# packages-py/vault_file/core.py
+
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime
-from uuid import UUID, uuid4
-from pydantic import BaseModel, Field, validator
+import uuid
+from typing import Dict, Any, Optional
 
-# Setup logging
-logger = logging.getLogger("vault_file")
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-# Custom Exceptions
-class VaultValidationError(Exception):
-    """Custom exception for validation errors within the VaultFile."""
-    pass
-
-class VaultSerializationError(Exception):
-    """Custom exception for errors during serialization or deserialization."""
-    pass
-
-# Vault Components
-class VaultHeader(BaseModel):
+@dataclass
+class VaultHeader:
     """
-    Header for the VaultFile, containing metadata about the vault itself.
+    Data class for the header of a vault file.
     """
-    id: UUID = Field(default_factory=uuid4)
-    version: str = "1.0.0"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    version: str = "1.0"
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
-    class Config:
-        validate_assignment = True
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "version": self.version,
+            "created_at": self.created_at.isoformat(),
+            "id": str(self.id)
+        }
 
-class VaultMetadata(BaseModel):
+@dataclass
+class VaultMetadata:
     """
-    Metadata for the payload, such as tags, owner, or permissions.
+    Data class for the metadata of a vault file.
     """
-    data: dict = Field(default_factory=dict)
+    data: Dict[str, Any] = field(default_factory=dict)
 
-    class Config:
-        validate_assignment = True
+    def to_dict(self) -> Dict[str, Any]:
+        return self.data
 
-class VaultPayload(BaseModel):
+@dataclass
+class VaultPayload:
     """
-    The payload of the VaultFile.
+    Data class for the payload of a vault file.
     """
-    content: dict | list | str
+    data: Any = None
 
-    class Config:
-        validate_assignment = True
+    def to_dict(self) -> Dict[str, Any]:
+        return {"data": self.data}
 
-# Abstract Base Class
+
 class IVaultFile(ABC):
     """
-    Interface for the VaultFile.
+    Abstract base class for a vault file.
     """
+
     @abstractmethod
     def to_json(self) -> str:
+        """
+        Serializes the vault file to a JSON string.
+        """
         pass
 
     @classmethod
     @abstractmethod
-    def from_json(cls, json_str: str):
+    def from_json(cls, json_str: str) -> 'IVaultFile':
+        """
+        Deserializes a JSON string to a vault file object.
+        """
         pass
 
     @abstractmethod
-    def validate_state(self):
+    def save_to_disk(self, path: str) -> None:
+        """
+        Saves the vault file to disk.
+        """
         pass
 
-# Main VaultFile Class
-class VaultFile(BaseModel, IVaultFile):
-    """
-    A secure and structured container for storing metadata and payload data.
-    """
-    header: VaultHeader = Field(default_factory=VaultHeader)
-    metadata: VaultMetadata = Field(default_factory=VaultMetadata)
-    payload: VaultPayload
+    @classmethod
+    @abstractmethod
+    def load_from_disk(cls, path: str) -> 'IVaultFile':
+        """
+        Loads a vault file from disk.
+        """
+        pass
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        logger.debug(f"VaultFile initialized with id: {self.header.id}")
+@dataclass
+class VaultFile(IVaultFile):
+    """
+    A class representing a vault file.
+    """
+    header: VaultHeader = field(default_factory=VaultHeader)
+    metadata: VaultMetadata = field(default_factory=VaultMetadata)
+    payload: VaultPayload = field(default_factory=VaultPayload)
 
     def to_json(self) -> str:
-        """Serializes the VaultFile to a JSON string."""
-        logger.debug(f"Serializing VaultFile id: {self.header.id}")
-        try:
-            return self.model_dump_json(indent=2)
-        except Exception as e:
-            raise VaultSerializationError(f"Failed to serialize to JSON: {e}")
+        import json
+        logger.debug("Serializing VaultFile to JSON")
+        return json.dumps({
+            "header": self.header.to_dict(),
+            "metadata": self.metadata.to_dict(),
+            "payload": self.payload.to_dict()
+        }, indent=2)
 
     @classmethod
-    def from_json(cls, json_str: str):
-        """Deserializes a JSON string to a VaultFile instance."""
-        logger.debug("Attempting to deserialize VaultFile from JSON.")
-        try:
-            return cls.model_validate_json(json_str)
-        except Exception as e:
-            raise VaultSerializationError(f"Failed to deserialize from JSON: {e}")
+    def from_json(cls, json_str: str) -> 'VaultFile':
+        import json
+        from .validators import validate_vault_data
 
-    def validate_state(self):
-        """Validates the current state of the VaultFile."""
-        logger.debug(f"Validating state for VaultFile id: {self.header.id}")
-        # Pydantic handles validation on instantiation and assignment
-        # This method can be expanded for more complex cross-field validation
-        try:
-            self.model_validate(self)
-        except Exception as e:
-            raise VaultValidationError(f"VaultFile state is invalid: {e}")
+        logger.debug("Deserializing VaultFile from JSON")
+        data = json.loads(json_str)
+        
+        # This is where validation would be called
+        # validate_vault_data(data)
 
-    class Config:
-        validate_assignment = True
+        header = VaultHeader(
+            version=data["header"]["version"],
+            created_at=datetime.fromisoformat(data["header"]["created_at"]),
+            id=uuid.UUID(data["header"]["id"])
+        )
+        metadata = VaultMetadata(data=data["metadata"])
+        payload = VaultPayload(data=data["payload"]["data"])
+
+        return cls(header, metadata, payload)
+        
+    def save_to_disk(self, path: str) -> None:
+        logger.debug(f"Saving vault file to {path}")
+        # Atomic write: write to temp file then rename
+        temp_path = f"{path}.tmp"
+        try:
+            with open(temp_path, 'w') as f:
+                f.write(self.to_json())
+            import os
+            os.rename(temp_path, path)
+            logger.info(f"Vault file saved successfully to {path}")
+        except Exception as e:
+            logger.error(f"Failed to save vault file to {path}: {e}")
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
+
+    @classmethod
+    def load_from_disk(cls, path: str) -> 'VaultFile':
+        logger.debug(f"Loading vault file from {path}")
+        try:
+            with open(path, 'r') as f:
+                json_str = f.read()
+            return cls.from_json(json_str)
+        except FileNotFoundError:
+            logger.error(f"Vault file not found at {path}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to load vault file from {path}: {e}")
+            raise
+

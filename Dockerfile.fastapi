@@ -19,8 +19,15 @@ RUN pnpm --filter "./fastapi-apps/*/frontend" run build || true
 # Stage 2: Python Runtime
 FROM python:3.11-slim AS runtime
 
-ARG BUILD_ID="v.0.0.1"
+# Build arguments
+ARG BUILD_ID="local"
+ARG BUILD_VERSION="0.0.0-dev"
+ARG GIT_COMMIT="unknown"
+
+# Set environment variables from build args
 ENV BUILD_ID=${BUILD_ID}
+ENV BUILD_VERSION=${BUILD_VERSION}
+ENV GIT_COMMIT=${GIT_COMMIT}
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
