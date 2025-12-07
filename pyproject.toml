@@ -17,6 +17,10 @@ python-multipart = "^0.0.6"
 httpx = "^0.28.1"
 pyyaml = "^6.0"
 
+# Local packages
+vault-file = {path = "packages_py/vault_file", develop = true}
+static-config-property-management = {path = "packages_py/static_config_property_management", develop = true}
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 httpx = "^0.28.1"

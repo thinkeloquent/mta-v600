@@ -62,8 +62,8 @@ COPY --from=frontend-builder /applications/frontend-apps ./frontend-apps
 # Create logs directory
 RUN mkdir -p /applications/logs && chmod 755 /applications/logs
 
-# Set PYTHONPATH to include the app directory and packages
-ENV PYTHONPATH="/applications/fastapi-apps/main_entry:/applications/packages_py/vault_file/src:${PYTHONPATH}"
+# Set PYTHONPATH to include the app directory
+ENV PYTHONPATH="/applications/fastapi-apps/main_entry:${PYTHONPATH}"
 
 # Working directory at project root
 WORKDIR /applications
