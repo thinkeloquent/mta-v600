@@ -32,6 +32,28 @@ if (VAULT_SECRET_FILE) {
 }
 
 // ============================================================
+// Load static config AFTER vault (so APP_ENV can be set from vault)
+// ============================================================
+import { loadYamlConfig, config as staticConfigEnv } from '@internal/static-config-property-management';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const configDir = path.resolve(__dirname, '..', '..', '..', 'common', 'config');
+
+let staticConfigLoaded = false;
+let staticConfigAppEnv = 'N/A';
+
+try {
+  const result = await loadYamlConfig({ configDir });
+  staticConfigLoaded = staticConfigEnv.isInitialized();
+  staticConfigAppEnv = result.appEnv || 'N/A';
+} catch (err) {
+  console.error(`Failed to load static config:`, err.message);
+}
+
+// ============================================================
 // Now import the rest of the application
 // ============================================================
 import Fastify from "fastify";
@@ -40,6 +62,7 @@ import "dotenv/config";
 
 import mainEntryPlugin from "./index.mjs";
 import vaultRoutesPlugin from "./routes/vault.mjs";
+import loadedConfigRoutesPlugin from "./routes/loaded_config.mjs";
 
 // Build parameters (set by CI/CD or Makefile)
 const BUILD_ID = process.env.BUILD_ID || "local";
@@ -82,9 +105,17 @@ await fastify.register(cors, {
 // Expose vault service as a decorator
 fastify.decorate('vault', vaultEnv);
 
+// Expose static config as a decorator
+fastify.decorate('staticConfig', staticConfigEnv);
+
 // Register vault admin routes
 await fastify.register(vaultRoutesPlugin, {
   prefix: "/healthz/admin/vault",
+});
+
+// Register loaded-config admin routes
+await fastify.register(loadedConfigRoutesPlugin, {
+  prefix: "/healthz/admin/loaded-config",
 });
 
 // Register main_entry plugin with shared frontend
@@ -114,6 +145,7 @@ fastify.addHook("onResponse", (request, reply, done) => {
 try {
   await fastify.listen({ port: PORT, host: HOST });
   const vaultStatus = vaultLoaded ? "LOADED" : "NOT CONFIGURED";
+  const staticConfigStatus = staticConfigLoaded ? "LOADED" : "NOT CONFIGURED";
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                  Main Entry Fastify Server                 ║
@@ -129,16 +161,21 @@ try {
 ║    Status: ${vaultStatus.padEnd(41)}║
 ║    Keys loaded: ${vaultKeysCount.toString().padEnd(36)}║
 ║                                                            ║
+║  Static Config:                                            ║
+║    Status: ${staticConfigStatus.padEnd(41)}║
+║    APP_ENV: ${staticConfigAppEnv.padEnd(40)}║
+║                                                            ║
 ║  API Endpoints:                                            ║
 ║    GET  /health              - Health check                ║
 ║    GET  /api/fastify         - API info                    ║
 ║    GET  /api/fastify/hello   - Hello endpoint              ║
 ║    POST /api/fastify/echo    - Echo endpoint               ║
 ║                                                            ║
-║  Vault Admin:                                              ║
+║  Admin Endpoints:                                          ║
 ║    GET  /healthz/admin/vault          - Vault status       ║
 ║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
-║    GET  /healthz/admin/vault/:file    - File status        ║
+║    GET  /healthz/admin/loaded-config       - Config status ║
+║    GET  /healthz/admin/loaded-config/data  - Full config   ║
 ║                                                            ║
 ║  Frontend: Served from frontend-apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║

@@ -18,6 +18,18 @@ else:
     vault_env = None
 
 # ============================================================
+# Load static config AFTER vault (so APP_ENV can be set from vault)
+# ============================================================
+from static_config import config as static_config_env, load_yaml_config
+
+# Determine config directory path (common/config relative to monorepo root)
+_config_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "common", "config"
+)
+load_yaml_config(config_dir=_config_dir)
+
+# ============================================================
 # Now import the rest of the application
 # ============================================================
 import json
@@ -31,7 +43,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import hello, vault
+from app.routes import hello, vault, loaded_config
 
 # ============================================================
 # Vault service dependency for routes
@@ -112,6 +124,13 @@ async def startup_event():
     frontend_status = "READY" if FRONTEND_DIR.exists() else "NOT BUILT"
     vault_status = "LOADED" if vault_env and vault_env.is_initialized() else "NOT CONFIGURED"
     vault_keys = len(vault_env.get_all()) if vault_env and vault_env.is_initialized() else 0
+
+    # Static config status
+    static_config_status = "LOADED" if static_config_env.is_initialized() else "NOT CONFIGURED"
+    static_config_result = static_config_env.get_load_result()
+    static_config_env_name = static_config_result.app_env if static_config_result else "N/A"
+    static_config_file = static_config_result.config_file if static_config_result else "N/A"
+
     print(f"""
 ╔════════════════════════════════════════════════════════════╗
 ║                  Main Entry FastAPI Server                 ║
@@ -127,6 +146,10 @@ async def startup_event():
 ║    Status: {vault_status:<41}║
 ║    Keys loaded: {vault_keys:<36}║
 ║                                                            ║
+║  Static Config:                                            ║
+║    Status: {static_config_status:<41}║
+║    APP_ENV: {static_config_env_name:<40}║
+║                                                            ║
 ║  API Endpoints:                                            ║
 ║    GET  /health              - Health check                ║
 ║    GET  /api/fastapi         - API info                    ║
@@ -135,10 +158,11 @@ async def startup_event():
 ║    GET  /docs                - Swagger UI                  ║
 ║    GET  /redoc               - ReDoc                       ║
 ║                                                            ║
-║  Vault Admin:                                              ║
+║  Admin Endpoints:                                          ║
 ║    GET  /healthz/admin/vault          - Vault status       ║
 ║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
-║    GET  /healthz/admin/vault/{{file}} - File status        ║
+║    GET  /healthz/admin/loaded-config       - Config status ║
+║    GET  /healthz/admin/loaded-config/data  - Full config   ║
 ║                                                            ║
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
@@ -159,6 +183,7 @@ async def health_check():
 # Register API routes
 app.include_router(hello.router, prefix="/api/fastapi", tags=["hello"])
 app.include_router(vault.router, prefix="/healthz/admin/vault", tags=["vault"])
+app.include_router(loaded_config.router, prefix="/healthz/admin/loaded-config", tags=["loaded-config"])
 
 
 # Mount static files if frontend is built (must be after API routes)
