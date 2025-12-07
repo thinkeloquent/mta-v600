@@ -3,7 +3,7 @@
  * Main Entry Fastify Server
  *
  * Production-ready server that serves the shared frontend from
- * frontend-apps/main_entry with SSR config injection.
+ * frontend_apps/main_entry with SSR config injection.
  *
  * Usage:
  *   node src/main.mjs
@@ -15,7 +15,7 @@
 // IMPORTANT: Load vault secrets BEFORE any other imports
 // This ensures environment variables are set before config loads
 // ============================================================
-import { on_startup as loadVault, env as vaultEnv } from '@internal/vault-file';
+import { on_startup as loadVault, env as vaultEnv } from "@internal/vault-file";
 
 const VAULT_SECRET_FILE = process.env.VAULT_SECRET_FILE;
 let vaultLoaded = false;
@@ -27,28 +27,34 @@ if (VAULT_SECRET_FILE) {
     vaultLoaded = vaultEnv.isInitialized();
     vaultKeysCount = Object.keys(vaultEnv.getAll()).length;
   } catch (err) {
-    console.error(`Failed to load vault from ${VAULT_SECRET_FILE}:`, err.message);
+    console.error(
+      `Failed to load vault from ${VAULT_SECRET_FILE}:`,
+      err.message
+    );
   }
 }
 
 // ============================================================
 // Load static config AFTER vault (so APP_ENV can be set from vault)
 // ============================================================
-import { loadYamlConfig, config as staticConfigEnv } from '@internal/static-config-property-management';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import {
+  loadYamlConfig,
+  config as staticConfigEnv,
+} from "@internal/static-config-property-management";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const configDir = path.resolve(__dirname, '..', '..', '..', 'common', 'config');
+const configDir = path.resolve(__dirname, "..", "..", "..", "common", "config");
 
 let staticConfigLoaded = false;
-let staticConfigAppEnv = 'N/A';
+let staticConfigAppEnv = "N/A";
 
 try {
   const result = await loadYamlConfig({ configDir });
   staticConfigLoaded = staticConfigEnv.isInitialized();
-  staticConfigAppEnv = result.appEnv || 'N/A';
+  staticConfigAppEnv = result.appEnv || "N/A";
 } catch (err) {
   console.error(`Failed to load static config:`, err.message);
 }
@@ -103,10 +109,10 @@ await fastify.register(cors, {
 });
 
 // Expose vault service as a decorator
-fastify.decorate('vault', vaultEnv);
+fastify.decorate("vault", vaultEnv);
 
 // Expose static config as a decorator
-fastify.decorate('staticConfig', staticConfigEnv);
+fastify.decorate("staticConfig", staticConfigEnv);
 
 // Register vault admin routes
 await fastify.register(vaultRoutesPlugin, {
@@ -177,7 +183,7 @@ try {
 ║    GET  /healthz/admin/loaded-config       - Config status ║
 ║    GET  /healthz/admin/loaded-config/data  - Full config   ║
 ║                                                            ║
-║  Frontend: Served from frontend-apps/main_entry/dist       ║
+║  Frontend: Served from frontend_apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║
 ╚════════════════════════════════════════════════════════════╝
   `);

@@ -1,6 +1,6 @@
 # Shared JavaScript/TypeScript packages
 # Add new packages here using the structure:
-# packages-mjs/package-name/
+# packages_mjs/package-name/
 #   ├── package.json
 #   ├── src/
 #   │   └── index.ts

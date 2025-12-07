@@ -16,8 +16,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@internal/*": ["packages-mjs/*/src"],
-      "@mta/*": ["packages-mjs/*/src"]
+      "@internal/*": ["packages_mjs/*/src"],
+      "@mta/*": ["packages_mjs/*/src"]
     }
   },
   "exclude": ["node_modules", "**/dist", "**/build", "**/.nx"]

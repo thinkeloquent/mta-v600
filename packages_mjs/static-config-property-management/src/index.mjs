@@ -5,10 +5,10 @@
  * Provides a singleton ConfigStore for accessing loaded configuration.
  */
 
-import { promises as fs, existsSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import yaml from 'js-yaml';
+import { promises as fs, existsSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import yaml from "js-yaml";
 
 /**
  * Logger for config operations
@@ -64,20 +64,22 @@ class ConfigStore {
       return envSpecific;
     }
 
-    const defaultPath = path.join(basePath, 'server.yaml');
+    const defaultPath = path.join(basePath, "server.yaml");
     if (existsSync(defaultPath)) {
       logger.debug(`Using default config: ${defaultPath}`);
       return defaultPath;
     }
 
-    throw new Error(`No config file found. Tried: ${envSpecific}, ${defaultPath}`);
+    throw new Error(
+      `No config file found. Tried: ${envSpecific}, ${defaultPath}`
+    );
   }
 
   /**
    * Load configuration from YAML file
    */
   async load(options) {
-    const { configDir, appEnv = process.env.APP_ENV || 'dev' } = options;
+    const { configDir, appEnv = process.env.APP_ENV || "dev" } = options;
 
     this.loadResult = new LoadResult();
     this.loadResult.appEnv = appEnv;
@@ -96,7 +98,7 @@ class ConfigStore {
       const configPath = this._findConfigPath(configDir, appEnv);
       this.loadResult.configFile = configPath;
 
-      const content = await fs.readFile(configPath, 'utf-8');
+      const content = await fs.readFile(configPath, "utf-8");
       this.data = yaml.load(content) || {};
 
       this.loadResult.filesLoaded.push(configPath);
@@ -125,14 +127,14 @@ class ConfigStore {
     const defaultValue = args.length > 1 ? args[args.length - 1] : null;
 
     // Check if last arg is actually a key (not a default value)
-    if (typeof defaultValue === 'string' && !keys.length) {
+    if (typeof defaultValue === "string" && !keys.length) {
       // Single key case
       return this.data[defaultValue] ?? null;
     }
 
     let current = this.data;
     for (const key of keys) {
-      if (current && typeof current === 'object' && key in current) {
+      if (current && typeof current === "object" && key in current) {
         current = current[key];
       } else {
         return defaultValue;
@@ -178,19 +180,19 @@ class ConfigStore {
  */
 export function getConfigPath() {
   // If we're in a test environment, use process.cwd()
-  if (typeof jest !== 'undefined' || process.env.NODE_ENV === 'test') {
-    return path.resolve(process.cwd(), 'common', 'config');
+  if (typeof jest !== "undefined" || process.env.NODE_ENV === "test") {
+    return path.resolve(process.cwd(), "common", "config");
   }
 
   try {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    // Go up from: packages-mjs/static-config-property-management/src
+    // Go up from: packages_mjs/static-config-property-management/src
     // To: common/config
-    return path.resolve(__dirname, '..', '..', '..', 'common', 'config');
+    return path.resolve(__dirname, "..", "..", "..", "common", "config");
   } catch (err) {
     // Fallback for environments that don't support import.meta
-    return path.resolve(process.cwd(), 'common', 'config');
+    return path.resolve(process.cwd(), "common", "config");
   }
 }
 
@@ -207,7 +209,7 @@ export function getConfigPath() {
  */
 export async function loadYamlConfig(options = {}) {
   const configDir = options.configDir || getConfigPath();
-  const appEnv = options.appEnv || process.env.APP_ENV || 'dev';
+  const appEnv = options.appEnv || process.env.APP_ENV || "dev";
 
   const store = ConfigStore.getInstance();
   return store.load({ configDir, appEnv });

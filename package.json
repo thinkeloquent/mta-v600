@@ -10,9 +10,9 @@
     "pnpm": ">=10.0.0"
   },
   "workspaces": [
-    "packages-mjs/*",
-    "fastify-apps/*",
-    "frontend-apps/*"
+    "packages_mjs/*",
+    "fastify_apps/*",
+    "frontend_apps/*"
   ],
   "scripts": {
     "build": "pnpm nx run-many --skip-nx-cache --verbose --target=build --output-style=stream",

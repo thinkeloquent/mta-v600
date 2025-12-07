@@ -1,6 +1,6 @@
 """Main Entry FastAPI Application.
 
-Serves a shared frontend from frontend-apps with SSR config injection.
+Serves a shared frontend from frontend_apps with SSR config injection.
 """
 
 # ============================================================
@@ -77,7 +77,7 @@ app.add_middleware(
 
 # Frontend configuration
 FRONTEND_APP = "main_entry"
-FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend-apps" / FRONTEND_APP / "dist"
+FRONTEND_DIR = Path(__file__).parent.parent.parent.parent / "frontend_apps" / FRONTEND_APP / "dist"
 
 
 def get_ssr_config() -> dict:
@@ -202,7 +202,7 @@ async def serve_root():
     if html:
         return HTMLResponse(content=html)
     return HTMLResponse(
-        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/main-entry && pnpm build</p>",
+        content="<h1>Frontend not built</h1><p>Run: cd frontend_apps/main-entry && pnpm build</p>",
         status_code=404
     )
 
@@ -225,7 +225,7 @@ async def spa_fallback(path: str):
     if html:
         return HTMLResponse(content=html)
     return HTMLResponse(
-        content="<h1>Frontend not built</h1><p>Run: cd frontend-apps/main-entry && pnpm build</p>",
+        content="<h1>Frontend not built</h1><p>Run: cd frontend_apps/main-entry && pnpm build</p>",
         status_code=404
     )
 

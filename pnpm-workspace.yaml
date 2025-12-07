@@ -1,4 +1,4 @@
 packages:
-  - 'packages-mjs/*'
-  - 'fastify-apps/*'
-  - 'frontend-apps/*'
+  - 'packages_mjs/*'
+  - 'fastify_apps/*'
+  - 'frontend_apps/*'

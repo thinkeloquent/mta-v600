@@ -2,7 +2,7 @@
 /**
  * Standalone development server for Main Entry Fastify
  *
- * Serves the shared frontend from frontend-apps/main_entry with SSR config injection.
+ * Serves the shared frontend from frontend_apps/main_entry with SSR config injection.
  *
  * Usage:
  *   node server.test.mjs
@@ -87,7 +87,7 @@ try {
 ║    GET  /api/fastify/hello   - Hello endpoint              ║
 ║    POST /api/fastify/echo    - Echo endpoint               ║
 ║                                                            ║
-║  Frontend: Served from frontend-apps/main_entry/dist       ║
+║  Frontend: Served from frontend_apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║
 ╚════════════════════════════════════════════════════════════╝
   `);

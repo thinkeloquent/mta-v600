@@ -15,11 +15,11 @@ WORKDIR /applications
 
 # Copy package files for frontend builds
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY frontend-apps/ ./frontend-apps/
+COPY frontend_apps/ ./frontend_apps/
 
 # Install and build frontends
 RUN pnpm install --frozen-lockfile || true
-RUN pnpm --filter "./frontend-apps/*" run build || true
+RUN pnpm --filter "./frontend_apps/*" run build || true
 
 # Stage 2: Python Runtime
 FROM python:3.11-slim AS runtime
@@ -52,18 +52,18 @@ RUN poetry config virtualenvs.create false && \
     poetry install --no-interaction --no-ansi --no-root --only main
 
 # Copy application code
-COPY fastapi-apps/ ./fastapi-apps/
+COPY fastapi_apps/ ./fastapi_apps/
 COPY packages_py/ ./packages_py/
 COPY common/ ./common/
 
 # Copy built frontend from builder stage
-COPY --from=frontend-builder /applications/frontend-apps ./frontend-apps
+COPY --from=frontend-builder /applications/frontend_apps ./frontend_apps
 
 # Create logs directory
 RUN mkdir -p /applications/logs && chmod 755 /applications/logs
 
 # Set PYTHONPATH to include the app directory
-ENV PYTHONPATH="/applications/fastapi-apps/main_entry:${PYTHONPATH}"
+ENV PYTHONPATH="/applications/fastapi_apps/main_entry:${PYTHONPATH}"
 
 # Working directory at project root
 WORKDIR /applications
@@ -75,5 +75,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
 
-# Run with uvicorn - uses PYTHONPATH to find 'app' module from fastapi-apps directory
-CMD ["uvicorn", "fastapi-apps.main_entry.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run with uvicorn - uses PYTHONPATH to find 'app' module from fastapi_apps directory
+CMD ["uvicorn", "fastapi_apps.main_entry.app.main:app", "--host", "0.0.0.0", "--port", "8080"]

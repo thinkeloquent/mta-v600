@@ -84,7 +84,7 @@ echo ""
 
 # Start Frontend (Vite build:watch) in background
 echo -e "${GREEN}Starting Frontend (Vite watch)...${NC}"
-(cd "$PROJECT_ROOT/frontend-apps/main_entry" && pnpm dev 2>&1 | awk '{print "[Frontend] " $0; fflush()}') &
+(cd "$PROJECT_ROOT/frontend_apps/main_entry" && pnpm dev 2>&1 | awk '{print "[Frontend] " $0; fflush()}') &
 PIDS+=($!)
 
 # Small delay to let frontend start first
@@ -92,7 +92,7 @@ sleep 1
 
 # Start Fastify in background with prefixed output
 echo -e "${GREEN}Starting Fastify (port $FASTIFY_PORT)...${NC}"
-(cd "$PROJECT_ROOT/fastify-apps/main_entry" && \
+(cd "$PROJECT_ROOT/fastify_apps/main_entry" && \
     PORT=$FASTIFY_PORT \
     BUILD_ID=$BUILD_ID \
     BUILD_VERSION=$BUILD_VERSION \
@@ -105,7 +105,7 @@ sleep 1
 
 # Start FastAPI in background with prefixed output
 echo -e "${GREEN}Starting FastAPI (port $FASTAPI_PORT)...${NC}"
-(cd "$PROJECT_ROOT/fastapi-apps/main_entry" && \
+(cd "$PROJECT_ROOT/fastapi_apps/main_entry" && \
     BUILD_ID=$BUILD_ID \
     BUILD_VERSION=$BUILD_VERSION \
     GIT_COMMIT=$GIT_COMMIT \

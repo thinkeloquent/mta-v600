@@ -73,7 +73,7 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
 
-  fastify-apps/main_entry:
+  fastify_apps/main_entry:
     dependencies:
       '@fastify/cors':
         specifier: ^11.1.0
@@ -83,10 +83,10 @@ importers:
         version: 8.3.0
       '@internal/static-config-property-management':
         specifier: workspace:*
-        version: link:../../packages-mjs/static-config-property-management
+        version: link:../../packages_mjs/static-config-property-management
       '@internal/vault-file':
         specifier: workspace:*
-        version: link:../../packages-mjs/vault-file
+        version: link:../../packages_mjs/vault-file
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -101,7 +101,7 @@ importers:
         specifier: ^13.0.0
         version: 13.1.2
 
-  frontend-apps/main_entry:
+  frontend_apps/main_entry:
     dependencies:
       react:
         specifier: ^18.3.1
@@ -135,7 +135,7 @@ importers:
         specifier: ^7.2.2
         version: 7.2.2(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
 
-  packages-mjs/static-config-property-management:
+  packages_mjs/static-config-property-management:
     dependencies:
       js-yaml:
         specifier: ^4.1.0
@@ -160,7 +160,7 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@24.10.1)
 
-  packages-mjs/vault-file:
+  packages_mjs/vault-file:
     dependencies:
       dotenv:
         specifier: ^16.4.0

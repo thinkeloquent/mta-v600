@@ -2,7 +2,7 @@
  * Main Entry Fastify Plugin
  *
  * Main entry point Fastify plugin demonstrating the monorepo structure.
- * Serves a shared frontend from frontend-apps with SSR config injection.
+ * Serves a shared frontend from frontend_apps with SSR config injection.
  */
 
 import fastifyPlugin from "fastify-plugin";
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// Navigate up: src -> main_entry -> fastify-apps -> project root
+// Navigate up: src -> main_entry -> fastify_apps -> project root
 const PROJECT_ROOT = resolve(__dirname, "..", "..", "..");
 
 const APP_NAME = "main_entry";
@@ -61,7 +61,7 @@ async function mainEntryPlugin(fastify, options) {
   const frontendApp = options.frontendApp || "main_entry";
   const frontendDir =
     options.frontendDir ||
-    resolve(PROJECT_ROOT, "frontend-apps", frontendApp, "dist");
+    resolve(PROJECT_ROOT, "frontend_apps", frontendApp, "dist");
 
   // Cache injected HTML
   let indexHtml = null;

@@ -1,7 +1,7 @@
 {
   "name": "@internal/frontend-main_entry",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "frontend-apps/main_entry/src",
+  "sourceRoot": "frontend_apps/main_entry/src",
   "projectType": "application",
   "tags": ["type:frontend", "scope:shared"],
   "targets": {
@@ -9,14 +9,14 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run dev",
-        "cwd": "frontend-apps/main_entry"
+        "cwd": "frontend_apps/main_entry"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run build",
-        "cwd": "frontend-apps/main_entry"
+        "cwd": "frontend_apps/main_entry"
       },
       "outputs": ["{projectRoot}/dist"]
     },
@@ -24,7 +24,7 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "npm run preview",
-        "cwd": "frontend-apps/main_entry"
+        "cwd": "frontend_apps/main_entry"
       }
     }
   }
