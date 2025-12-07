@@ -1,0 +1,60 @@
+{
+  "name": "@internal/fetch-retry",
+  "version": "1.0.0",
+  "description": "Standalone retry wrapper with exponential backoff and jitter support",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./types": {
+      "import": "./dist/types.mjs",
+      "default": "./dist/types.mjs"
+    },
+    "./config": {
+      "import": "./dist/config.mjs",
+      "default": "./dist/config.mjs"
+    },
+    "./executor": {
+      "import": "./dist/executor.mjs",
+      "default": "./dist/executor.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
+  },
+  "keywords": [
+    "mta",
+    "retry",
+    "backoff",
+    "exponential",
+    "jitter",
+    "resilience",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-typescript": "^7.24.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.10.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.7.3"
+  }
+}
