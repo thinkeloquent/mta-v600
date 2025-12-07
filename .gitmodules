@@ -7,3 +7,6 @@
 [submodule "__STAGE__/discovery-ai-gemini-openai-compatibility"]
 	path = __STAGE__/discovery-ai-gemini-openai-compatibility
 	url = https://github.com/thinkeloquent/discovery-ai-gemini-openai-compatibility
+[submodule "__STAGE__/discovery-python-material-ui-rag"]
+	path = __STAGE__/discovery-python-material-ui-rag
+	url = https://github.com/thinkeloquent/discovery-python-material-ui-rag

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Prompt for REPO_URL
+read -p "Enter repository URL: " REPO_URL
+
+# Prompt for NAME
+read -p "Enter module name: " NAME
+
+# Add the submodule
+git submodule add -f "$REPO_URL" "__STAGE__/$NAME"
+
+# Initialize and update the submodule
+git submodule update --init --recursive
+
+# Stage the changes
+git add .gitmodules "__STAGE__/$NAME"

@@ -18,6 +18,7 @@ httpx = "^0.28.1"
 pyyaml = "^6.0"
 
 # Local packages
+fetch-client = {path = "packages_py/fetch_client", develop = true}
 fetch-proxy-dispatcher = {path = "packages_py/fetch_proxy_dispatcher", develop = true}
 static-config-property-management = {path = "packages_py/static_config_property_management", develop = true}
 vault-file = {path = "packages_py/vault_file", develop = true}
