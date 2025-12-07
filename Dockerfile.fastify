@@ -12,7 +12,7 @@ ARG PROJECT_ROOT
 # Install pnpm globally
 RUN npm install -g pnpm@latest
 
-WORKDIR /applications/${PROJECT_ROOT}
+WORKDIR /applications
 
 # Copy package files and workspace config
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig*.json ./
@@ -50,19 +50,19 @@ ENV BUILD_ID=${BUILD_ID}
 ENV BUILD_VERSION=${BUILD_VERSION}
 ENV GIT_COMMIT=${GIT_COMMIT}
 
-WORKDIR /applications/${PROJECT_ROOT}
+WORKDIR /applications
 
 # Create logs directory for runtime logging
-RUN mkdir -p /applications/${PROJECT_ROOT}/logs
+RUN mkdir -p /applications/logs
 
 # Copy built artifacts from builder
-COPY --from=builder /applications/${PROJECT_ROOT}/fastify-apps ./fastify-apps
-COPY --from=builder /applications/${PROJECT_ROOT}/frontend-apps ./frontend-apps
-COPY --from=builder /applications/${PROJECT_ROOT}/common ./common
-COPY --from=builder /applications/${PROJECT_ROOT}/packages-mjs ./packages-mjs
-COPY --from=builder /applications/${PROJECT_ROOT}/node_modules ./node_modules
-COPY --from=builder /applications/${PROJECT_ROOT}/package.json ./package.json
-COPY --from=builder /applications/${PROJECT_ROOT}/tsconfig.json ./tsconfig.json
+COPY --from=builder /applications/fastify-apps ./fastify-apps
+COPY --from=builder /applications/frontend-apps ./frontend-apps
+COPY --from=builder /applications/common ./common
+COPY --from=builder /applications/packages-mjs ./packages-mjs
+COPY --from=builder /applications/node_modules ./node_modules
+COPY --from=builder /applications/package.json ./package.json
+COPY --from=builder /applications/tsconfig.json ./tsconfig.json
 
 # Expose default port
 EXPOSE 3000
