@@ -175,7 +175,7 @@ describe('calculateExpiration', () => {
     const expires = new Date(now + 1800 * 1000).toUTCString();
     const result = calculateExpiration({ expires }, {});
     // toUTCString() only has second precision, so we need to allow for up to 1000ms difference
-    expect(result).toBeCloseTo(now + 1800 * 1000, -3);
+    expect(Math.abs(result - (now + 1800 * 1000))).toBeLessThanOrEqual(1000);
   });
 
   it('should use default TTL as last resort', () => {

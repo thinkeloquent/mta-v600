@@ -91,25 +91,47 @@ export function calculateDelay(attempt: number, config: ExtendedRetryConfig): nu
  * @param config - Retry configuration
  * @returns Whether the error is retryable
  */
-export function isRetryableError(error: Error | RetryableError, config: RetryConfig): boolean {
+export function isRetryableError(error: unknown, config: RetryConfig): boolean {
   const { retryOnErrors = DEFAULT_RETRY_CONFIG.retryOnErrors } = config;
 
+  // Handle non-object errors (strings, numbers, etc.)
+  if (error === null || typeof error !== 'object') {
+    // Convert to string and check for retryable patterns
+    const errorStr = String(error).toLowerCase();
+    const retryablePatterns = [
+      'network',
+      'timeout',
+      'timed out',
+      'econnreset',
+      'econnrefused',
+      'enotfound',
+      'socket',
+      'epipe',
+      'connection',
+      'abort',
+      'fetch failed',
+    ];
+    return retryablePatterns.some((pattern) => errorStr.includes(pattern));
+  }
+
+  const errorObj = error as Error | RetryableError;
+
   // Check explicit retryable flag
-  if ('isRetryable' in error && error.isRetryable === false) {
+  if ('isRetryable' in errorObj && errorObj.isRetryable === false) {
     return false;
   }
-  if ('isRetryable' in error && error.isRetryable === true) {
+  if ('isRetryable' in errorObj && errorObj.isRetryable === true) {
     return true;
   }
 
   // Check error code
-  const errorCode = (error as RetryableError).code;
+  const errorCode = (errorObj as RetryableError).code;
   if (errorCode && retryOnErrors.includes(errorCode)) {
     return true;
   }
 
   // Check for network-related error messages
-  const message = error.message.toLowerCase();
+  const message = (errorObj.message || '').toLowerCase();
   const retryablePatterns = [
     'network',
     'timeout',
@@ -129,8 +151,8 @@ export function isRetryableError(error: Error | RetryableError, config: RetryCon
   }
 
   // Check cause chain
-  if (error.cause instanceof Error) {
-    return isRetryableError(error.cause, config);
+  if (errorObj.cause) {
+    return isRetryableError(errorObj.cause, config);
   }
 
   return false;

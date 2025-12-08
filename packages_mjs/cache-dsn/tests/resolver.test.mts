@@ -156,14 +156,15 @@ describe('DnsCacheResolver', () => {
         const shortTtlResolver = new DnsCacheResolver({
           id: 'short-ttl',
           defaultTtlMs: 50,
+          minTtlMs: 50,
           staleWhileRevalidate: true,
           staleGracePeriodMs: 5000,
         });
 
         await shortTtlResolver.resolve('localhost');
 
-        // Wait for TTL to expire
-        await new Promise((r) => setTimeout(r, 100));
+        // Wait for TTL to expire (longer wait to ensure expiration)
+        await new Promise((r) => setTimeout(r, 150));
 
         const result = await shortTtlResolver.resolve('localhost');
 
@@ -178,12 +179,13 @@ describe('DnsCacheResolver', () => {
         const shortTtlResolver = new DnsCacheResolver({
           id: 'short-ttl',
           defaultTtlMs: 50,
+          minTtlMs: 50,
           staleWhileRevalidate: true,
           staleGracePeriodMs: 5000,
         });
 
         await shortTtlResolver.resolve('localhost');
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 150));
 
         const events: DnsCacheEvent[] = [];
         shortTtlResolver.on((e) => events.push(e));

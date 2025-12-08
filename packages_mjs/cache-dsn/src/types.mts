@@ -38,6 +38,8 @@ export interface CachedEntry {
   ttlMs: number;
   /** Number of times this entry has been used */
   hitCount: number;
+  /** Error message if this is a negative cache entry */
+  error?: string;
 }
 
 /**

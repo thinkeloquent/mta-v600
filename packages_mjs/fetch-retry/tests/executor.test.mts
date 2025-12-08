@@ -139,9 +139,12 @@ describe('RetryExecutor', () => {
       const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
       const resultPromise = executor.execute(fn);
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('network error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('network error'),
+      ]);
       expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
     });
 
@@ -150,9 +153,12 @@ describe('RetryExecutor', () => {
       const fn = vi.fn().mockRejectedValue(new Error('validation error'));
 
       const resultPromise = executor.execute(fn);
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('validation error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('validation error'),
+      ]);
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
@@ -182,9 +188,12 @@ describe('RetryExecutor', () => {
 
       // Abort during wait
       controller.abort();
-      await vi.advanceTimersByTimeAsync(500);
 
-      await expect(resultPromise).rejects.toThrow();
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.advanceTimersByTimeAsync(500),
+        expect(resultPromise).rejects.toThrow(),
+      ]);
     });
   });
 
@@ -195,9 +204,12 @@ describe('RetryExecutor', () => {
       const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
       const resultPromise = executor.execute(fn, { shouldRetry: customShouldRetry });
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('network error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('network error'),
+      ]);
       expect(customShouldRetry).toHaveBeenCalledWith(expect.any(Error), 0);
       expect(fn).toHaveBeenCalledTimes(1);
     });
@@ -225,9 +237,12 @@ describe('RetryExecutor', () => {
       const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
       const resultPromise = executor.execute(fn, { maxRetries: 5 });
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('network error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('network error'),
+      ]);
       expect(fn).toHaveBeenCalledTimes(6); // initial + 5 retries
     });
   });
@@ -273,13 +288,13 @@ describe('RetryExecutor', () => {
       executor.on((e) => events.push(e));
 
       const fn = vi.fn().mockRejectedValue(new Error('validation error'));
-      try {
-        const resultPromise = executor.execute(fn);
-        await vi.runAllTimersAsync();
-        await resultPromise;
-      } catch {
-        // Expected
-      }
+      const resultPromise = executor.execute(fn);
+
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        resultPromise.catch(() => {}), // Catch the expected rejection
+      ]);
 
       expect(events).toContainEqual(
         expect.objectContaining({
@@ -494,9 +509,12 @@ describe('createRetryWrapper', () => {
     const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
     const resultPromise = withRetry(fn, { maxRetries: 3 });
-    await vi.runAllTimersAsync();
 
-    await expect(resultPromise).rejects.toThrow('network error');
+    // Run timers and check result together to avoid unhandled rejection
+    await Promise.all([
+      vi.runAllTimersAsync(),
+      expect(resultPromise).rejects.toThrow('network error'),
+    ]);
     expect(fn).toHaveBeenCalledTimes(4); // initial + 3 overridden retries
   });
 });
@@ -516,9 +534,12 @@ describe('edge cases and boundary conditions', () => {
       const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
       const resultPromise = executor.execute(fn);
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('network error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('network error'),
+      ]);
       expect(fn).toHaveBeenCalledTimes(1);
     });
   });
@@ -529,9 +550,12 @@ describe('edge cases and boundary conditions', () => {
       const fn = vi.fn().mockRejectedValue(new Error('network error'));
 
       const resultPromise = executor.execute(fn);
-      await vi.runAllTimersAsync();
 
-      await expect(resultPromise).rejects.toThrow('network error');
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toThrow('network error'),
+      ]);
       expect(fn).toHaveBeenCalledTimes(2);
     });
   });
@@ -558,15 +582,16 @@ describe('edge cases and boundary conditions', () => {
   describe('error types', () => {
     it('should handle non-Error thrown values', async () => {
       const executor = new RetryExecutor({ maxRetries: 1 });
-      // Non-Error thrown values cause issues with 'in' operator for isRetryable check
-      // The implementation treats them as non-retryable
+      // Non-Error thrown values are now handled - treated as non-retryable
       const fn = vi.fn().mockRejectedValue('string error');
 
       const resultPromise = executor.execute(fn);
-      await vi.runAllTimersAsync();
 
-      // Non-Error values cause TypeError when checking 'in' operator
-      await expect(resultPromise).rejects.toThrow();
+      // Run timers and check result together to avoid unhandled rejection
+      await Promise.all([
+        vi.runAllTimersAsync(),
+        expect(resultPromise).rejects.toBe('string error'),
+      ]);
     });
   });
 });

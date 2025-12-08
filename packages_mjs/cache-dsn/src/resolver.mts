@@ -95,6 +95,21 @@ export class DnsCacheResolver {
         const expired = isExpired(cached.expiresAt, now);
 
         if (!expired) {
+          // Check if this is a negative cache entry (failed resolution)
+          if (cached.error) {
+            this.cacheHits++;
+            cached.hitCount++;
+            await this.store.set(dsn, cached);
+
+            this.emit({
+              type: 'cache:hit',
+              dsn,
+              ttlRemainingMs: cached.expiresAt - now,
+            });
+
+            throw new Error(cached.error);
+          }
+
           // Cache hit - valid entry
           this.cacheHits++;
           cached.hitCount++;
@@ -221,6 +236,7 @@ export class DnsCacheResolver {
           expiresAt: now + this.config.negativeTtlMs,
           ttlMs: this.config.negativeTtlMs,
           hitCount: 0,
+          error: error instanceof Error ? error.message : String(error),
         };
         await this.store.set(dsn, entry);
       }
