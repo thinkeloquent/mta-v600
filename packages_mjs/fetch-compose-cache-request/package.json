@@ -1,0 +1,64 @@
+{
+  "name": "@internal/fetch-compose-cache-request",
+  "version": "1.0.0",
+  "description": "Cache request interceptor for undici's compose pattern with Idempotency Keys and Request Coalescing",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./interceptor": {
+      "import": "./dist/interceptor.mjs",
+      "default": "./dist/interceptor.mjs"
+    },
+    "./factory": {
+      "import": "./dist/factory.mjs",
+      "default": "./dist/factory.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage"
+  },
+  "keywords": [
+    "mta",
+    "cache-request",
+    "idempotency",
+    "singleflight",
+    "undici",
+    "interceptor",
+    "compose",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@internal/cache-request": "workspace:*"
+  },
+  "peerDependencies": {
+    "undici": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-typescript": "^7.24.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.10.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.7.3",
+    "undici": "^7.0.0"
+  }
+}
