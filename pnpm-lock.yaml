@@ -257,6 +257,12 @@ importers:
       '@internal/fetch-proxy-dispatcher':
         specifier: workspace:*
         version: link:../fetch-proxy-dispatcher
+      pino:
+        specifier: ^9.0.0
+        version: 9.14.0
+      pino-pretty:
+        specifier: ^13.0.0
+        version: 13.1.2
       undici:
         specifier: ^7.0.0
         version: 7.16.0

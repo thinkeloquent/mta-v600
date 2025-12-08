@@ -1,0 +1,148 @@
+# Rally API - curl Connection Test
+
+> **Note:** Rally integration is currently a placeholder and not yet implemented.
+
+## Configuration
+
+```bash
+# Required Environment Variables (TBD)
+export RALLY_API_KEY="your_rally_api_key_here"
+export RALLY_BASE_URL="https://rally1.rallydev.com/slm/webservice/v2.0"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Rally uses **ZSESSIONID** or **API Key** authentication.
+
+For API Key authentication:
+```
+ZSESSIONID: your_api_key
+```
+
+## Base URL
+
+```
+https://rally1.rallydev.com/slm/webservice/v2.0
+```
+
+## Health Check Endpoint
+
+```
+GET /subscription
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/subscription" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/subscription" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/subscription" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/subscription" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+## Sample API Calls (Reference)
+
+### Get User Info
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/user" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json"
+```
+
+### List Projects
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/project" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json"
+```
+
+### Query User Stories
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/hierarchicalrequirement?query=(Project.Name%20%3D%20%22My%20Project%22)" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json"
+```
+
+### Get Defects
+
+```bash
+curl -X GET "${RALLY_BASE_URL}/defect" \
+  -H "ZSESSIONID: ${RALLY_API_KEY}" \
+  -H "Content-Type: application/json"
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "Subscription": {
+    "_ref": "https://rally1.rallydev.com/slm/webservice/v2.0/subscription/12345",
+    "Name": "Your Subscription",
+    "SubscriptionID": 12345,
+    "SubscriptionType": "Enterprise"
+  }
+}
+```
+
+## Status
+
+**Current Status:** Placeholder - Not Implemented
+
+This provider is marked as a placeholder in the codebase. Rally integration will be implemented in a future version.
+
+## Alternative: Using Rally SDK
+
+If Rally integration is needed, consider using the official Rally SDK:
+
+```python
+from pyral import Rally
+
+rally = Rally(
+    server='rally1.rallydev.com',
+    apikey=os.getenv('RALLY_API_KEY'),
+    workspace='Your Workspace',
+    project='Your Project'
+)
+
+# Query user stories
+stories = rally.get('HierarchicalRequirement', fetch=True)
+for story in stories:
+    print(story.FormattedID, story.Name)
+```

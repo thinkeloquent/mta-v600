@@ -1,0 +1,118 @@
+# Figma API - curl Connection Test
+
+## Configuration
+
+```bash
+# Required Environment Variables
+export FIGMA_TOKEN="your_figma_token_here"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Figma uses a custom header **X-Figma-Token** for authentication.
+
+## Base URL
+
+```
+https://api.figma.com/v1
+```
+
+## Health Check Endpoint
+
+```
+GET /v1/me
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "https://api.figma.com/v1/me" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "https://api.figma.com/v1/me" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "https://api.figma.com/v1/me" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "https://api.figma.com/v1/me" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+## Sample API Calls
+
+### Get File
+
+```bash
+curl -X GET "https://api.figma.com/v1/files/{file_key}" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### Get File Nodes
+
+```bash
+curl -X GET "https://api.figma.com/v1/files/{file_key}/nodes?ids={node_id}" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### Get File Images
+
+```bash
+curl -X GET "https://api.figma.com/v1/images/{file_key}?ids={node_ids}&format=png" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### Get Comments
+
+```bash
+curl -X GET "https://api.figma.com/v1/files/{file_key}/comments" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### List Team Projects
+
+```bash
+curl -X GET "https://api.figma.com/v1/teams/{team_id}/projects" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+### Get Project Files
+
+```bash
+curl -X GET "https://api.figma.com/v1/projects/{project_id}/files" \
+  -H "X-Figma-Token: ${FIGMA_TOKEN}"
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "id": "123456789012345678",
+  "email": "your.email@example.com",
+  "handle": "Your Name",
+  "img_url": "https://s3-alpha.figma.com/profile/..."
+}
+```

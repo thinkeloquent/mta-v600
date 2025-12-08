@@ -1,0 +1,152 @@
+# Gemini API (OpenAI Compatible) - curl Connection Test
+
+## Configuration
+
+```bash
+# Required Environment Variables
+export GEMINI_API_KEY="your_gemini_api_key_here"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Gemini (OpenAI compatible) uses **Bearer token** authentication.
+
+## Base URL
+
+```
+https://generativelanguage.googleapis.com/v1beta/openai
+```
+
+## Health Check Endpoint
+
+```
+GET /models
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "https://generativelanguage.googleapis.com/v1beta/openai/models" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "https://generativelanguage.googleapis.com/v1beta/openai/models" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "https://generativelanguage.googleapis.com/v1beta/openai/models" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "https://generativelanguage.googleapis.com/v1beta/openai/models" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+## Sample API Calls
+
+### Chat Completion
+
+```bash
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-1.5-flash",
+    "messages": [
+      {"role": "user", "content": "Hello, how are you?"}
+    ]
+  }'
+```
+
+### Chat Completion with System Message
+
+```bash
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-1.5-flash",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }'
+```
+
+### Streaming Chat Completion
+
+```bash
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemini-1.5-flash",
+    "messages": [
+      {"role": "user", "content": "Write a short poem about coding."}
+    ],
+    "stream": true
+  }'
+```
+
+### Text Embeddings
+
+```bash
+curl -X POST "https://generativelanguage.googleapis.com/v1beta/openai/embeddings" \
+  -H "Authorization: Bearer ${GEMINI_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "text-embedding-004",
+    "input": "The quick brown fox jumps over the lazy dog."
+  }'
+```
+
+## Expected Response (Health Check - List Models)
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gemini-1.5-flash",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "google"
+    },
+    {
+      "id": "gemini-1.5-pro",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "google"
+    }
+  ]
+}
+```
+
+## OpenAI API Compatibility
+
+This endpoint is compatible with OpenAI SDK. You can use:
+
+```bash
+export OPENAI_API_KEY="${GEMINI_API_KEY}"
+export OPENAI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+```

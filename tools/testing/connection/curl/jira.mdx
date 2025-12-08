@@ -1,0 +1,139 @@
+# Jira API - curl Connection Test
+
+## Configuration
+
+```bash
+# Required Environment Variables
+export JIRA_BASE_URL="https://your-company.atlassian.net"
+export JIRA_EMAIL="your.email@example.com"
+export JIRA_API_TOKEN="your_jira_api_token_here"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Jira Cloud uses **Basic Authentication** with the format:
+```
+Authorization: Basic base64(email:api_token)
+```
+
+## Base URL
+
+```
+https://your-company.atlassian.net
+```
+
+## Health Check Endpoint
+
+```
+GET /rest/api/2/myself
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/myself" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/myself" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/myself" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/myself" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+### Using Manual Base64 Encoding
+
+```bash
+# Create base64 encoded credentials
+AUTH_HEADER=$(echo -n "${JIRA_EMAIL}:${JIRA_API_TOKEN}" | base64)
+
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/myself" \
+  -H "Accept: application/json" \
+  -H "Authorization: Basic ${AUTH_HEADER}"
+```
+
+## Sample API Calls
+
+### Search Issues (JQL)
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/search?jql=project=MYPROJECT" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}"
+```
+
+### Get Issue Details
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/issue/{issueKey}" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}"
+```
+
+### List Projects
+
+```bash
+curl -X GET "${JIRA_BASE_URL}/rest/api/2/project" \
+  -H "Accept: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}"
+```
+
+### Create Issue
+
+```bash
+curl -X POST "${JIRA_BASE_URL}/rest/api/2/issue" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" \
+  -d '{
+    "fields": {
+      "project": { "key": "MYPROJECT" },
+      "summary": "Test issue",
+      "issuetype": { "name": "Task" }
+    }
+  }'
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "self": "https://your-company.atlassian.net/rest/api/2/user?accountId=...",
+  "accountId": "123456:abcdef12-3456-7890-abcd-ef1234567890",
+  "accountType": "atlassian",
+  "emailAddress": "your.email@example.com",
+  "displayName": "Your Name",
+  "active": true,
+  "timeZone": "America/New_York"
+}
+```

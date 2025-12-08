@@ -1,0 +1,185 @@
+# Elasticsearch - curl Connection Test
+
+## Configuration
+
+```bash
+# Option 1: Full Connection URL
+export ELASTIC_DB_URL="https://username:password@localhost:9200"
+
+# Option 2: Individual Components
+export ELASTIC_DB_HOST="localhost"
+export ELASTIC_DB_PORT="9200"
+export ELASTIC_DB_USERNAME="elastic"
+export ELASTIC_DB_ACCESS_KEY="your_password_here"
+export ELASTIC_DB_TLS="false"  # Set to "true" for HTTPS
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Elasticsearch uses **Basic Authentication** with the format:
+```
+Authorization: Basic base64(username:password)
+```
+
+## Base URL
+
+```
+http://localhost:9200     # Local development
+https://localhost:9200    # With TLS
+https://elastic-cloud.es.us-east-1.aws.found.io:9243  # Elastic Cloud
+```
+
+## Health Check Endpoint
+
+```
+GET /_cluster/health
+```
+
+## curl Examples
+
+### Basic Request (No Auth)
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty"
+```
+
+### Basic Request with Auth (No Proxy)
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}"
+```
+
+### HTTPS Request with Auth
+
+```bash
+curl -X GET "https://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "https://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "https://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "https://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/health?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+### Using Connection URL
+
+```bash
+curl -X GET "${ELASTIC_DB_URL}/_cluster/health?pretty"
+```
+
+## Sample API Calls
+
+### Cluster Info
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}"
+```
+
+### List Indices
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cat/indices?v" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}"
+```
+
+### Create Index
+
+```bash
+curl -X PUT "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/my-index" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    }
+  }'
+```
+
+### Index Document
+
+```bash
+curl -X POST "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/my-index/_doc" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Test Document",
+    "content": "This is a test document."
+  }'
+```
+
+### Search Documents
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/my-index/_search?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "match_all": {}
+    }
+  }'
+```
+
+### Get Cluster Stats
+
+```bash
+curl -X GET "http://${ELASTIC_DB_HOST}:${ELASTIC_DB_PORT}/_cluster/stats?pretty" \
+  -u "${ELASTIC_DB_USERNAME}:${ELASTIC_DB_ACCESS_KEY}"
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "cluster_name": "elasticsearch",
+  "status": "green",
+  "timed_out": false,
+  "number_of_nodes": 1,
+  "number_of_data_nodes": 1,
+  "active_primary_shards": 5,
+  "active_shards": 5,
+  "relocating_shards": 0,
+  "initializing_shards": 0,
+  "unassigned_shards": 0,
+  "delayed_unassigned_shards": 0,
+  "number_of_pending_tasks": 0,
+  "number_of_in_flight_fetch": 0,
+  "task_max_waiting_in_queue_millis": 0,
+  "active_shards_percent_as_number": 100.0
+}
+```
+
+## TLS Ports
+
+TLS is automatically enabled for these ports:
+- `443` - Standard HTTPS
+- `9243` - Elastic Cloud
+- `25060` - DigitalOcean Managed

@@ -1,0 +1,150 @@
+# SauceLabs API - curl Connection Test
+
+## Configuration
+
+```bash
+# Required Environment Variables
+export SAUCE_USERNAME="your_saucelabs_username"
+export SAUCE_ACCESS_KEY="your_saucelabs_access_key"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+SauceLabs uses **Basic Authentication** with the format:
+```
+Authorization: Basic base64(username:access_key)
+```
+
+## Base URL
+
+```
+https://api.us-west-1.saucelabs.com
+```
+
+Other regions:
+- US West: `https://api.us-west-1.saucelabs.com`
+- US East: `https://api.us-east-4.saucelabs.com`
+- EU Central: `https://api.eu-central-1.saucelabs.com`
+
+## Health Check Endpoint
+
+```
+GET /rest/v1/users/{username}
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+### Using Manual Base64 Encoding
+
+```bash
+# Create base64 encoded credentials
+AUTH_HEADER=$(echo -n "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}" | base64)
+
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -H "Authorization: Basic ${AUTH_HEADER}"
+```
+
+## Sample API Calls
+
+### Get User Info
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### List Jobs
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/${SAUCE_USERNAME}/jobs" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### Get Job Details
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/${SAUCE_USERNAME}/jobs/{job_id}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### Get Account Usage
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/users/${SAUCE_USERNAME}/usage" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### Get Available Platforms
+
+```bash
+curl -X GET "https://api.us-west-1.saucelabs.com/rest/v1/info/platforms/webdriver" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}"
+```
+
+### Update Job
+
+```bash
+curl -X PUT "https://api.us-west-1.saucelabs.com/rest/v1/${SAUCE_USERNAME}/jobs/{job_id}" \
+  -u "${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "passed": true,
+    "name": "Test Name",
+    "tags": ["tag1", "tag2"]
+  }'
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "access_key": "****-****-****-****-************",
+  "minutes": 100,
+  "manual_minutes": "infinite",
+  "mac_minutes": "infinite",
+  "mac_manual_minutes": "infinite",
+  "id": "your_username",
+  "first_name": "Your",
+  "last_name": "Name",
+  "email": "your.email@example.com",
+  "verified": true,
+  "subscribed": true
+}
+```

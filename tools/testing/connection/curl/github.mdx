@@ -1,0 +1,111 @@
+# GitHub API - curl Connection Test
+
+## Configuration
+
+```bash
+# Required Environment Variables
+export GITHUB_TOKEN="your_github_token_here"
+
+# Optional: Proxy Configuration
+export HTTPS_PROXY="http://proxy.example.com:8080"
+export HTTP_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+GitHub uses **Bearer token** authentication.
+
+## Base URL
+
+```
+https://api.github.com
+```
+
+## Health Check Endpoint
+
+```
+GET /user
+```
+
+## curl Examples
+
+### Basic Request (No Proxy)
+
+```bash
+curl -X GET "https://api.github.com/user" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28"
+```
+
+### Request with Proxy
+
+```bash
+curl -X GET "https://api.github.com/user" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  --proxy "${HTTPS_PROXY}"
+```
+
+### Request with Proxy (Insecure - Skip TLS Verification)
+
+```bash
+curl -X GET "https://api.github.com/user" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  --proxy "${HTTPS_PROXY}" \
+  --insecure
+```
+
+### Request with Custom CA Bundle
+
+```bash
+curl -X GET "https://api.github.com/user" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  --proxy "${HTTPS_PROXY}" \
+  --cacert /path/to/ca-bundle.crt
+```
+
+## Sample API Calls
+
+### List Repositories
+
+```bash
+curl -X GET "https://api.github.com/user/repos" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json"
+```
+
+### Get Repository Details
+
+```bash
+curl -X GET "https://api.github.com/repos/{owner}/{repo}" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json"
+```
+
+### List Pull Requests
+
+```bash
+curl -X GET "https://api.github.com/repos/{owner}/{repo}/pulls" \
+  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+  -H "Accept: application/vnd.github+json"
+```
+
+## Expected Response (Health Check)
+
+```json
+{
+  "login": "username",
+  "id": 12345678,
+  "node_id": "MDQ6VXNlcjEyMzQ1Njc4",
+  "avatar_url": "https://avatars.githubusercontent.com/u/12345678?v=4",
+  "type": "User",
+  "name": "Your Name",
+  "email": "your.email@example.com"
+}
+```

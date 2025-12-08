@@ -1,0 +1,191 @@
+# Redis - Connection Test
+
+## Configuration
+
+```bash
+# Option 1: Full Connection URL
+export REDIS_URL="redis://username:password@localhost:6379/0"
+
+# Option 2: Individual Components
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
+export REDIS_USERNAME=""          # Optional, often empty for local Redis
+export REDIS_PASSWORD="your_password_here"
+export REDIS_DB="0"
+export REDIS_TLS="false"          # Set to "true" for TLS (rediss://)
+
+# Optional: Proxy Configuration (for Redis over HTTP proxy tunneling)
+export HTTPS_PROXY="http://proxy.example.com:8080"
+```
+
+## Authentication
+
+Redis uses password authentication or ACL (username:password).
+
+Connection URL formats:
+```
+redis://localhost:6379                          # No auth
+redis://:password@localhost:6379                # Password only
+redis://username:password@localhost:6379        # Username + password
+rediss://username:password@localhost:6379       # TLS enabled
+```
+
+## Base URL / Host
+
+```
+localhost:6379              # Local development
+redis.example.com:6379      # Remote Redis
+redis.example.com:25061     # DigitalOcean Managed (TLS)
+```
+
+## Health Check Command
+
+```
+PING
+```
+
+## redis-cli Examples
+
+### Basic Connection (No Auth)
+
+```bash
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} PING
+```
+
+### Connection with Password
+
+```bash
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" PING
+```
+
+### Connection with Username and Password (ACL)
+
+```bash
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} --user "${REDIS_USERNAME}" -a "${REDIS_PASSWORD}" PING
+```
+
+### Connection with TLS
+
+```bash
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" --tls PING
+```
+
+### Connection with TLS and Custom CA
+
+```bash
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" \
+  --tls --cacert /path/to/ca-bundle.crt PING
+```
+
+### Using Connection URL
+
+```bash
+redis-cli -u "${REDIS_URL}" PING
+```
+
+## Sample Commands
+
+### Basic Operations
+
+```bash
+# Set a key
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" \
+  SET mykey "Hello World"
+
+# Get a key
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" \
+  GET mykey
+
+# Delete a key
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" \
+  DEL mykey
+```
+
+### Server Info
+
+```bash
+# Get server info
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" INFO
+
+# Get memory info
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" INFO memory
+
+# Get connected clients
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" CLIENT LIST
+```
+
+### Database Operations
+
+```bash
+# Select database
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" SELECT 1
+
+# List all keys
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" KEYS "*"
+
+# Get database size
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" DBSIZE
+
+# Flush current database
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" FLUSHDB
+```
+
+## Using curl with Redis HTTP Proxy (if available)
+
+Some Redis deployments expose an HTTP interface:
+
+```bash
+# Example with Redis REST API (if enabled)
+curl -X POST "http://${REDIS_HOST}:8080/PING"
+```
+
+## Python Quick Test
+
+```python
+import redis
+
+# Using individual components
+r = redis.Redis(
+    host=os.getenv('REDIS_HOST', 'localhost'),
+    port=int(os.getenv('REDIS_PORT', 6379)),
+    password=os.getenv('REDIS_PASSWORD'),
+    db=int(os.getenv('REDIS_DB', 0)),
+    ssl=os.getenv('REDIS_TLS', '').lower() == 'true'
+)
+
+# Test connection
+print(r.ping())  # True
+```
+
+## Expected Response (Health Check)
+
+```
+PONG
+```
+
+## TLS Ports
+
+TLS is automatically enabled for these ports:
+- `25061` - DigitalOcean Managed Redis
+
+## Troubleshooting
+
+### Connection Refused
+
+```bash
+# Check if Redis is running
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} PING
+
+# Check with verbose output
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} -a "${REDIS_PASSWORD}" --verbose PING
+```
+
+### Authentication Error
+
+```bash
+# Verify password
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} AUTH "${REDIS_PASSWORD}"
+
+# For ACL-enabled Redis
+redis-cli -h ${REDIS_HOST} -p ${REDIS_PORT} AUTH "${REDIS_USERNAME}" "${REDIS_PASSWORD}"
+```

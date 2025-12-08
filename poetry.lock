@@ -194,6 +194,7 @@ develop = true
 
 [package.dependencies]
 httpx = "^0.28.0"
+rich = "^13.0.0"
 
 [package.extras]
 fastapi = []

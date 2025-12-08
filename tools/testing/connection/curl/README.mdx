@@ -1,0 +1,131 @@
+# Provider Connection Testing - curl Samples
+
+This directory contains curl command samples for testing connectivity to various providers.
+
+## Providers
+
+| Provider | Auth Type | Base URL | Status |
+|----------|-----------|----------|--------|
+| [GitHub](./github.md) | Bearer Token | `https://api.github.com` | Active |
+| [Jira](./jira.md) | Basic (email:token) | `https://{company}.atlassian.net` | Active |
+| [Confluence](./confluence.md) | Basic (email:token) | `https://{company}.atlassian.net` | Active |
+| [Figma](./figma.md) | X-Figma-Token | `https://api.figma.com/v1` | Active |
+| [Gemini](./gemini.md) | Bearer Token | `https://generativelanguage.googleapis.com/v1beta/openai` | Active |
+| [SauceLabs](./saucelabs.md) | Basic (user:key) | `https://api.us-west-1.saucelabs.com` | Active |
+| [Elasticsearch](./elasticsearch.md) | Basic (user:pass) | `http://localhost:9200` | Active |
+| [Redis](./redis.md) | Password/ACL | `redis://localhost:6379` | Active |
+| [PostgreSQL](./postgres.md) | Password | `postgresql://localhost:5432` | Active |
+| [Rally](./rally.md) | ZSESSIONID | `https://rally1.rallydev.com` | Placeholder |
+
+## Common Proxy Configuration
+
+All providers support the following proxy configuration:
+
+```bash
+# HTTP/HTTPS Proxy
+export HTTP_PROXY="http://proxy.example.com:8080"
+export HTTPS_PROXY="http://proxy.example.com:8080"
+
+# No proxy for specific hosts
+export NO_PROXY="localhost,127.0.0.1,.internal.company.com"
+```
+
+## curl Proxy Options
+
+```bash
+# Use proxy
+curl --proxy "${HTTPS_PROXY}" ...
+
+# Skip TLS verification (testing only)
+curl --proxy "${HTTPS_PROXY}" --insecure ...
+
+# Use custom CA bundle
+curl --proxy "${HTTPS_PROXY}" --cacert /path/to/ca-bundle.crt ...
+
+# Use client certificate
+curl --proxy "${HTTPS_PROXY}" --cert /path/to/client.crt --key /path/to/client.key ...
+```
+
+## Environment Variables
+
+Each provider has specific environment variables. See individual files for details.
+
+### Quick Reference
+
+```bash
+# GitHub
+export GITHUB_TOKEN="..."
+
+# Jira
+export JIRA_BASE_URL="https://company.atlassian.net"
+export JIRA_EMAIL="..."
+export JIRA_API_TOKEN="..."
+
+# Confluence
+export CONFLUENCE_BASE_URL="https://company.atlassian.net"
+export CONFLUENCE_EMAIL="..."
+export CONFLUENCE_API_TOKEN="..."
+
+# Figma
+export FIGMA_TOKEN="..."
+
+# Gemini
+export GEMINI_API_KEY="..."
+
+# SauceLabs
+export SAUCE_USERNAME="..."
+export SAUCE_ACCESS_KEY="..."
+
+# Elasticsearch
+export ELASTIC_DB_HOST="..."
+export ELASTIC_DB_PORT="9200"
+export ELASTIC_DB_USERNAME="..."
+export ELASTIC_DB_ACCESS_KEY="..."
+
+# Redis
+export REDIS_HOST="..."
+export REDIS_PORT="6379"
+export REDIS_PASSWORD="..."
+
+# PostgreSQL
+export POSTGRES_HOST="..."
+export POSTGRES_PORT="5432"
+export POSTGRES_USER="..."
+export POSTGRES_PASSWORD="..."
+export POSTGRES_DB="..."
+```
+
+## Usage
+
+1. Copy the environment variable exports to your shell or `.env` file
+2. Replace placeholder values with actual credentials
+3. Run the curl commands to test connectivity
+
+## Troubleshooting
+
+### Connection Timeout
+
+```bash
+# Add timeout options
+curl --connect-timeout 10 --max-time 30 ...
+```
+
+### Verbose Output
+
+```bash
+# Show request/response details
+curl -v ...
+
+# Show only headers
+curl -I ...
+```
+
+### SSL/TLS Issues
+
+```bash
+# Show SSL handshake details
+curl -v --trace-ascii /dev/stdout ...
+
+# Skip certificate verification (testing only!)
+curl --insecure ...
+```
