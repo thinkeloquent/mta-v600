@@ -48,7 +48,7 @@
   "peerDependencies": {
     "@internal/fetch-client": "workspace:*",
     "@internal/fetch-proxy-dispatcher": "workspace:*",
-    "@internal/static-config-property-management": "workspace:*"
+    "@internal/app-static-config-yaml": "workspace:*"
   },
   "peerDependenciesMeta": {
     "pg": {

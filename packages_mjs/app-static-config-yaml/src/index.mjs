@@ -79,7 +79,10 @@ class ConfigStore {
    * Load configuration from YAML file
    */
   async load(options) {
-    const { configDir, appEnv = process.env.APP_ENV || "dev" } = options;
+    const { configDir } = options;
+    // Get APP_ENV and convert to lowercase for consistent file matching
+    const rawAppEnv = options.appEnv || process.env.APP_ENV || "dev";
+    const appEnv = rawAppEnv.toLowerCase();
 
     this.loadResult = new LoadResult();
     this.loadResult.appEnv = appEnv;
@@ -187,7 +190,7 @@ export function getConfigPath() {
   try {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
-    // Go up from: packages_mjs/static-config-property-management/src
+    // Go up from: packages_mjs/app-static-config-yaml/src
     // To: common/config
     return path.resolve(__dirname, "..", "..", "..", "common", "config");
   } catch (err) {
@@ -209,7 +212,9 @@ export function getConfigPath() {
  */
 export async function loadYamlConfig(options = {}) {
   const configDir = options.configDir || getConfigPath();
-  const appEnv = options.appEnv || process.env.APP_ENV || "dev";
+  // Get APP_ENV and convert to lowercase for consistent file matching
+  const rawAppEnv = options.appEnv || process.env.APP_ENV || "dev";
+  const appEnv = rawAppEnv.toLowerCase();
 
   const store = ConfigStore.getInstance();
   return store.load({ configDir, appEnv });

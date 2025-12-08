@@ -97,8 +97,9 @@ class ConfigStore:
         """
         result = LoadResult()
 
-        # Get APP_ENV from environment or parameter
-        env = app_env or os.environ.get("APP_ENV", "dev")
+        # Get APP_ENV from environment or parameter, convert to lowercase for consistent file matching
+        raw_env = app_env or os.environ.get("APP_ENV", "dev")
+        env = raw_env.lower()
         result.app_env = env
         logger.info(f"Loading static config for APP_ENV={env}")
 

@@ -2,7 +2,7 @@
 Factory for creating pre-configured HTTP clients for providers.
 
 Integrates:
-- static_config_property_management for provider/proxy configuration
+- app_static_config_yaml for provider/proxy configuration
 - fetch_proxy_dispatcher for proxy handling
 - fetch_client for HTTP requests
 

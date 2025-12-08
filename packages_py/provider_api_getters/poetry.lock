@@ -31,6 +31,23 @@ typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
+name = "app-static-config-yaml"
+version = "0.1.0"
+description = "A module for loading and managing static YAML configuration properties"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+pydantic = "^2.0"
+pyyaml = "^6.0"
+
+[package.source]
+type = "directory"
+url = "../app_static_config_yaml"
+
+[[package]]
 name = "async-timeout"
 version = "5.0.1"
 description = "Timeout context manager for asyncio programs"
@@ -964,23 +981,6 @@ files = [
 ]
 
 [[package]]
-name = "static-config-property-management"
-version = "0.1.0"
-description = "A module for loading and managing static YAML configuration properties"
-optional = false
-python-versions = "^3.9"
-files = []
-develop = true
-
-[package.dependencies]
-pydantic = "^2.0"
-pyyaml = "^6.0"
-
-[package.source]
-type = "directory"
-url = "../static_config_property_management"
-
-[[package]]
 name = "tomli"
 version = "2.3.0"
 description = "A lil' TOML parser"
@@ -1064,4 +1064,4 @@ redis = ["redis"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "1dce4f9462133b219833ba01a425d19cdd228932d92d6ffa6a7f4f460217f36c"
+content-hash = "3e1c8fe8e7c196ba8c4b5c4cf1adf4f288db7111c3eae1f60f4cb115528d2a4d"

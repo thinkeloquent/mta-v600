@@ -81,6 +81,9 @@ importers:
       '@fastify/static':
         specifier: ^8.0.2
         version: 8.3.0
+      '@internal/app-static-config-yaml':
+        specifier: workspace:*
+        version: link:../../packages_mjs/app-static-config-yaml
       '@internal/fetch-client':
         specifier: workspace:*
         version: link:../../packages_mjs/fetch-client
@@ -90,9 +93,6 @@ importers:
       '@internal/provider-api-getters':
         specifier: workspace:*
         version: link:../../packages_mjs/provider_api_getters
-      '@internal/static-config-property-management':
-        specifier: workspace:*
-        version: link:../../packages_mjs/static-config-property-management
       '@internal/vault-file':
         specifier: workspace:*
         version: link:../../packages_mjs/vault-file
@@ -143,6 +143,31 @@ importers:
       vite:
         specifier: ^7.2.2
         version: 7.2.2(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+
+  packages_mjs/app-static-config-yaml:
+    dependencies:
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
+      zod:
+        specifier: ~3.22.0
+        version: 3.22.5
+    devDependencies:
+      '@babel/preset-env':
+        specifier: ^7.28.5
+        version: 7.28.5(@babel/core@7.28.5)
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      babel-jest:
+        specifier: ^30.2.0
+        version: 30.2.0(@babel/core@7.28.5)
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.19.1)
 
   packages_mjs/cache-dsn:
     devDependencies:
@@ -226,6 +251,9 @@ importers:
 
   packages_mjs/fetch-client:
     dependencies:
+      '@internal/app-static-config-yaml':
+        specifier: workspace:*
+        version: link:../app-static-config-yaml
       '@internal/fetch-proxy-dispatcher':
         specifier: workspace:*
         version: link:../fetch-proxy-dispatcher
@@ -466,15 +494,15 @@ importers:
 
   packages_mjs/provider_api_getters:
     dependencies:
+      '@internal/app-static-config-yaml':
+        specifier: workspace:*
+        version: link:../app-static-config-yaml
       '@internal/fetch-client':
         specifier: workspace:*
         version: link:../fetch-client
       '@internal/fetch-proxy-dispatcher':
         specifier: workspace:*
         version: link:../fetch-proxy-dispatcher
-      '@internal/static-config-property-management':
-        specifier: workspace:*
-        version: link:../static-config-property-management
     devDependencies:
       '@babel/preset-env':
         specifier: ^7.24.0
@@ -497,31 +525,6 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
-
-  packages_mjs/static-config-property-management:
-    dependencies:
-      js-yaml:
-        specifier: ^4.1.0
-        version: 4.1.1
-      zod:
-        specifier: ~3.22.0
-        version: 3.22.5
-    devDependencies:
-      '@babel/preset-env':
-        specifier: ^7.28.5
-        version: 7.28.5(@babel/core@7.28.5)
-      '@types/jest':
-        specifier: ^29.5.12
-        version: 29.5.14
-      '@types/js-yaml':
-        specifier: ^4.0.9
-        version: 4.0.9
-      babel-jest:
-        specifier: ^30.2.0
-        version: 30.2.0(@babel/core@7.28.5)
-      jest:
-        specifier: ^29.7.0
-        version: 29.7.0(@types/node@24.10.1)
 
   packages_mjs/vault-file:
     dependencies:

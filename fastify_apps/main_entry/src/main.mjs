@@ -40,7 +40,7 @@ if (VAULT_SECRET_FILE) {
 import {
   loadYamlConfig,
   config as staticConfigEnv,
-} from "@internal/static-config-property-management";
+} from "@internal/app-static-config-yaml";
 import path from "path";
 import { fileURLToPath } from "url";
 

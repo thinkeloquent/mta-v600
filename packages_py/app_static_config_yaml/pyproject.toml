@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "static-config-property-management"
+name = "app-static-config-yaml"
 version = "0.1.0"
 description = "A module for loading and managing static YAML configuration properties"
 authors = ["Your Name <your.email@example.com>"]

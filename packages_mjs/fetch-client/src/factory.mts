@@ -62,7 +62,7 @@ async function getProxyConfigFromYaml(): Promise<YamlProxyConfig | null> {
   try {
     // Dynamic import to avoid TypeScript errors for optional peer dependency
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const configModule = await import('@internal/static-config-property-management' as any);
+    const configModule = await import('@internal/app-static-config-yaml' as any);
     const config = configModule.config;
     if (config && typeof config.getNested === 'function') {
       return config.getNested('proxy') || null;

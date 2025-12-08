@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { getConfig, getApiBase, type AppConfig } from './config';
+import { useEffect, useState } from 'react';
+import { type AppConfig, getApiBase, getConfig } from './config';
+import ProviderStatus from './pages/ProviderStatus';
+
+type Page = 'home' | 'status';
 
 interface HelloResponse {
   message: string;
@@ -19,6 +22,7 @@ interface ApiInfo {
 }
 
 function App() {
+  const [currentPage, setCurrentPage] = useState<Page>('home');
   const [config] = useState<AppConfig>(getConfig);
   const apiBase = getApiBase();
 
@@ -83,138 +87,201 @@ function App() {
   };
 
   // Dynamic colors based on backend type
-  const primaryColor = config.backendType === 'fastify' ? 'blue' :
-                       config.backendType === 'fastapi' ? 'green' : 'gray';
+  const primaryColor =
+    config.backendType === 'fastify' ? 'blue' : config.backendType === 'fastapi' ? 'green' : 'gray';
 
-  return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
-        <h1 className={`text-4xl font-bold text-center text-${primaryColor}-600 mb-2`}>
-          {config.appName}
-        </h1>
-
-        {/* Build Info */}
-        <div className="flex justify-center gap-4 mb-4 font-mono text-xs text-gray-500">
-          <span>BUILD_ID: {config.buildId || 'N/A'}</span>
-          <span>BUILD_VERSION: {config.buildVersion || 'N/A'}</span>
-          <span>GIT_COMMIT: {config.gitCommit || 'N/A'}</span>
-        </div>
-
-        {/* Backend Info Badge */}
-        <div className="flex justify-center gap-2 mb-8">
-          <span className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-3 py-1 rounded-full text-sm font-medium`}>
-            {config.backendType.toUpperCase()}
-          </span>
-          <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
-            v{config.backendVersion}
-          </span>
-          <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-mono">
-            {apiBase}
-          </span>
-        </div>
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+  // Navigation component
+  const Navigation = () => (
+    <nav className="bg-white shadow-sm mb-6">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="flex items-center justify-between h-14">
+          <div className="flex items-center gap-4">
+            <span className={`font-bold text-${primaryColor}-600`}>{config.appName}</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage('home')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'home'
+                    ? `bg-${primaryColor}-100 text-${primaryColor}-700`
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => setCurrentPage('status')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'status'
+                    ? `bg-${primaryColor}-100 text-${primaryColor}-700`
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                Provider Status
+              </button>
+            </div>
           </div>
-        )}
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-2 py-1 rounded text-xs font-medium`}
+            >
+              {config.backendType.toUpperCase()}
+            </span>
+            <span className="text-gray-500 font-mono text-xs">{apiBase}</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
 
-        {/* API Info Section */}
-        <section className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">API Info</h2>
-          <button
-            onClick={fetchApiInfo}
-            disabled={loading}
-            className={`bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
-          >
-            {loading ? 'Loading...' : 'Refresh API Info'}
-          </button>
-          {apiInfo && (
-            <pre className="mt-4 bg-gray-50 p-4 rounded overflow-x-auto text-sm">
-              {JSON.stringify(apiInfo, null, 2)}
-            </pre>
+  // Render status page
+  if (currentPage === 'status') {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Navigation />
+        <ProviderStatus />
+      </div>
+    );
+  }
+
+  // Home page
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <Navigation />
+      <div className="py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <h1 className={`text-4xl font-bold text-center text-${primaryColor}-600 mb-2`}>
+            {config.appName}
+          </h1>
+
+          {/* Build Info */}
+          <div className="flex justify-center gap-4 mb-4 font-mono text-xs text-gray-500">
+            <span>BUILD_ID: {config.buildId || 'N/A'}</span>
+            <span>BUILD_VERSION: {config.buildVersion || 'N/A'}</span>
+            <span>GIT_COMMIT: {config.gitCommit || 'N/A'}</span>
+          </div>
+
+          {/* Backend Info Badge */}
+          <div className="flex justify-center gap-2 mb-8">
+            <span
+              className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-3 py-1 rounded-full text-sm font-medium`}
+            >
+              {config.backendType.toUpperCase()}
+            </span>
+            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm">
+              v{config.backendVersion}
+            </span>
+            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-mono">
+              {apiBase}
+            </span>
+          </div>
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
           )}
-        </section>
 
-        {/* Hello Section */}
-        <section className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Hello Endpoint</h2>
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
-              className={`flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
+          {/* API Info Section */}
+          <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">API Info</h2>
+            <button
+              onClick={fetchApiInfo}
+              disabled={loading}
+              className={`bg-${primaryColor}-500 hover:bg-${primaryColor}-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
+            >
+              {loading ? 'Loading...' : 'Refresh API Info'}
+            </button>
+            {apiInfo && (
+              <pre className="mt-4 bg-gray-50 p-4 rounded overflow-x-auto text-sm">
+                {JSON.stringify(apiInfo, null, 2)}
+              </pre>
+            )}
+          </section>
+
+          {/* Hello Section */}
+          <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Hello Endpoint</h2>
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+                className={`flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
+              />
+              <button
+                onClick={fetchHello}
+                disabled={loading}
+                className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              >
+                Say Hello
+              </button>
+            </div>
+            {helloResponse && (
+              <pre className="bg-gray-50 p-4 rounded overflow-x-auto text-sm">
+                {JSON.stringify(helloResponse, null, 2)}
+              </pre>
+            )}
+          </section>
+
+          {/* Echo Section */}
+          <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Echo Endpoint</h2>
+            <textarea
+              value={echoInput}
+              onChange={(e) => setEchoInput(e.target.value)}
+              placeholder="Enter JSON to echo"
+              rows={3}
+              className={`w-full border border-gray-300 rounded px-3 py-2 mb-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
             />
             <button
-              onClick={fetchHello}
+              onClick={fetchEcho}
               disabled={loading}
-              className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              className="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              Say Hello
+              Send Echo
             </button>
-          </div>
-          {helloResponse && (
-            <pre className="bg-gray-50 p-4 rounded overflow-x-auto text-sm">
-              {JSON.stringify(helloResponse, null, 2)}
-            </pre>
-          )}
-        </section>
-
-        {/* Echo Section */}
-        <section className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Echo Endpoint</h2>
-          <textarea
-            value={echoInput}
-            onChange={(e) => setEchoInput(e.target.value)}
-            placeholder="Enter JSON to echo"
-            rows={3}
-            className={`w-full border border-gray-300 rounded px-3 py-2 mb-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-${primaryColor}-500`}
-          />
-          <button
-            onClick={fetchEcho}
-            disabled={loading}
-            className="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
-          >
-            Send Echo
-          </button>
-          {echoResponse && (
-            <pre className="mt-4 bg-gray-50 p-4 rounded overflow-x-auto text-sm">
-              {JSON.stringify(echoResponse, null, 2)}
-            </pre>
-          )}
-        </section>
-
-        {/* Available Endpoints */}
-        <section className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Available Endpoints</h2>
-          <ul className="space-y-2 font-mono text-sm">
-            <li className="flex items-center">
-              <span className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-2 py-1 rounded mr-2`}>GET</span>
-              <span>{apiBase}</span>
-            </li>
-            <li className="flex items-center">
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">GET</span>
-              <span>{apiBase}/hello?name=World</span>
-            </li>
-            <li className="flex items-center">
-              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2">POST</span>
-              <span>{apiBase}/echo</span>
-            </li>
-          </ul>
-        </section>
-
-        {/* Config Debug (dev only) */}
-        {config.backendType === 'unknown' && (
-          <section className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-yellow-800 mb-2">Development Mode</h3>
-            <p className="text-sm text-yellow-700">
-              No backend config detected. Using defaults. Start a backend server and access
-              through its URL to get injected configuration.
-            </p>
+            {echoResponse && (
+              <pre className="mt-4 bg-gray-50 p-4 rounded overflow-x-auto text-sm">
+                {JSON.stringify(echoResponse, null, 2)}
+              </pre>
+            )}
           </section>
-        )}
+
+          {/* Available Endpoints */}
+          <section className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Available Endpoints</h2>
+            <ul className="space-y-2 font-mono text-sm">
+              <li className="flex items-center">
+                <span
+                  className={`bg-${primaryColor}-100 text-${primaryColor}-800 px-2 py-1 rounded mr-2`}
+                >
+                  GET
+                </span>
+                <span>{apiBase}</span>
+              </li>
+              <li className="flex items-center">
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded mr-2">GET</span>
+                <span>{apiBase}/hello?name=World</span>
+              </li>
+              <li className="flex items-center">
+                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded mr-2">POST</span>
+                <span>{apiBase}/echo</span>
+              </li>
+            </ul>
+          </section>
+
+          {/* Config Debug (dev only) */}
+          {config.backendType === 'unknown' && (
+            <section className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-yellow-800 mb-2">Development Mode</h3>
+              <p className="text-sm text-yellow-700">
+                No backend config detected. Using defaults. Start a backend server and access
+                through its URL to get injected configuration.
+              </p>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );

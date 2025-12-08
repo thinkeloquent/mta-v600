@@ -17,7 +17,7 @@ def get_config_path() -> Path:
     The path is resolved relative to the common/config directory in the monorepo.
     """
     # Try to find common/config relative to this package
-    # Go up from: packages_py/static_config_property_management/src/static_config/sdk
+    # Go up from: packages_py/app_static_config_yaml/src/static_config/sdk
     # To: common/config
     current = Path(__file__).resolve()
     for _ in range(6):  # Go up 6 levels to reach monorepo root
@@ -45,7 +45,8 @@ def load_yaml_config(
     # Use provided config_dir or default to common/config
     path = config_dir or str(get_config_path())
 
-    # Get APP_ENV from environment if not provided
-    env = app_env or os.environ.get("APP_ENV", "dev")
+    # Get APP_ENV from environment if not provided, convert to lowercase for consistent file matching
+    raw_env = app_env or os.environ.get("APP_ENV", "dev")
+    env = raw_env.lower()
 
     return config.load(config_dir=path, app_env=env)
