@@ -81,6 +81,15 @@ importers:
       '@fastify/static':
         specifier: ^8.0.2
         version: 8.3.0
+      '@internal/fetch-client':
+        specifier: workspace:*
+        version: link:../../packages_mjs/fetch-client
+      '@internal/fetch-proxy-dispatcher':
+        specifier: workspace:*
+        version: link:../../packages_mjs/fetch-proxy-dispatcher
+      '@internal/provider-api-getters':
+        specifier: workspace:*
+        version: link:../../packages_mjs/provider_api_getters
       '@internal/static-config-property-management':
         specifier: workspace:*
         version: link:../../packages_mjs/static-config-property-management
@@ -454,6 +463,40 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.1)
+
+  packages_mjs/provider_api_getters:
+    dependencies:
+      '@internal/fetch-client':
+        specifier: workspace:*
+        version: link:../fetch-client
+      '@internal/fetch-proxy-dispatcher':
+        specifier: workspace:*
+        version: link:../fetch-proxy-dispatcher
+      '@internal/static-config-property-management':
+        specifier: workspace:*
+        version: link:../static-config-property-management
+    devDependencies:
+      '@babel/preset-env':
+        specifier: ^7.24.0
+        version: 7.28.5(@babel/core@7.28.5)
+      '@babel/preset-typescript':
+        specifier: ^7.24.0
+        version: 7.28.5(@babel/core@7.28.5)
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.1
+      babel-jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@babel/core@7.28.5)
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.19.1)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
 
   packages_mjs/static-config-property-management:
     dependencies:

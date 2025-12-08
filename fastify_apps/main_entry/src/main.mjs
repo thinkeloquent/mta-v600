@@ -69,6 +69,7 @@ import "dotenv/config";
 import mainEntryPlugin from "./index.mjs";
 import vaultRoutesPlugin from "./routes/vault.mjs";
 import loadedConfigRoutesPlugin from "./routes/loaded_config.mjs";
+import providerConnectionRoutesPlugin from "./routes/provider_connection.mjs";
 
 // Build parameters (set by CI/CD or Makefile)
 const BUILD_ID = process.env.BUILD_ID || "local";
@@ -122,6 +123,11 @@ await fastify.register(vaultRoutesPlugin, {
 // Register loaded-config admin routes
 await fastify.register(loadedConfigRoutesPlugin, {
   prefix: "/healthz/admin/loaded-config",
+});
+
+// Register provider connection health check routes
+await fastify.register(providerConnectionRoutesPlugin, {
+  prefix: "/healthz/providers/connection",
 });
 
 // Register main_entry plugin with shared frontend
@@ -182,6 +188,10 @@ try {
 ║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
 ║    GET  /healthz/admin/loaded-config       - Config status ║
 ║    GET  /healthz/admin/loaded-config/data  - Full config   ║
+║                                                            ║
+║  Provider Health Endpoints:                                ║
+║    GET  /healthz/providers/connection      - Providers list║
+║    GET  /healthz/providers/connection/:p   - Check provider║
 ║                                                            ║
 ║  Frontend: Served from frontend_apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║

@@ -469,6 +469,30 @@ dev = ["pre-commit", "tox"]
 testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
+name = "provider-api-getters"
+version = "1.0.0"
+description = "Provider API token getters and health check utilities"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+fetch_client = {path = "../fetch_client", develop = true}
+fetch_proxy_dispatcher = {path = "../fetch_proxy_dispatcher", develop = true}
+httpx = "^0.28.0"
+static_config_property_management = {path = "../static_config_property_management", develop = true}
+
+[package.extras]
+all = ["asyncpg (>=0.30.0,<0.31.0)", "redis (>=5.0.0,<6.0.0)"]
+postgres = ["asyncpg (>=0.30.0,<0.31.0)"]
+redis = ["redis (>=5.0.0,<6.0.0)"]
+
+[package.source]
+type = "directory"
+url = "packages_py/provider_api_getters"
+
+[[package]]
 name = "pydantic"
 version = "2.12.5"
 description = "Data validation using Python type hints"
@@ -1155,4 +1179,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "dbc5d5ca1355844b6e7f8959740ef62f7aaca60f5b55ff25d3e78e4758e044cb"
+content-hash = "60c02045ec049374df36203bef1c1fa54b39af4435fd20438091d2a16d32369d"

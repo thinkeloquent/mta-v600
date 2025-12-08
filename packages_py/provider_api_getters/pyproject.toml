@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "provider_api_getters"
+version = "1.0.0"
+description = "Provider API token getters and health check utilities"
+authors = []
+license = "MIT"
+packages = [{include = "provider_api_getters", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+static_config_property_management = {path = "../static_config_property_management", develop = true}
+fetch_client = {path = "../fetch_client", develop = true}
+fetch_proxy_dispatcher = {path = "../fetch_proxy_dispatcher", develop = true}
+httpx = "^0.28.0"
+asyncpg = {version = "^0.30.0", optional = true}
+redis = {version = "^5.0.0", optional = true}
+
+[tool.poetry.extras]
+postgres = ["asyncpg"]
+redis = ["redis"]
+all = ["asyncpg", "redis"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+mypy = "^1.8.0"
+ruff = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/provider_api_getters"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

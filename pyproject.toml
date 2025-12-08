@@ -33,6 +33,7 @@ fetch-rate-limiter = {path = "packages_py/fetch_rate_limiter", develop = true}
 fetch-retry = {path = "packages_py/fetch_retry", develop = true}
 static-config-property-management = {path = "packages_py/static_config_property_management", develop = true}
 vault-file = {path = "packages_py/vault_file", develop = true}
+provider-api-getters = {path = "packages_py/provider_api_getters", develop = true}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
