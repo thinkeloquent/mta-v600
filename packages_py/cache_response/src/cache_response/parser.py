@@ -126,9 +126,11 @@ def calculate_expiration(
     directives: CacheControlDirectives,
     default_ttl_seconds: float = 0,
     max_ttl_seconds: float = 86400,
+    now: Optional[float] = None,
 ) -> float:
     """Calculate expiration time based on Cache-Control and other headers."""
-    now = time.time()
+    if now is None:
+        now = time.time()
 
     # If no-store, don't cache
     if directives.no_store:

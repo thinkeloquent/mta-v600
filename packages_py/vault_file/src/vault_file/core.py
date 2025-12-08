@@ -103,23 +103,29 @@ class VaultFile(IVaultFile):
     @classmethod
     def from_json(cls, json_str: str) -> 'VaultFile':
         import json
-        from .validators import validate_vault_data
+        from .validators import validate_vault_data, VaultSerializationError
 
         logger.debug("Deserializing VaultFile from JSON")
-        data = json.loads(json_str)
-        
-        # This is where validation would be called
-        # validate_vault_data(data)
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise VaultSerializationError(f"Invalid JSON: {e}") from e
 
-        header = VaultHeader(
-            version=data["header"]["version"],
-            created_at=datetime.fromisoformat(data["header"]["created_at"]),
-            id=uuid.UUID(data["header"]["id"])
-        )
-        metadata = VaultMetadata(data=data["metadata"])
-        payload = VaultPayload(data=data["payload"]["data"])
+        try:
+            # This is where validation would be called
+            # validate_vault_data(data)
 
-        return cls(header, metadata, payload)
+            header = VaultHeader(
+                version=data["header"]["version"],
+                created_at=datetime.fromisoformat(data["header"]["created_at"]),
+                id=uuid.UUID(data["header"]["id"])
+            )
+            metadata = VaultMetadata(data=data["metadata"])
+            payload = VaultPayload(data=data["payload"]["data"])
+
+            return cls(header, metadata, payload)
+        except (KeyError, ValueError, TypeError) as e:
+            raise VaultSerializationError(f"Invalid vault data structure: {e}") from e
         
     def save_to_disk(self, path: str) -> None:
         logger.debug(f"Saving vault file to {path}")

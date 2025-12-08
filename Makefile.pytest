@@ -1,0 +1,200 @@
+# Makefile.pytest
+# CI commands for pytest testing
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Use local .venv if it exists, otherwise use system Python
+VENV_DIR := $(MAKEFILE_DIR).venv
+PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
+POETRY := poetry
+
+# Log directories
+LOGS_DIR := logs
+
+.PHONY: help help all build test verbose coverage \
+        collect markers fixtures build-log test-log \
+        parse-build parse-test ci clean
+
+help help:
+	@echo "Pytest CI Commands"
+	@echo ""
+	@echo "Test Execution:"
+	@echo "  make -f Makefile.pytest all       - Run all pytest tests"
+	@echo "  make -f Makefile.pytest test      - Run tests (alias for all)"
+	@echo "  make -f Makefile.pytest verbose   - Run tests with verbose output"
+	@echo "  make -f Makefile.pytest coverage  - Run tests with coverage report"
+	@echo ""
+	@echo "Test Discovery:"
+	@echo "  make -f Makefile.pytest collect   - Collect tests without running"
+	@echo "  make -f Makefile.pytest build     - Alias for collect"
+	@echo "  make -f Makefile.pytest markers   - List available test markers"
+	@echo "  make -f Makefile.pytest fixtures  - List available fixtures"
+	@echo ""
+	@echo "CI Logging:"
+	@echo "  make -f Makefile.pytest build-log - Run collect-only, save errors to logs/pytest-build-error.log"
+	@echo "  make -f Makefile.pytest test-log  - Run tests, save errors to logs/pytest-test-error.log"
+	@echo ""
+	@echo "Log Parsing:"
+	@echo "  make -f Makefile.pytest parse-build - Parse build errors to JSONL"
+	@echo "  make -f Makefile.pytest parse-test  - Parse test errors to JSONL"
+	@echo ""
+	@echo "CI Pipeline:"
+	@echo "  make -f Makefile.pytest ci        - Full CI: collect, test, parse logs"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  make -f Makefile.pytest clean     - Remove pytest cache and logs"
+	@echo ""
+	@echo "Log Files:"
+	@echo "  logs/pytest-build-error.log   - Collection/import errors"
+	@echo "  logs/pytest-test-error.log    - Test failure output"
+	@echo "  logs/pytest-build-error.jsonl - Parsed build errors"
+	@echo "  logs/pytest-test-error.jsonl  - Parsed test errors"
+
+# Ensure logs directory exists
+$(LOGS_DIR):
+	@mkdir -p $(LOGS_DIR)
+
+# ============================================================================
+# Test Execution
+# ============================================================================
+
+# Run all package tests (iterates per-package to avoid conftest collisions)
+all:
+	@echo "Running tests for each package..."
+	@failed=0; \
+	for pkg in $$(find packages_py -maxdepth 1 -mindepth 1 -type d | sort); do \
+		if [ -d "$$pkg/tests" ]; then \
+			echo ""; \
+			echo "========== Testing $$pkg =========="; \
+			$(POETRY) run pytest "$$pkg" -q || failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	if [ $$failed -gt 0 ]; then \
+		echo "$$failed package(s) had test failures"; \
+		exit 1; \
+	else \
+		echo "All package tests passed!"; \
+	fi
+
+# Alias for all
+test: all
+
+# Run tests for a single package (usage: make pkg PKG=cache_dsn)
+pkg:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pytest pkg PKG=<package_name>"; \
+		echo "Example: make -f Makefile.pytest pkg PKG=cache_dsn"; \
+		exit 1; \
+	fi
+	$(POETRY) run pytest packages_py/$(PKG)
+
+# Run tests with verbose output
+verbose:
+	$(POETRY) run pytest -v
+
+# Run tests with coverage
+coverage:
+	$(POETRY) run pytest --cov --cov-report=term-missing --cov-report=html
+
+# ============================================================================
+# Test Discovery
+# ============================================================================
+
+# Collect tests without running (validates imports)
+collect:
+	$(POETRY) run pytest --collect-only
+
+# Alias for collect (validates build/imports)
+build: collect
+
+# List available markers
+markers:
+	$(POETRY) run pytest --markers
+
+# List available fixtures
+fixtures:
+	$(POETRY) run pytest --fixtures
+
+# ============================================================================
+# CI Logging
+# ============================================================================
+
+# Run collection and save errors to log, then parse to JSONL
+build-log: $(LOGS_DIR)
+	@echo "Running pytest --collect-only and capturing errors..."
+	@$(POETRY) run pytest --collect-only 2>&1 | tee $(LOGS_DIR)/pytest-build-error.log || true
+	@echo ""
+	@echo "Output saved to $(LOGS_DIR)/pytest-build-error.log"
+	@echo "Parsing errors to JSONL..."
+	@$(PYTHON) .bin/parse_pytest_build_errors.py build_log || true
+
+# Run tests and save errors to log, then parse to JSONL
+test-log: $(LOGS_DIR)
+	@echo "Running pytest and capturing errors..."
+	@$(POETRY) run pytest 2>&1 | tee $(LOGS_DIR)/pytest-test-error.log || true
+	@echo ""
+	@echo "Output saved to $(LOGS_DIR)/pytest-test-error.log"
+	@echo "Parsing errors to JSONL..."
+	@$(PYTHON) .bin/parse_pytest_build_errors.py test_log || true
+
+# ============================================================================
+# Log Parsing
+# ============================================================================
+
+# Parse build errors to JSONL
+parse-build:
+	@$(PYTHON) .bin/parse_pytest_build_errors.py build_log
+
+# Parse test errors to JSONL
+parse-test:
+	@$(PYTHON) .bin/parse_pytest_build_errors.py test_log
+
+# ============================================================================
+# CI Pipeline
+# ============================================================================
+
+# Full CI pipeline: collect, test, parse
+ci: $(LOGS_DIR)
+	@echo "=========================================="
+	@echo "Step 1: Collecting tests (build check)"
+	@echo "=========================================="
+	@$(POETRY) run pytest --collect-only 2>&1 | tee $(LOGS_DIR)/pytest-build-error.log || true
+	@echo ""
+	@echo "=========================================="
+	@echo "Step 2: Running tests"
+	@echo "=========================================="
+	@$(POETRY) run pytest 2>&1 | tee $(LOGS_DIR)/pytest-test-error.log || true
+	@echo ""
+	@echo "=========================================="
+	@echo "Step 3: Parsing build errors"
+	@echo "=========================================="
+	@$(PYTHON) .bin/parse_pytest_build_errors.py build_log || true
+	@echo ""
+	@echo "=========================================="
+	@echo "Step 4: Parsing test errors"
+	@echo "=========================================="
+	@$(PYTHON) .bin/parse_pytest_build_errors.py test_log || true
+	@echo ""
+	@echo "=========================================="
+	@echo "CI Complete"
+	@echo "=========================================="
+	@echo "Logs:"
+	@echo "  - $(LOGS_DIR)/pytest-build-error.log"
+	@echo "  - $(LOGS_DIR)/pytest-test-error.log"
+	@echo "  - $(LOGS_DIR)/pytest-build-error.jsonl"
+	@echo "  - $(LOGS_DIR)/pytest-test-error.jsonl"
+
+# ============================================================================
+# Cleanup
+# ============================================================================
+
+# Remove pytest cache and logs
+clean:
+	@echo "Cleaning pytest artifacts..."
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@rm -f $(LOGS_DIR)/*.log $(LOGS_DIR)/*.jsonl 2>/dev/null || true
+	@echo "Done."

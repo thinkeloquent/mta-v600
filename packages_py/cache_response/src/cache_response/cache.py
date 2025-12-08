@@ -357,6 +357,7 @@ class ResponseCache:
             directives,
             self._config.default_ttl_seconds,
             self._config.max_ttl_seconds,
+            now=now,
         )
 
         # Consider stale-while-revalidate/stale-if-error windows
@@ -434,6 +435,7 @@ class ResponseCache:
             directives,
             self._config.default_ttl_seconds,
             self._config.max_ttl_seconds,
+            now=now,
         )
 
         updated_metadata = CacheEntryMetadata(

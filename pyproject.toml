@@ -43,6 +43,11 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["packages_py", "fastapi_apps"]
 python_files = "test_*.py"
 python_functions = "test_*"
+norecursedirs = ["__STAGE__", "__SPECS__", "__REVIEW__", ".git", "node_modules", ".venv", "dist", "build"]
+addopts = "--ignore=__STAGE__ --ignore=__SPECS__ --import-mode=importlib"
+asyncio_mode = "auto"
+# Using importlib mode allows multiple test files with same basename (e.g., test_config.py)
+# across different packages without namespace collisions

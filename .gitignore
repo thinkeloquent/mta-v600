@@ -242,7 +242,8 @@ __marimo__/
 # NODE
 # ---------------------------------------
 # Logs
-logs
+logs/*
+!logs/.gitkeep
 *.log
 npm-debug.log*
 yarn-debug.log*
