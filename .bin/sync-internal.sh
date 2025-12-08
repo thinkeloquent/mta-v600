@@ -3,13 +3,16 @@
 # sync-internal.sh - Copy internal files to their respective locations
 #
 # Usage:
-#   .bin/sync-internal.sh          # Copy all files from ./internal/
-#   .bin/sync-internal.sh --dry-run # Show what would be copied
+#   .bin/sync-internal.sh [INTERNAL_PATH] [OPTIONS]
+#   .bin/sync-internal.sh                    # Use default ./internal/
+#   .bin/sync-internal.sh ./my-internal      # Use custom internal path
+#   .bin/sync-internal.sh --dry-run          # Preview with default path
+#   .bin/sync-internal.sh ./my-internal -n   # Custom path + dry-run
 #
-# This script copies files from ./internal/** to ./* without overwriting folders.
-# Each file in ./internal/ is copied to its corresponding path in the root.
+# This script copies files from INTERNAL_PATH/** to ../ (parent of INTERNAL_PATH)
+# without overwriting folders.
 #
-# Example:
+# Example (with default ./internal/):
 #   ./internal/static/index.html       => ./static/index.html
 #   ./internal/common/config/redis.yaml => ./common/config/redis.yaml
 #   ./internal/db_init/db.sql          => ./db_init/db.sql
@@ -19,7 +22,7 @@
 set -e
 
 # =============================================================================
-# Configuration
+# Configuration (default, can be overridden by argument)
 # =============================================================================
 INTERNAL_DIR="./internal"
 
@@ -65,23 +68,33 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help|-h)
-            echo "Usage: $0 [OPTIONS]"
+            echo "Usage: $0 [INTERNAL_PATH] [OPTIONS]"
             echo ""
-            echo "Copy files from ${INTERNAL_DIR}/ to their respective locations."
+            echo "Copy files from INTERNAL_PATH/ to ../ (parent directory)."
+            echo ""
+            echo "Arguments:"
+            echo "  INTERNAL_PATH  Path to internal directory (default: ./internal)"
             echo ""
             echo "Options:"
             echo "  --dry-run, -n  Show what would be copied without copying"
             echo "  --help, -h     Show this help message"
             echo ""
-            echo "Example:"
-            echo "  $0              # Copy all files"
-            echo "  $0 --dry-run    # Preview changes"
+            echo "Examples:"
+            echo "  $0                       # Copy from ./internal/ to ./"
+            echo "  $0 ./my-internal         # Copy from ./my-internal/ to ./"
+            echo "  $0 --dry-run             # Preview changes"
+            echo "  $0 ./my-internal --dry-run # Custom path + preview"
             exit 0
             ;;
-        *)
+        -*)
             log_error "Unknown option: $1"
             echo "Use --help for usage information"
             exit 1
+            ;;
+        *)
+            # Positional argument: INTERNAL_PATH
+            INTERNAL_DIR="$1"
+            shift
             ;;
     esac
 done
@@ -90,13 +103,27 @@ done
 # Main logic
 # =============================================================================
 
-cd "$ROOT_DIR"
+# Resolve INTERNAL_DIR to absolute path
+if [[ "$INTERNAL_DIR" = /* ]]; then
+    # Already absolute
+    INTERNAL_DIR_ABS="$INTERNAL_DIR"
+else
+    # Make relative to ROOT_DIR
+    INTERNAL_DIR_ABS="$ROOT_DIR/$INTERNAL_DIR"
+fi
+
+# Target directory is parent of INTERNAL_DIR (../ from the internal folder)
+TARGET_DIR="$(dirname "$INTERNAL_DIR_ABS")"
 
 # Check if internal directory exists
-if [[ ! -d "$INTERNAL_DIR" ]]; then
-    log_error "Internal directory not found: $INTERNAL_DIR"
+if [[ ! -d "$INTERNAL_DIR_ABS" ]]; then
+    log_error "Internal directory not found: $INTERNAL_DIR_ABS"
     exit 1
 fi
+
+log_info "Source: $INTERNAL_DIR_ABS"
+log_info "Target: $TARGET_DIR"
+echo ""
 
 if [[ "$DRY_RUN" == "true" ]]; then
     log_info "DRY RUN MODE - No files will be copied"
@@ -111,11 +138,11 @@ SKIPPED_COUNT=0
 # Find all files in internal directory (excluding hidden files)
 while IFS= read -r -d '' internal_file; do
     # Get relative path from internal directory
-    # e.g., ./internal/static/index.html => static/index.html
-    relative_path="${internal_file#${INTERNAL_DIR}/}"
+    # e.g., /path/to/internal/static/index.html => static/index.html
+    relative_path="${internal_file#${INTERNAL_DIR_ABS}/}"
 
-    # Target path in root
-    target_path="./${relative_path}"
+    # Target path is ../ from INTERNAL_DIR (parent directory)
+    target_path="${TARGET_DIR}/${relative_path}"
     target_dir="$(dirname "$target_path")"
 
     ((FILE_COUNT++))
@@ -152,7 +179,7 @@ while IFS= read -r -d '' internal_file; do
 
     ((COPIED_COUNT++))
 
-done < <(find "$INTERNAL_DIR" -type f -print0)
+done < <(find "$INTERNAL_DIR_ABS" -type f -print0)
 
 # =============================================================================
 # Summary
