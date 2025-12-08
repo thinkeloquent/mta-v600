@@ -248,9 +248,9 @@ export function ProviderStatus() {
     init();
   }, [refreshAll]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 3 minutes
   useEffect(() => {
-    const interval = setInterval(refreshAll, 30000);
+    const interval = setInterval(refreshAll, 180000);
     return () => clearInterval(interval);
   }, [refreshAll]);
 
@@ -372,7 +372,7 @@ export function ProviderStatus() {
               {HEALTHZ_API}
             </code>
           </p>
-          <p className="mt-1">Auto-refreshes every 30 seconds</p>
+          <p className="mt-1">Auto-refreshes every 3 minutes</p>
         </div>
       </div>
     </div>
