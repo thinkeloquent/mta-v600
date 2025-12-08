@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_EMAIL_ENV_VAR = "CONFLUENCE_EMAIL"
 DEFAULT_BASE_URL_ENV_VAR = "CONFLUENCE_BASE_URL"
 
+# Fallback to Jira credentials (same Atlassian account)
+FALLBACK_EMAIL_ENV_VAR = "JIRA_EMAIL"
+FALLBACK_API_TOKEN_ENV_VAR = "JIRA_API_TOKEN"
+FALLBACK_BASE_URL_ENV_VAR = "JIRA_BASE_URL"
+
 
 class ConfluenceApiToken(BaseApiToken):
     """
@@ -77,6 +82,9 @@ class ConfluenceApiToken(BaseApiToken):
         """
         Get Confluence email from environment.
 
+        Checks CONFLUENCE_EMAIL first, then falls back to JIRA_EMAIL
+        since both are Atlassian products using the same credentials.
+
         Returns:
             Email address or None if not found
         """
@@ -90,12 +98,65 @@ class ConfluenceApiToken(BaseApiToken):
                 f"ConfluenceApiToken._get_email: Found email in env var '{env_email_name}': "
                 f"'{email[:3]}***@***' (masked)"
             )
+            return email
+
+        # Fallback to JIRA_EMAIL (same Atlassian account)
+        logger.debug(
+            f"ConfluenceApiToken._get_email: Env var '{env_email_name}' not set, "
+            f"trying fallback '{FALLBACK_EMAIL_ENV_VAR}'"
+        )
+        email = os.getenv(FALLBACK_EMAIL_ENV_VAR)
+
+        if email:
+            logger.debug(
+                f"ConfluenceApiToken._get_email: Found email in fallback env var "
+                f"'{FALLBACK_EMAIL_ENV_VAR}': '{email[:3]}***@***' (masked)"
+            )
         else:
             logger.debug(
-                f"ConfluenceApiToken._get_email: Env var '{env_email_name}' is not set"
+                f"ConfluenceApiToken._get_email: Neither '{env_email_name}' nor "
+                f"'{FALLBACK_EMAIL_ENV_VAR}' is set"
             )
 
         return email
+
+    def _lookup_env_api_key(self) -> Optional[str]:
+        """
+        Lookup API token from environment variable.
+
+        Checks CONFLUENCE_API_TOKEN first, then falls back to JIRA_API_TOKEN
+        since both are Atlassian products using the same credentials.
+
+        Returns:
+            API token value or None if not found
+        """
+        logger.debug("ConfluenceApiToken._lookup_env_api_key: Looking up API token")
+
+        # First try the standard lookup (CONFLUENCE_API_TOKEN)
+        api_token = super()._lookup_env_api_key()
+
+        if api_token:
+            return api_token
+
+        # Fallback to JIRA_API_TOKEN (same Atlassian account)
+        logger.debug(
+            f"ConfluenceApiToken._lookup_env_api_key: Primary env var not set, "
+            f"trying fallback '{FALLBACK_API_TOKEN_ENV_VAR}'"
+        )
+        api_token = os.getenv(FALLBACK_API_TOKEN_ENV_VAR)
+
+        if api_token:
+            logger.debug(
+                f"ConfluenceApiToken._lookup_env_api_key: Found API token in fallback env var "
+                f"'{FALLBACK_API_TOKEN_ENV_VAR}' (length={len(api_token)})"
+            )
+        else:
+            logger.debug(
+                f"ConfluenceApiToken._lookup_env_api_key: Fallback env var "
+                f"'{FALLBACK_API_TOKEN_ENV_VAR}' is also not set"
+            )
+
+        return api_token
 
     def _encode_basic_auth(self, email: str, token: str) -> str:
         """
@@ -214,7 +275,12 @@ class ConfluenceApiToken(BaseApiToken):
 
     def get_base_url(self) -> Optional[str]:
         """
-        Get Confluence base URL, checking env var if not in config.
+        Get Confluence base URL, checking env vars with fallback to JIRA_BASE_URL.
+
+        Resolution order:
+        1. Static config 'base_url'
+        2. CONFLUENCE_BASE_URL env var
+        3. JIRA_BASE_URL + '/wiki' (since Confluence is typically at /wiki path)
 
         Returns:
             Base URL string or None if not configured
@@ -232,7 +298,7 @@ class ConfluenceApiToken(BaseApiToken):
 
         # Fall back to CONFLUENCE_BASE_URL env var
         logger.debug(
-            f"ConfluenceApiToken.get_base_url: Checking fallback env var '{DEFAULT_BASE_URL_ENV_VAR}'"
+            f"ConfluenceApiToken.get_base_url: Checking env var '{DEFAULT_BASE_URL_ENV_VAR}'"
         )
         base_url = os.getenv(DEFAULT_BASE_URL_ENV_VAR)
 
@@ -240,10 +306,27 @@ class ConfluenceApiToken(BaseApiToken):
             logger.debug(
                 f"ConfluenceApiToken.get_base_url: Found base URL from env var: '{base_url}'"
             )
-        else:
-            logger.warning(
-                f"ConfluenceApiToken.get_base_url: No base URL configured. "
-                f"Set {DEFAULT_BASE_URL_ENV_VAR} environment variable."
-            )
+            return base_url
 
-        return base_url
+        # Fallback: derive from JIRA_BASE_URL (append /wiki)
+        logger.debug(
+            f"ConfluenceApiToken.get_base_url: Checking fallback env var "
+            f"'{FALLBACK_BASE_URL_ENV_VAR}'"
+        )
+        jira_base_url = os.getenv(FALLBACK_BASE_URL_ENV_VAR)
+
+        if jira_base_url:
+            # Remove trailing slash and append /wiki
+            base_url = jira_base_url.rstrip("/") + "/wiki"
+            logger.debug(
+                f"ConfluenceApiToken.get_base_url: Derived base URL from JIRA_BASE_URL: "
+                f"'{base_url}'"
+            )
+            return base_url
+
+        logger.warning(
+            f"ConfluenceApiToken.get_base_url: No base URL configured. "
+            f"Set {DEFAULT_BASE_URL_ENV_VAR} or {FALLBACK_BASE_URL_ENV_VAR} environment variable."
+        )
+
+        return None

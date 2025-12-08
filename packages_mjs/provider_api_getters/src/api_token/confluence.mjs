@@ -16,6 +16,11 @@ const logger = {
 const DEFAULT_EMAIL_ENV_VAR = 'CONFLUENCE_EMAIL';
 const DEFAULT_BASE_URL_ENV_VAR = 'CONFLUENCE_BASE_URL';
 
+// Fallback to Jira credentials (same Atlassian account)
+const FALLBACK_EMAIL_ENV_VAR = 'JIRA_EMAIL';
+const FALLBACK_API_TOKEN_ENV_VAR = 'JIRA_API_TOKEN';
+const FALLBACK_BASE_URL_ENV_VAR = 'JIRA_BASE_URL';
+
 export class ConfluenceApiToken extends BaseApiToken {
   get providerName() {
     return 'confluence';
@@ -46,13 +51,14 @@ export class ConfluenceApiToken extends BaseApiToken {
 
   /**
    * Get Confluence email from environment.
+   * Checks CONFLUENCE_EMAIL first, then falls back to JIRA_EMAIL.
    * @returns {string|null}
    */
   _getEmail() {
     logger.debug('ConfluenceApiToken._getEmail: Getting email from environment');
 
     const envEmailName = this._getEmailEnvVarName();
-    const email = process.env[envEmailName] || null;
+    let email = process.env[envEmailName] || null;
 
     if (email) {
       const maskedEmail = email.length > 3
@@ -61,13 +67,69 @@ export class ConfluenceApiToken extends BaseApiToken {
       logger.debug(
         `ConfluenceApiToken._getEmail: Found email in env var '${envEmailName}': '${maskedEmail}' (masked)`
       );
+      return email;
+    }
+
+    // Fallback to JIRA_EMAIL (same Atlassian account)
+    logger.debug(
+      `ConfluenceApiToken._getEmail: Env var '${envEmailName}' not set, ` +
+      `trying fallback '${FALLBACK_EMAIL_ENV_VAR}'`
+    );
+    email = process.env[FALLBACK_EMAIL_ENV_VAR] || null;
+
+    if (email) {
+      const maskedEmail = email.length > 3
+        ? `${email.substring(0, 3)}***@***`
+        : '***@***';
+      logger.debug(
+        `ConfluenceApiToken._getEmail: Found email in fallback env var ` +
+        `'${FALLBACK_EMAIL_ENV_VAR}': '${maskedEmail}' (masked)`
+      );
     } else {
       logger.debug(
-        `ConfluenceApiToken._getEmail: Env var '${envEmailName}' is not set`
+        `ConfluenceApiToken._getEmail: Neither '${envEmailName}' nor ` +
+        `'${FALLBACK_EMAIL_ENV_VAR}' is set`
       );
     }
 
     return email;
+  }
+
+  /**
+   * Lookup API token from environment variable.
+   * Checks CONFLUENCE_API_TOKEN first, then falls back to JIRA_API_TOKEN.
+   * @returns {string|null}
+   */
+  _lookupEnvApiKey() {
+    logger.debug('ConfluenceApiToken._lookupEnvApiKey: Looking up API token');
+
+    // First try the standard lookup (CONFLUENCE_API_TOKEN)
+    const apiToken = super._lookupEnvApiKey();
+
+    if (apiToken) {
+      return apiToken;
+    }
+
+    // Fallback to JIRA_API_TOKEN (same Atlassian account)
+    logger.debug(
+      `ConfluenceApiToken._lookupEnvApiKey: Primary env var not set, ` +
+      `trying fallback '${FALLBACK_API_TOKEN_ENV_VAR}'`
+    );
+    const fallbackToken = process.env[FALLBACK_API_TOKEN_ENV_VAR] || null;
+
+    if (fallbackToken) {
+      logger.debug(
+        `ConfluenceApiToken._lookupEnvApiKey: Found API token in fallback env var ` +
+        `'${FALLBACK_API_TOKEN_ENV_VAR}' (length=${fallbackToken.length})`
+      );
+    } else {
+      logger.debug(
+        `ConfluenceApiToken._lookupEnvApiKey: Fallback env var ` +
+        `'${FALLBACK_API_TOKEN_ENV_VAR}' is also not set`
+      );
+    }
+
+    return fallbackToken;
   }
 
   /**
@@ -183,7 +245,7 @@ export class ConfluenceApiToken extends BaseApiToken {
     logger.debug('ConfluenceApiToken.getBaseUrl: Getting base URL');
 
     // First try the standard config resolution
-    const baseUrl = super.getBaseUrl();
+    let baseUrl = super.getBaseUrl();
 
     if (baseUrl) {
       logger.debug(`ConfluenceApiToken.getBaseUrl: Found base URL from config: '${baseUrl}'`);
@@ -192,19 +254,35 @@ export class ConfluenceApiToken extends BaseApiToken {
 
     // Fall back to CONFLUENCE_BASE_URL env var
     logger.debug(
-      `ConfluenceApiToken.getBaseUrl: Checking fallback env var '${DEFAULT_BASE_URL_ENV_VAR}'`
+      `ConfluenceApiToken.getBaseUrl: Checking env var '${DEFAULT_BASE_URL_ENV_VAR}'`
     );
-    const envBaseUrl = process.env[DEFAULT_BASE_URL_ENV_VAR] || null;
+    baseUrl = process.env[DEFAULT_BASE_URL_ENV_VAR] || null;
 
-    if (envBaseUrl) {
-      logger.debug(`ConfluenceApiToken.getBaseUrl: Found base URL from env var: '${envBaseUrl}'`);
-    } else {
-      logger.warn(
-        `ConfluenceApiToken.getBaseUrl: No base URL configured. ` +
-        `Set ${DEFAULT_BASE_URL_ENV_VAR} environment variable.`
-      );
+    if (baseUrl) {
+      logger.debug(`ConfluenceApiToken.getBaseUrl: Found base URL from env var: '${baseUrl}'`);
+      return baseUrl;
     }
 
-    return envBaseUrl;
+    // Fallback: derive from JIRA_BASE_URL (append /wiki)
+    logger.debug(
+      `ConfluenceApiToken.getBaseUrl: Checking fallback env var '${FALLBACK_BASE_URL_ENV_VAR}'`
+    );
+    const jiraBaseUrl = process.env[FALLBACK_BASE_URL_ENV_VAR] || null;
+
+    if (jiraBaseUrl) {
+      // Remove trailing slash and append /wiki
+      baseUrl = jiraBaseUrl.replace(/\/+$/, '') + '/wiki';
+      logger.debug(
+        `ConfluenceApiToken.getBaseUrl: Derived base URL from JIRA_BASE_URL: '${baseUrl}'`
+      );
+      return baseUrl;
+    }
+
+    logger.warn(
+      `ConfluenceApiToken.getBaseUrl: No base URL configured. ` +
+      `Set ${DEFAULT_BASE_URL_ENV_VAR} or ${FALLBACK_BASE_URL_ENV_VAR} environment variable.`
+    );
+
+    return null;
   }
 }
