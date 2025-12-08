@@ -64,13 +64,23 @@ class MemoryCacheStore(CacheResponseStore):
             except asyncio.CancelledError:
                 break
 
+    def _get_stale_window(self, response: CachedResponse) -> float:
+        """Calculate the stale window from directives."""
+        directives = response.metadata.directives
+        if not directives:
+            return 0
+        return max(
+            directives.stale_while_revalidate or 0,
+            directives.stale_if_error or 0,
+        )
+
     def _cleanup(self) -> None:
         """Remove expired entries."""
         now = time.time()
         expired_keys = [
             key
             for key, entry in self._cache.items()
-            if entry.response.metadata.expires_at <= now
+            if entry.response.metadata.expires_at + self._get_stale_window(entry.response) <= now
         ]
         for key in expired_keys:
             self._delete_entry(key)
@@ -133,8 +143,11 @@ class MemoryCacheStore(CacheResponseStore):
         if not entry:
             return None
 
-        # Check if expired
-        if entry.response.metadata.expires_at <= time.time():
+        now = time.time()
+        stale_window = self._get_stale_window(entry.response)
+
+        # Check if expired (including stale window)
+        if entry.response.metadata.expires_at + stale_window <= now:
             self._delete_entry(key)
             return None
 
@@ -171,8 +184,11 @@ class MemoryCacheStore(CacheResponseStore):
         if not entry:
             return False
 
-        # Check if expired
-        if entry.response.metadata.expires_at <= time.time():
+        now = time.time()
+        stale_window = self._get_stale_window(entry.response)
+
+        # Check if expired (including stale window)
+        if entry.response.metadata.expires_at + stale_window <= now:
             self._delete_entry(key)
             return False
 

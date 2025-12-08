@@ -3,7 +3,6 @@ name = "connection_pool"
 version = "1.0.0"
 description = "Standalone HTTP connection pool with configurable limits, health tracking, and statistics"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "connection_pool", from = "src"}]
 

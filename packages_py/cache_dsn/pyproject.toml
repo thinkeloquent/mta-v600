@@ -3,7 +3,6 @@ name = "cache_dsn"
 version = "1.0.0"
 description = "Standalone DNS/service discovery cache with TTL, health-aware invalidation, and pluggable backends"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "cache_dsn", from = "src"}]
 

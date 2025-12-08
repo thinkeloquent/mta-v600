@@ -3,7 +3,6 @@ name = "fetch_compose_cache_dsn"
 version = "1.0.0"
 description = "DNS cache transport wrapper for httpx's compose pattern"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_compose_cache_dsn", from = "src"}]
 

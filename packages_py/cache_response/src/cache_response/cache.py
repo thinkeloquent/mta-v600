@@ -204,7 +204,8 @@ class ResponseCache:
         if not self.is_cacheable(method):
             return CacheLookupResult(found=False)
 
-        key = self.generate_key(method, url, request_headers)
+        # Use base key without vary headers - vary matching is done after retrieval
+        key = self.generate_key(method, url)
         cached = await self._store.get(key)
 
         if not cached:
@@ -284,11 +285,14 @@ class ResponseCache:
         request_headers: Optional[Dict[str, str]] = None,
     ) -> bool:
         """Store a response in the cache."""
+        # Use base key without vary headers - consistent across all methods
+        base_key = self.generate_key(method, url)
+
         if not self.is_cacheable(method):
             self._emit(
                 CacheResponseEvent(
                     type=CacheResponseEventType.CACHE_BYPASS,
-                    key=self.generate_key(method, url, request_headers),
+                    key=base_key,
                     url=url,
                     timestamp=time.time(),
                     metadata={"reason": "method-not-cacheable"},
@@ -300,7 +304,7 @@ class ResponseCache:
             self._emit(
                 CacheResponseEvent(
                     type=CacheResponseEventType.CACHE_BYPASS,
-                    key=self.generate_key(method, url, request_headers),
+                    key=base_key,
                     url=url,
                     timestamp=time.time(),
                     metadata={"reason": "status-not-cacheable", "status_code": status_code},
@@ -321,7 +325,7 @@ class ResponseCache:
             self._emit(
                 CacheResponseEvent(
                     type=CacheResponseEventType.CACHE_BYPASS,
-                    key=self.generate_key(method, url, request_headers),
+                    key=base_key,
                     url=url,
                     timestamp=time.time(),
                     metadata={"reason": "cache-control", "cache_control": cache_control},
@@ -334,7 +338,7 @@ class ResponseCache:
             self._emit(
                 CacheResponseEvent(
                     type=CacheResponseEventType.CACHE_BYPASS,
-                    key=self.generate_key(method, url, request_headers),
+                    key=base_key,
                     url=url,
                     timestamp=time.time(),
                     metadata={"reason": "vary-star"},
@@ -355,11 +359,16 @@ class ResponseCache:
             self._config.max_ttl_seconds,
         )
 
-        if expires_at <= now:
+        # Consider stale-while-revalidate/stale-if-error windows
+        stale_window = max(
+            directives.stale_while_revalidate or 0,
+            directives.stale_if_error or 0,
+        )
+        if expires_at + stale_window <= now:
             self._emit(
                 CacheResponseEvent(
                     type=CacheResponseEventType.CACHE_BYPASS,
-                    key=self.generate_key(method, url, request_headers, vary_list),
+                    key=base_key,
                     url=url,
                     timestamp=now,
                     metadata={"reason": "already-expired"},
@@ -384,13 +393,12 @@ class ResponseCache:
 
         cached_response = CachedResponse(metadata=metadata, body=body)
 
-        key = self.generate_key(method, url, request_headers, vary_list)
-        await self._store.set(key, cached_response)
+        await self._store.set(base_key, cached_response)
 
         self._emit(
             CacheResponseEvent(
                 type=CacheResponseEventType.CACHE_STORE,
-                key=key,
+                key=base_key,
                 url=url,
                 timestamp=now,
                 metadata={"expires_at": expires_at, "status_code": status_code},
@@ -407,7 +415,8 @@ class ResponseCache:
         request_headers: Optional[Dict[str, str]] = None,
     ) -> bool:
         """Revalidate a cached response (update expiration after 304 Not Modified)."""
-        key = self.generate_key(method, url, request_headers)
+        # Use base key without vary headers - consistent with store/lookup
+        key = self.generate_key(method, url)
         cached = await self._store.get(key)
 
         if not cached:
@@ -513,8 +522,10 @@ class ResponseCache:
         """Get configuration."""
         return self._config
 
-    async def get_stats(self) -> Dict:
+    async def get_stats(self):
         """Get store statistics."""
+        if hasattr(self._store, 'get_stats'):
+            return self._store.get_stats()
         return {"size": await self._store.size()}
 
     def on(self, listener: CacheResponseEventListener) -> Callable[[], None]:

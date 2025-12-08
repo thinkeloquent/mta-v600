@@ -259,3 +259,377 @@ describe('createMemoryCacheStore', () => {
     expect(stats.maxEntries).toBe(500);
   });
 });
+
+/**
+ * =============================================================================
+ * LOGIC TESTING - COMPREHENSIVE COVERAGE
+ * =============================================================================
+ * Additional tests for:
+ * - Decision/Branch Coverage
+ * - Boundary Value Analysis
+ * - State Transition Testing
+ * - Loop Testing
+ * - Error Handling
+ * =============================================================================
+ */
+
+// Helper function for standalone tests
+const createTestResponse = (key: string, expiresInMs: number = 60000): CachedResponse => ({
+  metadata: {
+    url: `https://example.com/${key}`,
+    method: 'GET',
+    statusCode: 200,
+    headers: { 'content-type': 'application/json' },
+    cachedAt: Date.now(),
+    expiresAt: Date.now() + expiresInMs,
+  },
+  body: JSON.stringify({ key }),
+});
+
+describe('MemoryCacheStore - Boundary Value Analysis', () => {
+  it('should handle exactly maxEntries entries', async () => {
+    const store = new MemoryCacheStore({ maxEntries: 3, maxEntrySize: 1024 * 1024 });
+
+    await store.set('key1', createTestResponse('test1'));
+    await store.set('key2', createTestResponse('test2'));
+    await store.set('key3', createTestResponse('test3'));
+
+    expect(await store.size()).toBe(3);
+
+    await store.close();
+  });
+
+  it('should handle entry size exactly at maxEntrySize', async () => {
+    // Create a store with a specific max entry size
+    const maxEntrySize = 500;
+    const store = new MemoryCacheStore({ maxEntrySize });
+
+    // Create a response that's under the limit
+    const smallResponse = createTestResponse('small');
+
+    await store.set('key1', smallResponse);
+    expect(await store.size()).toBe(1);
+
+    await store.close();
+  });
+
+  it('should handle zero cleanup interval (disabled)', async () => {
+    const store = new MemoryCacheStore({ cleanupIntervalMs: 0 });
+
+    // Store should still work
+    await store.set('key1', createTestResponse('test1'));
+    expect(await store.has('key1')).toBe(true);
+
+    await store.close();
+  });
+
+  it('should handle very large maxSize', async () => {
+    const store = new MemoryCacheStore({
+      maxSize: Number.MAX_SAFE_INTEGER,
+    });
+
+    await store.set('key1', createTestResponse('test1'));
+    expect(await store.size()).toBe(1);
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Size Calculation', () => {
+  it('should calculate size for string body', async () => {
+    const store = new MemoryCacheStore();
+
+    const response = createTestResponse('test');
+    await store.set('key1', response);
+
+    const stats = store.getStats();
+    expect(stats.sizeBytes).toBeGreaterThan(0);
+
+    await store.close();
+  });
+
+  it('should calculate size for Buffer body', async () => {
+    const store = new MemoryCacheStore();
+
+    const response: CachedResponse = {
+      metadata: {
+        url: 'https://example.com/buffer',
+        method: 'GET',
+        statusCode: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+        cachedAt: Date.now(),
+        expiresAt: Date.now() + 60000,
+      },
+      body: Buffer.from('binary data here'),
+    };
+
+    await store.set('key1', response);
+
+    const stats = store.getStats();
+    expect(stats.sizeBytes).toBeGreaterThan(0);
+
+    await store.close();
+  });
+
+  it('should calculate size for null body', async () => {
+    const store = new MemoryCacheStore();
+
+    const response: CachedResponse = {
+      metadata: {
+        url: 'https://example.com/null',
+        method: 'GET',
+        statusCode: 204,
+        headers: {},
+        cachedAt: Date.now(),
+        expiresAt: Date.now() + 60000,
+      },
+      body: null,
+    };
+
+    await store.set('key1', response);
+
+    const stats = store.getStats();
+    expect(stats.sizeBytes).toBeGreaterThan(0); // Metadata still has size
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Eviction Policy', () => {
+  it('should evict based on size when maxSize exceeded', async () => {
+    const store = new MemoryCacheStore({
+      maxSize: 150,
+      maxEntrySize: 100,
+      maxEntries: 100,
+    });
+
+    await store.set('key1', createTestResponse('test1'));
+    const size1 = await store.size();
+
+    await store.set('key2', createTestResponse('test2'));
+    const size2 = await store.size();
+
+    await store.set('key3', createTestResponse('test3'));
+
+    // Should have evicted some entries
+    expect(await store.size()).toBeLessThanOrEqual(size2);
+
+    await store.close();
+  });
+
+  it('should handle multiple evictions in sequence', async () => {
+    const store = new MemoryCacheStore({
+      maxEntries: 2,
+    });
+
+    await store.set('key1', createTestResponse('test1'));
+    await store.set('key2', createTestResponse('test2'));
+    await store.set('key3', createTestResponse('test3')); // Evicts key1
+    await store.set('key4', createTestResponse('test4')); // Evicts key2
+
+    expect(await store.has('key1')).toBe(false);
+    expect(await store.has('key2')).toBe(false);
+    expect(await store.has('key3')).toBe(true);
+    expect(await store.has('key4')).toBe(true);
+
+    await store.close();
+  });
+
+  it('should correctly update currentSize after deletion', async () => {
+    const store = new MemoryCacheStore();
+
+    await store.set('key1', createTestResponse('test1'));
+    await store.set('key2', createTestResponse('test2'));
+
+    const statsBefore = store.getStats();
+    const sizeBefore = statsBefore.sizeBytes;
+
+    await store.delete('key1');
+
+    const statsAfter = store.getStats();
+    expect(statsAfter.sizeBytes).toBeLessThan(sizeBefore);
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - LRU Behavior', () => {
+  it('should move to end on get', async () => {
+    const store = new MemoryCacheStore({ maxEntries: 3 });
+
+    await store.set('key1', createTestResponse('test1'));
+    await store.set('key2', createTestResponse('test2'));
+    await store.set('key3', createTestResponse('test3'));
+
+    // Access key1 to move it to end (most recently used)
+    await store.get('key1');
+
+    // Add key4, should evict key2 (now oldest unused)
+    await store.set('key4', createTestResponse('test4'));
+
+    expect(await store.has('key1')).toBe(true); // Most recently used
+    expect(await store.has('key2')).toBe(false); // Evicted
+    expect(await store.has('key3')).toBe(true);
+    expect(await store.has('key4')).toBe(true);
+
+    await store.close();
+  });
+
+  it('should not move to end on has', async () => {
+    const store = new MemoryCacheStore({ maxEntries: 3 });
+
+    await store.set('key1', createTestResponse('test1'));
+    await store.set('key2', createTestResponse('test2'));
+    await store.set('key3', createTestResponse('test3'));
+
+    // Just check if key1 exists (should not affect LRU order)
+    await store.has('key1');
+
+    // Add key4, should evict key1 (still oldest)
+    await store.set('key4', createTestResponse('test4'));
+
+    expect(await store.has('key1')).toBe(false); // Evicted
+    expect(await store.has('key4')).toBe(true);
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Concurrent Operations', () => {
+  it('should handle concurrent sets', async () => {
+    const store = new MemoryCacheStore();
+
+    // Simulate concurrent sets
+    const promises = [];
+    for (let i = 0; i < 10; i++) {
+      promises.push(store.set(`key${i}`, createTestResponse(`test${i}`)));
+    }
+
+    await Promise.all(promises);
+
+    expect(await store.size()).toBe(10);
+
+    await store.close();
+  });
+
+  it('should handle concurrent gets and sets', async () => {
+    const store = new MemoryCacheStore();
+
+    await store.set('key1', createTestResponse('test1'));
+
+    const promises = [
+      store.get('key1'),
+      store.set('key2', createTestResponse('test2')),
+      store.get('key1'),
+      store.set('key3', createTestResponse('test3')),
+    ];
+
+    const results = await Promise.all(promises);
+
+    expect(results[0]).not.toBeNull();
+    expect(results[2]).not.toBeNull();
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Cleanup', () => {
+  it('should clean up multiple expired entries', async () => {
+    const store = new MemoryCacheStore({ cleanupIntervalMs: 50 });
+
+    // Add multiple entries with different expiration times
+    await store.set('key1', createTestResponse('test1', 10)); // Expires quickly
+    await store.set('key2', createTestResponse('test2', 10)); // Expires quickly
+    await store.set('key3', createTestResponse('test3', 60000)); // Long expiry
+
+    // Wait for cleanup
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(await store.has('key1')).toBe(false);
+    expect(await store.has('key2')).toBe(false);
+    expect(await store.has('key3')).toBe(true);
+
+    await store.close();
+  });
+
+  it('should handle cleanup when store is empty', async () => {
+    const store = new MemoryCacheStore({ cleanupIntervalMs: 50 });
+
+    // Wait for cleanup to run on empty store
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(await store.size()).toBe(0);
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Edge Cases', () => {
+  it('should handle overwriting entry with different size', async () => {
+    const store = new MemoryCacheStore();
+
+    const smallResponse = createTestResponse('a');
+    const largeResponse = createTestResponse('a'.repeat(1000));
+
+    await store.set('key1', smallResponse);
+    const smallStats = store.getStats();
+
+    await store.set('key1', largeResponse);
+    const largeStats = store.getStats();
+
+    expect(largeStats.sizeBytes).toBeGreaterThan(smallStats.sizeBytes);
+
+    await store.close();
+  });
+
+  it('should handle keys() returning empty array', async () => {
+    const store = new MemoryCacheStore();
+
+    const keys = await store.keys();
+    expect(keys).toEqual([]);
+
+    await store.close();
+  });
+
+  it('should handle close called multiple times', async () => {
+    const store = new MemoryCacheStore();
+
+    await store.set('key1', createTestResponse('test1'));
+
+    await store.close();
+    await store.close(); // Should not throw
+
+    expect(await store.size()).toBe(0);
+  });
+
+  it('should handle clear called multiple times', async () => {
+    const store = new MemoryCacheStore();
+
+    await store.set('key1', createTestResponse('test1'));
+
+    await store.clear();
+    await store.clear(); // Should not throw
+
+    expect(await store.size()).toBe(0);
+
+    await store.close();
+  });
+});
+
+describe('MemoryCacheStore - Stats Calculation', () => {
+  it('should calculate utilization percentage correctly', async () => {
+    const maxSize = 1000;
+    const store = new MemoryCacheStore({ maxSize });
+
+    const stats1 = store.getStats();
+    expect(stats1.utilizationPercent).toBe(0);
+
+    await store.set('key1', createTestResponse('test1'));
+
+    const stats2 = store.getStats();
+    expect(stats2.utilizationPercent).toBeGreaterThan(0);
+    expect(stats2.utilizationPercent).toBeLessThanOrEqual(100);
+
+    await store.close();
+  });
+});

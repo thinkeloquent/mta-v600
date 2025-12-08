@@ -3,7 +3,6 @@ name = "fetch_proxy_dispatcher"
 version = "1.0.0"
 description = "Environment-aware proxy dispatcher for httpx"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_proxy_dispatcher", from = "src"}]
 

@@ -3,7 +3,6 @@ name = "fetch_retry"
 version = "1.0.0"
 description = "Standalone retry wrapper with exponential backoff and jitter support"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_retry", from = "src"}]
 

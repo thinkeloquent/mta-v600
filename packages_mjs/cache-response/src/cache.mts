@@ -133,14 +133,14 @@ export function mergeCacheResponseConfig(
  */
 export class ResponseCache {
   private readonly config: Required<CacheResponseConfig>;
-  private readonly store: CacheResponseStore;
+  private readonly cacheStore: CacheResponseStore;
   private readonly listeners: Set<CacheResponseEventListener> = new Set();
   private backgroundRevalidator?: BackgroundRevalidator;
   private revalidatingKeys: Set<string> = new Set();
 
   constructor(config?: CacheResponseConfig, store?: CacheResponseStore) {
     this.config = mergeCacheResponseConfig(config);
-    this.store = store ?? new MemoryCacheStore();
+    this.cacheStore = store ?? new MemoryCacheStore();
   }
 
   /**
@@ -190,8 +190,9 @@ export class ResponseCache {
       return { found: false };
     }
 
-    const key = this.generateKey(method, url, requestHeaders);
-    const cached = await this.store.get(key);
+    // Use base key without vary headers - vary matching is done after retrieval
+    const key = this.generateKey(method, url);
+    const cached = await this.cacheStore.get(key);
 
     if (!cached) {
       this.emit({
@@ -272,11 +273,14 @@ export class ResponseCache {
     body: Buffer | string | null,
     requestHeaders?: Record<string, string>
   ): Promise<boolean> {
+    // Use base key without vary headers - consistent across all methods
+    const baseKey = this.generateKey(method, url);
+
     // Check if method is cacheable
     if (!this.isCacheable(method)) {
       this.emit({
         type: 'cache:bypass',
-        key: this.generateKey(method, url, requestHeaders),
+        key: baseKey,
         url,
         timestamp: Date.now(),
         metadata: { reason: 'method-not-cacheable' },
@@ -288,7 +292,7 @@ export class ResponseCache {
     if (!isCacheableStatus(statusCode, this.config.cacheableStatuses)) {
       this.emit({
         type: 'cache:bypass',
-        key: this.generateKey(method, url, requestHeaders),
+        key: baseKey,
         url,
         timestamp: Date.now(),
         metadata: { reason: 'status-not-cacheable', statusCode },
@@ -308,7 +312,7 @@ export class ResponseCache {
     })) {
       this.emit({
         type: 'cache:bypass',
-        key: this.generateKey(method, url, requestHeaders),
+        key: baseKey,
         url,
         timestamp: Date.now(),
         metadata: { reason: 'cache-control', cacheControl },
@@ -321,7 +325,7 @@ export class ResponseCache {
     if (isVaryUncacheable(vary)) {
       this.emit({
         type: 'cache:bypass',
-        key: this.generateKey(method, url, requestHeaders),
+        key: baseKey,
         url,
         timestamp: Date.now(),
         metadata: { reason: 'vary-star' },
@@ -329,7 +333,7 @@ export class ResponseCache {
       return false;
     }
 
-    // Extract vary headers from request for key generation
+    // Extract vary headers from request for storage in metadata
     const varyList = parseVary(vary);
     const varyHeaders = requestHeaders ? extractVaryHeaders(requestHeaders, varyList) : undefined;
 
@@ -342,11 +346,15 @@ export class ResponseCache {
       this.config.maxTtlMs
     );
 
-    // Don't cache if already expired
-    if (expiresAt <= now) {
+    // Don't cache if already expired (but consider stale-while-revalidate/stale-if-error windows)
+    const staleWindow = Math.max(
+      (directives.staleWhileRevalidate ?? 0) * 1000,
+      (directives.staleIfError ?? 0) * 1000
+    );
+    if (expiresAt + staleWindow <= now) {
       this.emit({
         type: 'cache:bypass',
-        key: this.generateKey(method, url, requestHeaders, varyList),
+        key: baseKey,
         url,
         timestamp: now,
         metadata: { reason: 'already-expired' },
@@ -375,12 +383,11 @@ export class ResponseCache {
       body,
     };
 
-    const key = this.generateKey(method, url, requestHeaders, varyList);
-    await this.store.set(key, cachedResponse);
+    await this.cacheStore.set(baseKey, cachedResponse);
 
     this.emit({
       type: 'cache:store',
-      key,
+      key: baseKey,
       url,
       timestamp: now,
       metadata: { expiresAt, statusCode },
@@ -398,8 +405,9 @@ export class ResponseCache {
     responseHeaders?: Record<string, string>,
     requestHeaders?: Record<string, string>
   ): Promise<boolean> {
-    const key = this.generateKey(method, url, requestHeaders);
-    const cached = await this.store.get(key);
+    // Use base key without vary headers - consistent with store/lookup
+    const key = this.generateKey(method, url);
+    const cached = await this.cacheStore.get(key);
 
     if (!cached) {
       return false;
@@ -434,7 +442,7 @@ export class ResponseCache {
       body: cached.body,
     };
 
-    await this.store.set(key, updatedResponse);
+    await this.cacheStore.set(key, updatedResponse);
     this.revalidatingKeys.delete(key);
 
     this.emit({
@@ -452,8 +460,9 @@ export class ResponseCache {
    * Invalidate a cached response
    */
   async invalidate(method: string, url: string, requestHeaders?: Record<string, string>): Promise<boolean> {
-    const key = this.generateKey(method, url, requestHeaders);
-    const deleted = await this.store.delete(key);
+    // Use base key without vary headers - consistent with store/lookup
+    const key = this.generateKey(method, url);
+    const deleted = await this.cacheStore.delete(key);
 
     if (deleted) {
       this.emit({
@@ -506,7 +515,7 @@ export class ResponseCache {
    * Get store statistics
    */
   async getStats(): Promise<{ size: number }> {
-    return { size: await this.store.size() };
+    return { size: await this.cacheStore.size() };
   }
 
   /**
@@ -538,14 +547,14 @@ export class ResponseCache {
    * Clear all cached responses
    */
   async clear(): Promise<void> {
-    await this.store.clear();
+    await this.cacheStore.clear();
   }
 
   /**
    * Close the cache and release resources
    */
   async close(): Promise<void> {
-    await this.store.close();
+    await this.cacheStore.close();
     this.listeners.clear();
     this.revalidatingKeys.clear();
   }

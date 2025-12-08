@@ -2,6 +2,7 @@
 export default {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.mts'],
+  injectGlobals: true,
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.mjs$': '$1.mts',
   },

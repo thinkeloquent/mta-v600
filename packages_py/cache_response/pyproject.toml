@@ -3,7 +3,6 @@ name = "cache_response"
 version = "1.0.0"
 description = "RFC 7234 compliant HTTP response caching with Cache-Control, conditional requests, and stale-while-revalidate support"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "cache_response", from = "src"}]
 

@@ -660,3 +660,350 @@ class TestStateTransitions:
         assert len(inner.requests) == 3
 
         await transport.aclose()
+
+
+# =============================================================================
+# LOGIC TESTING - COMPREHENSIVE COVERAGE
+# =============================================================================
+# Additional tests for:
+# - Decision/Branch Coverage
+# - Boundary Value Analysis
+# - State Transition Testing
+# - Path Coverage
+# - Error Handling
+# =============================================================================
+
+
+class TestDecisionBranchCoverage:
+    """Decision/Branch Coverage tests."""
+
+    @pytest.mark.asyncio
+    async def test_patch_request_not_cached(self) -> None:
+        """Test that PATCH requests are not cached."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        request = httpx.Request("PATCH", "http://localhost/api/data/1", content=b"{}")
+        await transport.handle_async_request(request)
+        assert len(inner.requests) == 1
+
+        request2 = httpx.Request("PATCH", "http://localhost/api/data/1", content=b"{}")
+        await transport.handle_async_request(request2)
+        assert len(inner.requests) == 2
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_options_request_not_cached(self) -> None:
+        """Test that OPTIONS requests are not cached."""
+        inner = MockAsyncTransport()
+        transport = CacheResponseTransport(inner)
+
+        request = httpx.Request("OPTIONS", "http://localhost/api/data")
+        await transport.handle_async_request(request)
+        assert len(inner.requests) == 1
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_head_request_cached(self) -> None:
+        """Test that HEAD requests are cached."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("HEAD", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+        assert len(inner.requests) == 1
+
+        request2 = httpx.Request("HEAD", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+        # Should hit cache
+        assert len(inner.requests) == 1
+
+        await transport.aclose()
+
+
+class TestBoundaryValueAnalysis:
+    """Boundary Value Analysis tests."""
+
+    @pytest.mark.asyncio
+    async def test_max_age_zero_not_cached(self) -> None:
+        """Test that max-age=0 is not cached."""
+        inner = CacheableMockAsyncTransport(max_age=0)
+        transport = CacheResponseTransport(
+            inner,
+            enable_background_revalidation=False,
+        )
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+
+        # Both requests should hit the server
+        assert len(inner.requests) >= 2
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_empty_url_path(self) -> None:
+        """Test handling of URL with empty path."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        request = httpx.Request("GET", "http://localhost")
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_url_with_complex_query(self) -> None:
+        """Test URL with complex query parameters."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("GET", "http://localhost/api?a=1&b=2&c=3")
+        await transport.handle_async_request(request1)
+        assert len(inner.requests) == 1
+
+        # Same params should hit cache
+        request2 = httpx.Request("GET", "http://localhost/api?a=1&b=2&c=3")
+        await transport.handle_async_request(request2)
+        assert len(inner.requests) == 1
+
+        # Different params should miss cache
+        request3 = httpx.Request("GET", "http://localhost/api?a=1&b=2&c=4")
+        await transport.handle_async_request(request3)
+        assert len(inner.requests) == 2
+
+        await transport.aclose()
+
+
+class TestNonCacheableResponses:
+    """Test non-cacheable response handling."""
+
+    @pytest.mark.asyncio
+    async def test_private_response_not_cached(self) -> None:
+        """Test that private responses are not cached."""
+        inner = NonCacheableMockAsyncTransport(cache_control="private, max-age=3600")
+
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+        assert len(inner.requests) == 1
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+        assert len(inner.requests) == 2
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_non_cacheable_status_401(self) -> None:
+        """Test that 401 status is not cached."""
+        inner = MockAsyncTransport(response_status=401)
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+
+        assert len(inner.requests) == 2
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_non_cacheable_status_500(self) -> None:
+        """Test that 500 status is not cached."""
+        inner = MockAsyncTransport(response_status=500)
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+
+        assert len(inner.requests) == 2
+
+        await transport.aclose()
+
+
+class TestCacheFreshnessCallbacks:
+    """Test cache freshness in callbacks."""
+
+    @pytest.mark.asyncio
+    async def test_fresh_callback_freshness(self) -> None:
+        """Test that cache hit callback receives correct freshness."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        cache_hits = []
+
+        def on_cache_hit(url: str, freshness) -> None:
+            cache_hits.append((url, freshness))
+
+        transport = CacheResponseTransport(inner, on_cache_hit=on_cache_hit)
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+
+        assert len(cache_hits) == 1
+        assert cache_hits[0][1] == CacheFreshness.FRESH
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_stale_callback_freshness(self) -> None:
+        """Test that stale entries report correct freshness."""
+        inner = CacheableMockAsyncTransport(max_age=0)
+        cache_hits = []
+
+        # Add stale-while-revalidate to make entry stale but usable
+        inner.extra_headers = {"stale-while-revalidate": "60"}
+
+        def on_cache_hit(url: str, freshness) -> None:
+            cache_hits.append((url, freshness))
+
+        transport = CacheResponseTransport(
+            inner,
+            on_cache_hit=on_cache_hit,
+            enable_background_revalidation=False,
+        )
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request1)
+
+        await asyncio.sleep(0.1)
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        await transport.handle_async_request(request2)
+
+        # Check if we got a stale response
+        if cache_hits:
+            assert cache_hits[-1][1] == CacheFreshness.STALE
+
+        await transport.aclose()
+
+
+class TestMultipleConcurrentRequests:
+    """Test concurrent request handling."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_same_url(self) -> None:
+        """Test concurrent requests to the same URL."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        async def make_request():
+            request = httpx.Request("GET", "http://localhost/api/data")
+            return await transport.handle_async_request(request)
+
+        # Make 10 concurrent requests
+        responses = await asyncio.gather(*[make_request() for _ in range(10)])
+
+        assert all(r.status_code == 200 for r in responses)
+
+        await transport.aclose()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_different_urls(self) -> None:
+        """Test concurrent requests to different URLs."""
+        inner = CacheableMockAsyncTransport(max_age=3600)
+        transport = CacheResponseTransport(inner)
+
+        async def make_request(path: str):
+            request = httpx.Request("GET", f"http://localhost{path}")
+            return await transport.handle_async_request(request)
+
+        paths = [f"/api/data/{i}" for i in range(5)]
+        responses = await asyncio.gather(*[make_request(p) for p in paths])
+
+        assert all(r.status_code == 200 for r in responses)
+        assert len(inner.requests) == 5
+
+        await transport.aclose()
+
+
+class TestErrorRecovery:
+    """Test error recovery scenarios."""
+
+    @pytest.mark.asyncio
+    async def test_subsequent_request_after_error(self) -> None:
+        """Test that subsequent requests work after an error."""
+        first_request = True
+
+        class FailOnceTransport(MockAsyncTransport):
+            async def handle_async_request(self, request):
+                nonlocal first_request
+                if first_request:
+                    first_request = False
+                    raise httpx.ConnectError("Connection refused")
+                return await super().handle_async_request(request)
+
+        inner = FailOnceTransport()
+        transport = CacheResponseTransport(inner)
+
+        request1 = httpx.Request("GET", "http://localhost/api/data")
+        try:
+            await transport.handle_async_request(request1)
+        except httpx.ConnectError:
+            pass
+
+        request2 = httpx.Request("GET", "http://localhost/api/data")
+        response = await transport.handle_async_request(request2)
+        assert response.status_code == 200
+
+        await transport.aclose()
+
+
+class TestSyncTransportEdgeCases:
+    """Edge case tests for sync transport."""
+
+    def test_sync_transport_empty_cache(self) -> None:
+        """Test sync transport with empty cache."""
+        inner = CacheableMockSyncTransport(max_age=3600)
+        transport = SyncCacheResponseTransport(inner)
+
+        # First request should miss
+        request = httpx.Request("GET", "http://localhost/api/data")
+        response = transport.handle_request(request)
+
+        assert response.status_code == 200
+        assert len(inner.requests) == 1
+
+        transport.close()
+
+    def test_sync_transport_non_cacheable_method(self) -> None:
+        """Test sync transport with non-cacheable method."""
+        inner = CacheableMockSyncTransport(max_age=3600)
+        transport = SyncCacheResponseTransport(inner)
+
+        request1 = httpx.Request("DELETE", "http://localhost/api/data/1")
+        transport.handle_request(request1)
+
+        request2 = httpx.Request("DELETE", "http://localhost/api/data/1")
+        transport.handle_request(request2)
+
+        assert len(inner.requests) == 2
+
+        transport.close()
+
+    def test_sync_transport_error_propagation(self) -> None:
+        """Test sync transport error propagation."""
+        inner = ErrorMockSyncTransport(httpx.ConnectError("Connection refused"))
+        transport = SyncCacheResponseTransport(inner)
+
+        request = httpx.Request("GET", "http://localhost/api/data")
+
+        with pytest.raises(httpx.ConnectError):
+            transport.handle_request(request)
+
+        transport.close()

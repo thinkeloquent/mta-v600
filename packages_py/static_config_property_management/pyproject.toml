@@ -3,7 +3,6 @@ name = "static-config-property-management"
 version = "0.1.0"
 description = "A module for loading and managing static YAML configuration properties"
 authors = ["Your Name <your.email@example.com>"]
-readme = "README.md"
 packages = [{include = "static_config", from = "src"}]
 
 [tool.poetry.dependencies]

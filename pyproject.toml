@@ -3,7 +3,6 @@ name = "mta-v600"
 version = "0.1.0"
 description = "Multi-tenant/Multi-app FastAPI orchestrator"
 authors = ["Your Name <you@example.com>"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]

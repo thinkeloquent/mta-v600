@@ -3,7 +3,6 @@ name = "fetch_compose_retry"
 version = "1.0.0"
 description = "Retry transport wrapper for httpx's compose pattern"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_compose_retry", from = "src"}]
 

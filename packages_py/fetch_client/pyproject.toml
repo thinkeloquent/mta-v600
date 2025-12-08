@@ -3,7 +3,6 @@ name = "fetch_client"
 version = "1.0.0"
 description = "Enterprise-grade, latency-optimized HTTP client with streaming support"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_client", from = "src"}]
 

@@ -3,7 +3,6 @@ name = "cache_request"
 version = "1.0.0"
 description = "Request deduplication with Idempotency Keys and Request Coalescing (Singleflight) support"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "cache_request", from = "src"}]
 

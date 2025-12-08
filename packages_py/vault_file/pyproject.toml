@@ -3,7 +3,6 @@ name = "vault-file"
 version = "0.1.0"
 description = "A module for creating, serializing, and managing vault files"
 authors = ["Your Name <your.email@example.com>"]
-readme = "README.md"
 packages = [{include = "vault_file", from = "src"}]
 
 [tool.poetry.dependencies]

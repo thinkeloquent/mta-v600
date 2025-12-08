@@ -302,6 +302,37 @@ importers:
         specifier: ^7.0.0
         version: 7.16.0
 
+  packages_mjs/fetch-compose-cache-response:
+    dependencies:
+      '@internal/cache-response':
+        specifier: workspace:*
+        version: link:../cache-response
+    devDependencies:
+      '@babel/preset-env':
+        specifier: ^7.24.0
+        version: 7.28.5(@babel/core@7.28.5)
+      '@babel/preset-typescript':
+        specifier: ^7.24.0
+        version: 7.28.5(@babel/core@7.28.5)
+      '@types/jest':
+        specifier: ^29.5.12
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.1
+      babel-jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@babel/core@7.28.5)
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.19.1)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      undici:
+        specifier: ^7.0.0
+        version: 7.16.0
+
   packages_mjs/fetch-compose-connection-pool:
     dependencies:
       '@internal/connection-pool':

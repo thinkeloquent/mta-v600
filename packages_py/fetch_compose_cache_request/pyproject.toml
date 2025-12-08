@@ -3,7 +3,6 @@ name = "fetch_compose_cache_request"
 version = "1.0.0"
 description = "Cache request transport wrapper for httpx's compose pattern with Idempotency Keys and Request Coalescing"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_compose_cache_request", from = "src"}]
 

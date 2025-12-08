@@ -50,7 +50,16 @@ export class MemoryCacheStore implements CacheResponseStore {
     const keysToDelete: string[] = [];
 
     for (const [key, entry] of this.cache.entries()) {
-      if (entry.response.metadata.expiresAt <= now) {
+      const { metadata } = entry.response;
+      const { directives } = metadata;
+
+      // Calculate the total window including stale-while-revalidate and stale-if-error
+      const staleWindow = Math.max(
+        ((directives?.staleWhileRevalidate ?? 0) * 1000),
+        ((directives?.staleIfError ?? 0) * 1000)
+      );
+
+      if (metadata.expiresAt + staleWindow <= now) {
         keysToDelete.push(key);
       }
     }
@@ -120,8 +129,18 @@ export class MemoryCacheStore implements CacheResponseStore {
       return null;
     }
 
-    // Check if expired
-    if (entry.response.metadata.expiresAt <= Date.now()) {
+    const now = Date.now();
+    const { metadata } = entry.response;
+    const { directives } = metadata;
+
+    // Calculate the total window including stale-while-revalidate and stale-if-error
+    const staleWindow = Math.max(
+      ((directives?.staleWhileRevalidate ?? 0) * 1000),
+      ((directives?.staleIfError ?? 0) * 1000)
+    );
+
+    // Check if expired (including stale window)
+    if (metadata.expiresAt + staleWindow <= now) {
       this.deleteEntry(key);
       return null;
     }
@@ -159,8 +178,18 @@ export class MemoryCacheStore implements CacheResponseStore {
       return false;
     }
 
-    // Check if expired
-    if (entry.response.metadata.expiresAt <= Date.now()) {
+    const now = Date.now();
+    const { metadata } = entry.response;
+    const { directives } = metadata;
+
+    // Calculate the total window including stale-while-revalidate and stale-if-error
+    const staleWindow = Math.max(
+      ((directives?.staleWhileRevalidate ?? 0) * 1000),
+      ((directives?.staleIfError ?? 0) * 1000)
+    );
+
+    // Check if expired (including stale window)
+    if (metadata.expiresAt + staleWindow <= now) {
       this.deleteEntry(key);
       return false;
     }

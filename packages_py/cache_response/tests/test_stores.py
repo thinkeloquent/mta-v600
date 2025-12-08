@@ -237,3 +237,285 @@ class TestCreateMemoryCacheStore:
         stats = store.get_stats()
         assert stats.max_size_bytes == 50 * 1024 * 1024
         assert stats.max_entries == 500
+
+
+# =============================================================================
+# LOGIC TESTING - COMPREHENSIVE COVERAGE
+# =============================================================================
+# Additional tests for:
+# - Boundary Value Analysis
+# - State Transition Testing
+# - Loop Testing
+# - Error Handling
+# =============================================================================
+
+
+class TestBoundaryValueAnalysis:
+    @pytest.mark.asyncio
+    async def test_exactly_max_entries(self):
+        store = MemoryCacheStore(max_entries=3, max_entry_size=1024 * 1024)
+
+        await store.set("key1", create_response("test1"))
+        await store.set("key2", create_response("test2"))
+        await store.set("key3", create_response("test3"))
+
+        assert await store.size() == 3
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_zero_cleanup_interval(self):
+        store = MemoryCacheStore(cleanup_interval_seconds=0)
+
+        await store.set("key1", create_response("test1"))
+        assert await store.has("key1") is True
+
+        await store.close()
+
+
+class TestSizeCalculation:
+    @pytest.mark.asyncio
+    async def test_string_body_size(self):
+        store = MemoryCacheStore()
+        response = create_response("test")
+        await store.set("key1", response)
+
+        stats = store.get_stats()
+        assert stats.size_bytes > 0
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_bytes_body_size(self):
+        store = MemoryCacheStore()
+        response = CachedResponse(
+            metadata=CacheEntryMetadata(
+                url="https://example.com/buffer",
+                method="GET",
+                status_code=200,
+                headers={"content-type": "application/octet-stream"},
+                cached_at=time.time(),
+                expires_at=time.time() + 60,
+            ),
+            body=b"binary data here",
+        )
+        await store.set("key1", response)
+
+        stats = store.get_stats()
+        assert stats.size_bytes > 0
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_none_body_size(self):
+        store = MemoryCacheStore()
+        response = CachedResponse(
+            metadata=CacheEntryMetadata(
+                url="https://example.com/null",
+                method="GET",
+                status_code=204,
+                headers={},
+                cached_at=time.time(),
+                expires_at=time.time() + 60,
+            ),
+            body=None,
+        )
+        await store.set("key1", response)
+
+        stats = store.get_stats()
+        assert stats.size_bytes > 0
+
+        await store.close()
+
+
+class TestEvictionPolicy:
+    @pytest.mark.asyncio
+    async def test_multiple_evictions(self):
+        store = MemoryCacheStore(max_entries=2)
+
+        await store.set("key1", create_response("test1"))
+        await store.set("key2", create_response("test2"))
+        await store.set("key3", create_response("test3"))
+        await store.set("key4", create_response("test4"))
+
+        assert await store.has("key1") is False
+        assert await store.has("key2") is False
+        assert await store.has("key3") is True
+        assert await store.has("key4") is True
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_update_size_after_deletion(self):
+        store = MemoryCacheStore()
+
+        await store.set("key1", create_response("test1"))
+        await store.set("key2", create_response("test2"))
+
+        stats_before = store.get_stats()
+        size_before = stats_before.size_bytes
+
+        await store.delete("key1")
+
+        stats_after = store.get_stats()
+        assert stats_after.size_bytes < size_before
+
+        await store.close()
+
+
+class TestLruBehavior:
+    @pytest.mark.asyncio
+    async def test_move_to_end_on_get(self):
+        store = MemoryCacheStore(max_entries=3)
+
+        await store.set("key1", create_response("test1"))
+        await store.set("key2", create_response("test2"))
+        await store.set("key3", create_response("test3"))
+
+        # Access key1 to make it most recently used
+        await store.get("key1")
+
+        # Add key4, should evict key2
+        await store.set("key4", create_response("test4"))
+
+        assert await store.has("key1") is True
+        assert await store.has("key2") is False
+        assert await store.has("key3") is True
+        assert await store.has("key4") is True
+
+        await store.close()
+
+
+class TestConcurrentOperations:
+    @pytest.mark.asyncio
+    async def test_concurrent_sets(self):
+        store = MemoryCacheStore()
+
+        promises = [
+            store.set(f"key{i}", create_response(f"test{i}"))
+            for i in range(10)
+        ]
+
+        await asyncio.gather(*promises)
+
+        assert await store.size() == 10
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_gets_and_sets(self):
+        store = MemoryCacheStore()
+
+        await store.set("key1", create_response("test1"))
+
+        promises = [
+            store.get("key1"),
+            store.set("key2", create_response("test2")),
+            store.get("key1"),
+            store.set("key3", create_response("test3")),
+        ]
+
+        results = await asyncio.gather(*promises)
+
+        assert results[0] is not None
+        assert results[2] is not None
+
+        await store.close()
+
+
+class TestCleanup:
+    @pytest.mark.asyncio
+    async def test_cleanup_multiple_expired(self):
+        store = MemoryCacheStore(cleanup_interval_seconds=0.05)
+
+        await store.set("key1", create_response("test1", 0.01))
+        await store.set("key2", create_response("test2", 0.01))
+        await store.set("key3", create_response("test3", 60))
+
+        await asyncio.sleep(0.15)
+
+        assert await store.has("key1") is False
+        assert await store.has("key2") is False
+        assert await store.has("key3") is True
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_cleanup_empty_store(self):
+        store = MemoryCacheStore(cleanup_interval_seconds=0.05)
+
+        await asyncio.sleep(0.1)
+
+        assert await store.size() == 0
+
+        await store.close()
+
+
+class TestEdgeCases:
+    @pytest.mark.asyncio
+    async def test_overwrite_different_size(self):
+        store = MemoryCacheStore()
+
+        small_response = create_response("a")
+        large_response = create_response("a" * 1000)
+
+        await store.set("key1", small_response)
+        small_stats = store.get_stats()
+
+        await store.set("key1", large_response)
+        large_stats = store.get_stats()
+
+        assert large_stats.size_bytes > small_stats.size_bytes
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_keys_empty_array(self):
+        store = MemoryCacheStore()
+
+        keys = await store.keys()
+        assert keys == []
+
+        await store.close()
+
+    @pytest.mark.asyncio
+    async def test_close_multiple_times(self):
+        store = MemoryCacheStore()
+
+        await store.set("key1", create_response("test1"))
+
+        await store.close()
+        await store.close()
+
+        assert await store.size() == 0
+
+    @pytest.mark.asyncio
+    async def test_clear_multiple_times(self):
+        store = MemoryCacheStore()
+
+        await store.set("key1", create_response("test1"))
+
+        await store.clear()
+        await store.clear()
+
+        assert await store.size() == 0
+
+        await store.close()
+
+
+class TestStatsCalculation:
+    @pytest.mark.asyncio
+    async def test_utilization_percentage(self):
+        max_size = 1000
+        store = MemoryCacheStore(max_size=max_size)
+
+        stats1 = store.get_stats()
+        assert stats1.utilization_percent == 0
+
+        await store.set("key1", create_response("test1"))
+
+        stats2 = store.get_stats()
+        assert stats2.utilization_percent > 0
+        assert stats2.utilization_percent <= 100
+
+        await store.close()

@@ -59,6 +59,22 @@ type = "directory"
 url = "packages_py/cache_request"
 
 [[package]]
+name = "cache-response"
+version = "1.0.0"
+description = "RFC 7234 compliant HTTP response caching with Cache-Control, conditional requests, and stale-while-revalidate support"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.extras]
+redis = []
+
+[package.source]
+type = "directory"
+url = "packages_py/cache_response"
+
+[[package]]
 name = "certifi"
 version = "2025.11.12"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -179,6 +195,23 @@ httpx = "^0.28.0"
 [package.source]
 type = "directory"
 url = "packages_py/fetch_compose_cache_request"
+
+[[package]]
+name = "fetch-compose-cache-response"
+version = "1.0.0"
+description = "RFC 7234 HTTP cache response transport wrapper for httpx with Cache-Control, conditional requests, and stale-while-revalidate"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+cache_response = {path = "../cache_response", develop = true}
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_cache_response"
 
 [[package]]
 name = "fetch-compose-connection-pool"
@@ -1122,4 +1155,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "acaf532647b2b006c6d826fdd2be7311002892aee488dcb4b7ad68eb365bd360"
+content-hash = "dbc5d5ca1355844b6e7f8959740ef62f7aaca60f5b55ff25d3e78e4758e044cb"

@@ -3,7 +3,6 @@ name = "fetch_compose_cache_response"
 version = "1.0.0"
 description = "RFC 7234 HTTP cache response transport wrapper for httpx with Cache-Control, conditional requests, and stale-while-revalidate"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_compose_cache_response", from = "src"}]
 

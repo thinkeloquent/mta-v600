@@ -3,7 +3,6 @@ name = "fetch_compose_connection_pool"
 version = "1.0.0"
 description = "Connection pool HTTPX transport wrapper for managed connection pooling"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_compose_connection_pool", from = "src"}]
 

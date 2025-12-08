@@ -3,7 +3,6 @@ name = "fetch_rate_limiter"
 version = "1.0.0"
 description = "Standalone API rate limiter with queue management, priority scheduling, and distributed state support"
 authors = []
-readme = "README.md"
 license = "MIT"
 packages = [{include = "fetch_rate_limiter", from = "src"}]
 
