@@ -102,20 +102,20 @@ export function resolveAuthHeader(
 export function buildBody(
   options: RequestOptions,
   serializer: { serialize: (data: unknown) => string }
-): string | Buffer | null {
+): string | Buffer | undefined {
   if (options.body !== undefined) {
     if (typeof options.body === 'string' || Buffer.isBuffer(options.body)) {
       return options.body;
     }
     // ReadableStream is not directly supported - skip
-    return null;
+    return undefined;
   }
 
   if (options.json !== undefined) {
     return serializer.serialize(options.json);
   }
 
-  return null;
+  return undefined;
 }
 
 /**
@@ -124,7 +124,7 @@ export function buildBody(
 export interface UndiciRequestOptions {
   method: Dispatcher.HttpMethod;
   headers: Record<string, string>;
-  body?: string | Buffer | null;
+  body?: string | Buffer | undefined;
   signal?: AbortSignal;
   bodyTimeout?: number;
   headersTimeout?: number;

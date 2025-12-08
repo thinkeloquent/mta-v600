@@ -91,8 +91,9 @@ export function parseSSEEvent(text: string): SSEEvent | null {
   // Join data lines with newlines
   event.data = dataLines.join('\n');
 
-  // Return null if no data
-  if (!event.data && !event.event) {
+  // Return null if no data field was found at all (not even empty)
+  // Allow empty data if the data field was explicitly present
+  if (dataLines.length === 0 && !event.event && !event.id && !event.retry) {
     return null;
   }
 

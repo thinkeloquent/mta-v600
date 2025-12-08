@@ -145,7 +145,7 @@ export class BaseClient implements FetchClient {
     const method = options.method || 'POST';
     const url = buildUrl(this.config.baseUrl, path, options.query);
     const context = createRequestContext(method, path, options);
-    const undiciOptions = buildUndiciOptions(this.config, { ...options, path }, context);
+    const undiciOptions = buildUndiciOptions(this.config, { ...options, path, method }, context);
 
     // Set accept header for SSE
     undiciOptions.headers['accept'] = 'text/event-stream';
