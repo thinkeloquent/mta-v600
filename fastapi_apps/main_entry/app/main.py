@@ -132,45 +132,45 @@ async def startup_event():
     static_config_file = static_config_result.config_file if static_config_result else "N/A"
 
     print(f"""
-╔════════════════════════════════════════════════════════════╗
-║                  Main Entry FastAPI Server                 ║
-╠════════════════════════════════════════════════════════════╣
-║  Server running at: http://{settings.HOST}:{settings.PORT:<25}║
-║                                                            ║
-║  Build Info:                                               ║
-║    BUILD_ID:      {settings.BUILD_ID:<33}║
-║    BUILD_VERSION: {settings.BUILD_VERSION:<33}║
-║    GIT_COMMIT:    {settings.GIT_COMMIT:<33}║
-║                                                            ║
-║  Vault:                                                    ║
-║    Status: {vault_status:<41}║
-║    Keys loaded: {vault_keys:<36}║
-║                                                            ║
-║  Static Config:                                            ║
-║    Status: {static_config_status:<41}║
-║    APP_ENV: {static_config_env_name:<40}║
-║                                                            ║
-║  API Endpoints:                                            ║
-║    GET  /health              - Health check                ║
-║    GET  /api/fastapi         - API info                    ║
-║    GET  /api/fastapi/hello   - Hello endpoint              ║
-║    POST /api/fastapi/echo    - Echo endpoint               ║
-║    GET  /docs                - Swagger UI                  ║
-║    GET  /redoc               - ReDoc                       ║
-║                                                            ║
-║  Admin Endpoints:                                          ║
-║    GET  /healthz/admin/vault          - Vault status       ║
-║    GET  /healthz/admin/vault/keys     - Loaded keys        ║
-║    GET  /healthz/admin/loaded-config       - Config status ║
-║    GET  /healthz/admin/loaded-config/data  - Full config   ║
-║                                                            ║
-║  Provider Health Endpoints:                                ║
-║    GET  /healthz/providers/connection      - Providers list║
-║    GET  /healthz/providers/connection/:p   - Check provider║
-║                                                            ║
+╔════════════════════════════════════════════════════════════════╗
+║                  Main Entry FastAPI Server                     ║
+╠════════════════════════════════════════════════════════════════╣
+║  Server running at: http://{settings.HOST}:{settings.PORT:<25}
+║                                                            
+║  Build Info:                                               
+║    BUILD_ID:      {settings.BUILD_ID:<33}
+║    BUILD_VERSION: {settings.BUILD_VERSION:<33}
+║    GIT_COMMIT:    {settings.GIT_COMMIT:<33}
+║                                                            
+║  Vault:                                                    
+║    Status: {vault_status:<41}
+║    Keys loaded: {vault_keys:<36}
+║                                                            
+║  Static Config:                                            
+║    Status: {static_config_status:<41}
+║    APP_ENV: {static_config_env_name:<40}
+║                                                            
+║  API Endpoints:                                            
+║    GET  /health              - Health check                
+║    GET  /api/fastapi         - API info                    
+║    GET  /api/fastapi/hello   - Hello endpoint              
+║    POST /api/fastapi/echo    - Echo endpoint               
+║    GET  /docs                - Swagger UI                  
+║    GET  /redoc               - ReDoc                       
+║                                                            
+║  Admin Endpoints:                                          
+║    GET  /healthz/admin/vault          - Vault status       
+║    GET  /healthz/admin/vault/keys     - Loaded keys        
+║    GET  /healthz/admin/loaded-config       - Config status 
+║    GET  /healthz/admin/loaded-config/data  - Full config   
+║                                                            
+║  Provider Health Endpoints:                                
+║    GET  /healthz/providers/connection      - Providers list
+║    GET  /healthz/providers/connection/:p   - Check provider
+║                                                            
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
-║    GET  /                    - SPA with SSR config         ║
+║    GET  /                    - SPA with SSR config         
 ╚════════════════════════════════════════════════════════════╝
     """)
 

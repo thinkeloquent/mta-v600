@@ -9,6 +9,15 @@ import json
 from .types import AuthType, RequestContext
 
 
+def _mask_sensitive(value: Optional[str], visible_chars: int = 4) -> str:
+    """Mask sensitive value for safe logging."""
+    if value is None:
+        return "<None>"
+    if len(value) <= visible_chars:
+        return "*" * len(value)
+    return value[:visible_chars] + "*" * (len(value) - visible_chars)
+
+
 @dataclass
 class AuthConfig:
     """Authentication configuration."""
@@ -17,6 +26,15 @@ class AuthConfig:
     api_key: Optional[str] = None
     header_name: Optional[str] = None
     get_api_key_for_request: Optional[Callable[[RequestContext], Optional[str]]] = None
+
+    def __repr__(self) -> str:
+        """Safe repr that masks api_key."""
+        return (
+            f"AuthConfig(type={self.type!r}, "
+            f"api_key={_mask_sensitive(self.api_key)!r}, "
+            f"header_name={self.header_name!r}, "
+            f"has_callback={self.get_api_key_for_request is not None})"
+        )
 
 
 @dataclass
