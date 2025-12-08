@@ -58,20 +58,20 @@ class ConfigStore {
    * Find the config file path based on APP_ENV
    */
   _findConfigPath(basePath, appEnv) {
-    const envSpecific = path.join(basePath, `server.${appEnv}.yaml`);
-    if (existsSync(envSpecific)) {
-      logger.debug(`Using environment-specific config: ${envSpecific}`);
-      return envSpecific;
-    }
+    const potentialConfigs = [
+      path.join(basePath, `server.${appEnv}.yaml`),
+      path.join(basePath, "server.yaml"),
+    ];
 
-    const defaultPath = path.join(basePath, "server.yaml");
-    if (existsSync(defaultPath)) {
-      logger.debug(`Using default config: ${defaultPath}`);
-      return defaultPath;
+    for (const configPath of potentialConfigs) {
+      if (existsSync(configPath)) {
+        logger.debug(`Found config file: ${configPath}`);
+        return configPath;
+      }
     }
 
     throw new Error(
-      `No config file found. Tried: ${envSpecific}, ${defaultPath}`
+      `No config file found. Searched in: ${potentialConfigs.join(", ")}`
     );
   }
 

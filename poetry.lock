@@ -30,6 +30,35 @@ typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 trio = ["trio (>=0.31.0)", "trio (>=0.32.0)"]
 
 [[package]]
+name = "cache-dsn"
+version = "1.0.0"
+description = "Standalone DNS/service discovery cache with TTL, health-aware invalidation, and pluggable backends"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "packages_py/cache_dsn"
+
+[[package]]
+name = "cache-request"
+version = "1.0.0"
+description = "Request deduplication with Idempotency Keys and Request Coalescing (Singleflight) support"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.extras]
+redis = []
+
+[package.source]
+type = "directory"
+url = "packages_py/cache_request"
+
+[[package]]
 name = "certifi"
 version = "2025.11.12"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -66,6 +95,19 @@ files = [
 ]
 
 [[package]]
+name = "connection-pool"
+version = "1.0.0"
+description = "Standalone HTTP connection pool with configurable limits, health tracking, and statistics"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "packages_py/connection_pool"
+
+[[package]]
 name = "fastapi"
 version = "0.115.14"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -84,6 +126,155 @@ typing-extensions = ">=4.8.0"
 [package.extras]
 all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=3.1.5)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.18)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
 standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
+
+[[package]]
+name = "fetch-client"
+version = "1.0.0"
+description = "Enterprise-grade, latency-optimized HTTP client with streaming support"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+httpx = "^0.28.0"
+
+[package.extras]
+fastapi = []
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_client"
+
+[[package]]
+name = "fetch-compose-cache-dsn"
+version = "1.0.0"
+description = "DNS cache transport wrapper for httpx's compose pattern"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+cache_dsn = {path = "../cache_dsn", develop = true}
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_cache_dsn"
+
+[[package]]
+name = "fetch-compose-cache-request"
+version = "1.0.0"
+description = "Cache request transport wrapper for httpx's compose pattern with Idempotency Keys and Request Coalescing"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+cache_request = {path = "../cache_request", develop = true}
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_cache_request"
+
+[[package]]
+name = "fetch-compose-connection-pool"
+version = "1.0.0"
+description = "Connection pool HTTPX transport wrapper for managed connection pooling"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+connection_pool = {path = "../connection_pool", develop = true}
+httpx = ">=0.24.0,<1.0.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_connection_pool"
+
+[[package]]
+name = "fetch-compose-rate-limiter"
+version = "1.0.0"
+description = "Rate limiter transport wrapper for httpx's compose pattern"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+fetch_rate_limiter = {path = "../fetch_rate_limiter", develop = true}
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_rate_limiter"
+
+[[package]]
+name = "fetch-compose-retry"
+version = "1.0.0"
+description = "Retry transport wrapper for httpx's compose pattern"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+fetch_retry = {path = "../fetch_retry", develop = true}
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_compose_retry"
+
+[[package]]
+name = "fetch-proxy-dispatcher"
+version = "1.0.0"
+description = "Environment-aware proxy dispatcher for httpx"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.dependencies]
+httpx = "^0.28.0"
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_proxy_dispatcher"
+
+[[package]]
+name = "fetch-rate-limiter"
+version = "1.0.0"
+description = "Standalone API rate limiter with queue management, priority scheduling, and distributed state support"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.extras]
+redis = []
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_rate_limiter"
+
+[[package]]
+name = "fetch-retry"
+version = "1.0.0"
+description = "Standalone retry wrapper with exponential backoff and jitter support"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "packages_py/fetch_retry"
 
 [[package]]
 name = "h11"
@@ -931,4 +1122,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "81c5fd0594df9cd259a9adca2f9b0bfaa0b3f939c345aa032a6059bb2e1e1d43"
+content-hash = "acaf532647b2b006c6d826fdd2be7311002892aee488dcb4b7ad68eb365bd360"

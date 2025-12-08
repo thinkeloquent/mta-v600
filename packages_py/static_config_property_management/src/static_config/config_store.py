@@ -54,18 +54,19 @@ class ConfigStore:
 
     def _find_config_path(self, base_path: Path, app_env: str) -> Path:
         """Find the configuration file path based on APP_ENV."""
-        env_specific = base_path / f"server.{app_env}.yaml"
-        if env_specific.exists():
-            logger.debug(f"Using environment-specific config: {env_specific}")
-            return env_specific
+        # List of potential config files, in order of priority
+        potential_configs = [
+            base_path / f"server.{app_env}.yaml",
+            base_path / "server.yaml",
+        ]
 
-        default = base_path / "server.yaml"
-        if default.exists():
-            logger.debug(f"Using default config: {default}")
-            return default
+        for config_path in potential_configs:
+            if config_path.exists():
+                logger.debug(f"Found config file: {config_path}")
+                return config_path
 
         raise FileNotFoundError(
-            f"No config file found. Tried: {env_specific}, {default}"
+            f"No config file found. Searched in: {[str(p) for p in potential_configs]}"
         )
 
     def _parse_yaml(self, file_path: Path) -> Dict[str, Any]:
