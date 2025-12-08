@@ -41,9 +41,10 @@ install_hooks() {
     cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 #!/bin/bash
 #
-# Pre-commit hook: Sync poetry local packages
+# Pre-commit hook: Multiple checks
 #
-# This ensures that packages_py/ changes are reflected in pyproject.toml
+# 1. Update COMMIT file with parent (HEAD) commit hash
+# 2. Ensure packages_py/ changes are reflected in pyproject.toml
 #
 
 set -e
@@ -51,16 +52,45 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Check if sync script exists
+# =============================================================================
+# STEP 1: Update COMMIT file with parent hash
+# =============================================================================
+# This updates the COMMIT file with the current HEAD hash (which becomes the
+# parent of the new commit). The COMMIT file is auto-staged.
+
+COMMIT_FILE="${ROOT_DIR}/COMMIT"
+
+# Get current HEAD hash (this will be the parent of the new commit)
+PARENT_HASH="$(git rev-parse HEAD 2>/dev/null || echo 'initial')"
+
+# Check if COMMIT file exists and has the current hash
+UPDATE_COMMIT=true
+if [ -f "${COMMIT_FILE}" ]; then
+    EXISTING_HASH="$(cat "${COMMIT_FILE}" | tr -d '[:space:]')"
+    if [ "${EXISTING_HASH}" = "${PARENT_HASH}" ]; then
+        UPDATE_COMMIT=false
+    fi
+fi
+
+if [ "$UPDATE_COMMIT" = true ]; then
+    echo "${PARENT_HASH}" > "${COMMIT_FILE}"
+    git add "${COMMIT_FILE}"
+    echo "[pre-commit] Updated COMMIT file with parent hash: ${PARENT_HASH:0:8}"
+fi
+
+# =============================================================================
+# STEP 2: Check packages_py/ sync with pyproject.toml
+# =============================================================================
+
 SYNC_SCRIPT="$ROOT_DIR/.bin/sync-poetry-local-packages.py"
 if [[ ! -f "$SYNC_SCRIPT" ]]; then
-    echo "Warning: sync-poetry-local-packages.py not found, skipping package sync"
+    echo "[pre-commit] Warning: sync-poetry-local-packages.py not found, skipping package sync"
     exit 0
 fi
 
 # Check if any packages_py files are staged
 if git diff --cached --name-only | grep -q "^packages_py/"; then
-    echo "Detected changes in packages_py/, checking pyproject.toml sync..."
+    echo "[pre-commit] Detected changes in packages_py/, checking pyproject.toml sync..."
 
     # Run sync in dry-run mode to check
     OUTPUT=$(python3 "$SYNC_SCRIPT" --dry-run 2>&1)
@@ -87,10 +117,20 @@ EOF
     chmod +x "$HOOKS_DIR/pre-commit"
     log_info "Installed pre-commit hook"
 
+    # Remove old hooks if they exist (from previous versions)
+    for old_hook in pre-push post-commit; do
+        if [ -f "$HOOKS_DIR/$old_hook" ]; then
+            rm "$HOOKS_DIR/$old_hook"
+            log_info "Removed old $old_hook hook"
+        fi
+    done
+
     log_info "Git hooks installed successfully!"
     echo ""
     echo "Installed hooks:"
-    echo "  - pre-commit: Checks packages_py/ sync with pyproject.toml"
+    echo "  - pre-commit:"
+    echo "      1. Updates COMMIT file with parent hash (auto-staged)"
+    echo "      2. Checks packages_py/ sync with pyproject.toml"
 }
 
 remove_hooks() {
