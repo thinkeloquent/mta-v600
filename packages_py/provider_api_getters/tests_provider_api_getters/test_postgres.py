@@ -11,7 +11,7 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from provider_api_getters.api_token.postgres import PostgresApiToken, DEFAULT_CONNECTION_URL_ENV_VAR
-from tests.conftest import MockConfigStore
+from .conftest import MockConfigStore
 
 # Enable debug logging for tests
 logging.getLogger("provider_api_getters").setLevel(logging.DEBUG)

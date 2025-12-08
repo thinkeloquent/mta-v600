@@ -356,7 +356,7 @@ class TestBaseApiToken:
                 }
             }
         }
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -368,7 +368,7 @@ class TestBaseApiToken:
 
     def test_get_provider_config_with_missing_config(self, caplog):
         """Test _get_provider_config with missing configuration."""
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore({"providers": {}})
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -381,7 +381,7 @@ class TestBaseApiToken:
     def test_get_provider_config_caching(self, caplog):
         """Test that _get_provider_config caches results."""
         config = {"providers": {"test": {"key": "value"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -415,7 +415,7 @@ class TestBaseApiToken:
     def test_get_base_url_from_config(self, caplog):
         """Test _get_base_url when base_url is in config."""
         config = {"providers": {"test": {"base_url": "https://api.test.com"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -430,7 +430,7 @@ class TestBaseApiToken:
         clean_env(TEST_BASE_URL="https://env.test.com")
 
         config = {"providers": {"test": {"env_base_url": "TEST_BASE_URL"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -443,7 +443,7 @@ class TestBaseApiToken:
     def test_get_base_url_env_not_set(self, caplog, clean_env):
         """Test _get_base_url when env var is not set."""
         config = {"providers": {"test": {"env_base_url": "UNSET_VAR"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -455,7 +455,7 @@ class TestBaseApiToken:
 
     def test_get_base_url_nothing_configured(self, caplog):
         """Test _get_base_url when nothing is configured."""
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore({"providers": {"test": {}}})
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -470,7 +470,7 @@ class TestBaseApiToken:
         clean_env(TEST_TOKEN="my-secret-token")
 
         config = {"providers": {"test": {"env_api_key": "TEST_TOKEN"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -484,7 +484,7 @@ class TestBaseApiToken:
     def test_lookup_env_api_key_not_found(self, caplog, clean_env):
         """Test _lookup_env_api_key when key is not found."""
         config = {"providers": {"test": {"env_api_key": "MISSING_TOKEN"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -496,7 +496,7 @@ class TestBaseApiToken:
 
     def test_lookup_env_api_key_no_config(self, caplog):
         """Test _lookup_env_api_key when no env_api_key configured."""
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore({"providers": {"test": {}}})
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -509,7 +509,7 @@ class TestBaseApiToken:
     def test_health_endpoint_from_config(self, caplog):
         """Test health_endpoint when configured in config."""
         config = {"providers": {"test": {"health_endpoint": "/v2/health"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -521,7 +521,7 @@ class TestBaseApiToken:
 
     def test_health_endpoint_default(self, caplog):
         """Test health_endpoint uses default when not configured."""
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore({"providers": {"test": {}}})
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -536,7 +536,7 @@ class TestBaseApiToken:
         clean_env(TEST_TOKEN="request-token")
 
         config = {"providers": {"test": {"env_api_key": "TEST_TOKEN"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -561,7 +561,7 @@ class TestBaseApiToken:
                 }
             }
         }
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -578,7 +578,7 @@ class TestBaseApiToken:
         clean_env(TEST_TOKEN="valid-token")
 
         config = {"providers": {"test": {"env_api_key": "TEST_TOKEN"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -590,7 +590,7 @@ class TestBaseApiToken:
     def test_validate_with_missing_credentials(self, caplog, clean_env):
         """Test validate detects missing credentials."""
         config = {"providers": {"test": {"base_url": "https://api.test.com"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 
@@ -613,7 +613,7 @@ class TestBaseApiToken:
                     placeholder_message="Not implemented"
                 )
 
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore({
             "providers": {
                 "placeholder": {"base_url": "https://placeholder.com"}
@@ -629,7 +629,7 @@ class TestBaseApiToken:
     def test_clear_cache(self, caplog):
         """Test clear_cache resets the config cache."""
         config = {"providers": {"test": {"key": "value"}}}
-        from tests.conftest import MockConfigStore
+        from .conftest import MockConfigStore
         mock_store = MockConfigStore(config)
         token = ConcreteApiToken(config_store=mock_store)
 

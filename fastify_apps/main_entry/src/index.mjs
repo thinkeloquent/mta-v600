@@ -112,9 +112,10 @@ async function mainEntryPlugin(fastify, options) {
       .send({ error: "Frontend not built. Run: pnpm build" });
   });
 
-  // SPA fallback
+  // SPA fallback - serve index.html for all non-API routes
   fastify.setNotFoundHandler(async (request, reply) => {
-    if (request.url.startsWith("/api/")) {
+    // API routes should return 404, not the SPA
+    if (request.url.startsWith("/api/") || request.url.startsWith("/healthz/")) {
       return reply.status(404).send({ error: "Not found" });
     }
     if (indexHtml) {

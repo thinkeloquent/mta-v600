@@ -10,7 +10,7 @@ import logging
 import pytest
 
 from provider_api_getters.api_token.github import GithubApiToken, GITHUB_FALLBACK_ENV_VARS
-from tests.conftest import MockConfigStore
+from .conftest import MockConfigStore
 
 # Enable debug logging for tests
 logging.getLogger("provider_api_getters").setLevel(logging.DEBUG)

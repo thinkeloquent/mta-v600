@@ -9,7 +9,7 @@ import logging
 import pytest
 
 from provider_api_getters.api_token.gemini_openai import GeminiOpenAIApiToken
-from tests.conftest import MockConfigStore
+from .conftest import MockConfigStore
 
 # Enable debug logging for tests
 logging.getLogger("provider_api_getters").setLevel(logging.DEBUG)

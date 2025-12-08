@@ -20,12 +20,13 @@ VENV_DIR := $(MAKEFILE_DIR).venv
 PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
 UVICORN := $(if $(wildcard $(VENV_DIR)/bin/uvicorn),$(VENV_DIR)/bin/uvicorn,uvicorn)
 
-.PHONY: help install dev dev-parallel dev-frontend dev-fastify dev-fastapi build test lint format clean clean-ports docker-up docker-down
+.PHONY: help setup install dev dev-parallel dev-frontend dev-fastify dev-fastapi build test lint format clean clean-ports docker-up docker-down
 
 help:
 	@echo "MTA-v600 Development Commands"
 	@echo ""
 	@echo "Setup:"
+	@echo "  make setup         - Run setup scripts, then install dependencies"
 	@echo "  make install       - Install all dependencies (pnpm + poetry)"
 	@echo ""
 	@echo "Development:"
@@ -53,6 +54,19 @@ help:
 	@echo "  make clean         - Clean build artifacts"
 
 # Setup
+setup:
+	@echo "Running setup scripts..."
+	@bash .bin/pyproject-remove-readme-line.sh || true
+	@bash .bin/git-hook-setup.sh || true
+	@python .bin/fix_pytest_test_namespaces.py || true
+	@python .bin/sync-poetry-local-packages.py || true
+	@bash .bin/ts-apply-noImplicitAny.sh || true
+	@echo "Installing dependencies..."
+	pnpm install
+	poetry lock --no-update
+	poetry install --no-root
+	@echo "Setup complete!"
+
 install:
 	pnpm install
 	poetry install --no-root

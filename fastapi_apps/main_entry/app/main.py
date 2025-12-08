@@ -216,8 +216,8 @@ async def serve_root():
 @app.get("/{path:path}", response_class=HTMLResponse)
 async def spa_fallback(path: str):
     """SPA fallback - serve index.html for client-side routing."""
-    # Don't intercept API, docs, or static file requests
-    if path.startswith(("api/", "docs", "redoc", "openapi.json", "assets/")):
+    # Don't intercept API, docs, healthz, or static file requests
+    if path.startswith(("api/", "docs", "redoc", "openapi.json", "assets/", "healthz/")):
         return HTMLResponse(content="Not found", status_code=404)
 
     # Try to serve static file first

@@ -1,8 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type AppConfig, getApiBase, getConfig } from './config';
 import ProviderStatus from './pages/ProviderStatus';
 
 type Page = 'home' | 'status';
+
+// Route configuration
+const ROUTES: Record<string, Page> = {
+  '/': 'home',
+  '/health/status': 'status',
+};
+
+const PAGE_PATHS: Record<Page, string> = {
+  home: '/',
+  status: '/health/status',
+};
+
+function getPageFromPath(pathname: string): Page {
+  return ROUTES[pathname] || 'home';
+}
 
 interface HelloResponse {
   message: string;
@@ -22,7 +37,7 @@ interface ApiInfo {
 }
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [currentPage, setCurrentPage] = useState<Page>(() => getPageFromPath(window.location.pathname));
   const [config] = useState<AppConfig>(getConfig);
   const apiBase = getApiBase();
 
@@ -33,6 +48,22 @@ function App() {
   const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Navigate to a page and update URL
+  const navigateTo = useCallback((page: Page) => {
+    const path = PAGE_PATHS[page];
+    window.history.pushState({}, '', path);
+    setCurrentPage(page);
+  }, []);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPage(getPageFromPath(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Fetch API info on mount
   useEffect(() => {
@@ -99,7 +130,7 @@ function App() {
             <span className={`font-bold text-${primaryColor}-600`}>{config.appName}</span>
             <div className="flex gap-1">
               <button
-                onClick={() => setCurrentPage('home')}
+                onClick={() => navigateTo('home')}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   currentPage === 'home'
                     ? `bg-${primaryColor}-100 text-${primaryColor}-700`
@@ -109,7 +140,7 @@ function App() {
                 Home
               </button>
               <button
-                onClick={() => setCurrentPage('status')}
+                onClick={() => navigateTo('status')}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   currentPage === 'status'
                     ? `bg-${primaryColor}-100 text-${primaryColor}-700`

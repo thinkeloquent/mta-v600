@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getApiBase } from '../config';
 
 interface ProviderConnectionResponse {
   provider: string;
@@ -156,8 +155,10 @@ function SummaryStats({ providers }: { providers: ProviderStatus[] }) {
   );
 }
 
+// API endpoint for provider connection health checks (not under apiBase)
+const HEALTHZ_API = '/healthz/providers/connection';
+
 export function ProviderStatus() {
-  const apiBase = getApiBase();
   const [providersList, setProvidersList] = useState<string[]>([]);
   const [providerStatuses, setProviderStatuses] = useState<Map<string, ProviderStatus>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export function ProviderStatus() {
 
   const fetchProvidersList = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/healthz/providers/connection`);
+      const res = await fetch(HEALTHZ_API);
       if (!res.ok) throw new Error(`Failed to fetch providers list: ${res.status}`);
       const data: ProvidersListResponse = await res.json();
       setProvidersList(data.providers);
@@ -175,53 +176,50 @@ export function ProviderStatus() {
       setError(err instanceof Error ? err.message : 'Failed to fetch providers list');
       return [];
     }
-  }, [apiBase]);
+  }, []);
 
-  const checkProvider = useCallback(
-    async (providerName: string) => {
-      // Set loading state for this provider
+  const checkProvider = useCallback(async (providerName: string) => {
+    // Set loading state for this provider
+    setProviderStatuses((prev) => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(providerName);
+      newMap.set(providerName, {
+        provider: providerName,
+        status: existing?.status || 'error',
+        latency_ms: existing?.latency_ms || null,
+        message: existing?.message || null,
+        error: existing?.error || null,
+        timestamp: existing?.timestamp || new Date().toISOString(),
+        loading: true,
+      });
+      return newMap;
+    });
+
+    try {
+      const res = await fetch(`${HEALTHZ_API}/${providerName}`);
+      const data: ProviderConnectionResponse = await res.json();
+
       setProviderStatuses((prev) => {
         const newMap = new Map(prev);
-        const existing = newMap.get(providerName);
+        newMap.set(providerName, { ...data, loading: false });
+        return newMap;
+      });
+    } catch (err) {
+      setProviderStatuses((prev) => {
+        const newMap = new Map(prev);
         newMap.set(providerName, {
           provider: providerName,
-          status: existing?.status || 'error',
-          latency_ms: existing?.latency_ms || null,
-          message: existing?.message || null,
-          error: existing?.error || null,
-          timestamp: existing?.timestamp || new Date().toISOString(),
-          loading: true,
+          status: 'error',
+          latency_ms: null,
+          message: null,
+          error: err instanceof Error ? err.message : 'Failed to check provider',
+          timestamp: new Date().toISOString(),
+          loading: false,
         });
         return newMap;
       });
-
-      try {
-        const res = await fetch(`${apiBase}/healthz/providers/connection/${providerName}`);
-        const data: ProviderConnectionResponse = await res.json();
-
-        setProviderStatuses((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(providerName, { ...data, loading: false });
-          return newMap;
-        });
-      } catch (err) {
-        setProviderStatuses((prev) => {
-          const newMap = new Map(prev);
-          newMap.set(providerName, {
-            provider: providerName,
-            status: 'error',
-            latency_ms: null,
-            message: null,
-            error: err instanceof Error ? err.message : 'Failed to check provider',
-            timestamp: new Date().toISOString(),
-            loading: false,
-          });
-          return newMap;
-        });
-      }
-    },
-    [apiBase],
-  );
+    }
+  }, []);
 
   const checkAllProviders = useCallback(
     async (providers: string[]) => {
@@ -371,7 +369,7 @@ export function ProviderStatus() {
           <p>
             API Endpoint:{' '}
             <code className="bg-gray-200 px-2 py-1 rounded">
-              {apiBase}/healthz/providers/connection
+              {HEALTHZ_API}
             </code>
           </p>
           <p className="mt-1">Auto-refreshes every 30 seconds</p>
