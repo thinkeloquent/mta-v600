@@ -16,7 +16,8 @@ from typing import Optional, Dict, Any, Type
 
 from .config import get_app_env, Environment
 
-logger = logging.getLogger(__name__)
+# Configure logger for factory module
+logger = logging.getLogger("fetch_proxy_dispatcher.factory")
 
 
 def _mask_proxy_url(url: str | None) -> str:
@@ -92,26 +93,27 @@ class ProxyDispatcherFactory:
         self._config = config or FactoryConfig()
         self._adapter = self._adapters[adapter]()
 
-        # Log factory initialization in development mode
-        if _is_debug_mode():
-            proxy_urls_str = "None"
-            if self._config.proxy_urls:
-                proxy_urls_str = ", ".join(
-                    f"{k}={_mask_proxy_url(v)}"
-                    for k, v in self._config.proxy_urls.__dict__.items()
-                    if v is not None
-                )
-            agent_proxy_str = "None"
-            if self._config.agent_proxy:
-                agent_proxy_str = (
-                    f"http={_mask_proxy_url(self._config.agent_proxy.http_proxy)}, "
-                    f"https={_mask_proxy_url(self._config.agent_proxy.https_proxy)}"
-                )
-            logger.info(
-                f"[ProxyDispatcherFactory] initialized: adapter={adapter}, "
-                f"proxy_urls=[{proxy_urls_str}], agent_proxy=[{agent_proxy_str}], "
-                f"default_env={self._config.default_environment}"
+        # Log factory initialization - always log at debug level
+        proxy_urls_str = "None"
+        if self._config.proxy_urls:
+            proxy_urls_str = ", ".join(
+                f"{k}={_mask_proxy_url(v)}"
+                for k, v in self._config.proxy_urls.items()
             )
+        agent_proxy_str = "None"
+        if self._config.agent_proxy:
+            agent_proxy_str = (
+                f"http={_mask_proxy_url(self._config.agent_proxy.http_proxy)}, "
+                f"https={_mask_proxy_url(self._config.agent_proxy.https_proxy)}"
+            )
+        logger.debug(
+            f"ProxyDispatcherFactory.__init__: adapter={adapter}, "
+            f"proxy_urls=[{proxy_urls_str}], agent_proxy=[{agent_proxy_str}], "
+            f"default_env={self._config.default_environment}, "
+            f"cert={self._config.cert is not None}, "
+            f"ca_bundle={self._config.ca_bundle}, "
+            f"cert_verify={self._config.cert_verify}"
+        )
 
     def _resolve_proxy_url(self, environment: Optional[str] = None) -> Optional[str]:
         """
@@ -127,6 +129,11 @@ class ProxyDispatcherFactory:
         Returns:
             Resolved proxy URL or None.
         """
+        logger.debug(
+            f"_resolve_proxy_url: environment_arg={environment!r}, "
+            f"default_environment={self._config.default_environment!r}"
+        )
+
         # Priority 1: Agent proxy
         if self._config.agent_proxy:
             agent = (
@@ -134,12 +141,19 @@ class ProxyDispatcherFactory:
                 or self._config.agent_proxy.http_proxy
             )
             if agent:
+                logger.debug(f"_resolve_proxy_url: Using agent_proxy={_mask_proxy_url(agent)}")
                 return agent
 
         # Priority 2: Environment-specific
         env = environment or self._config.default_environment or get_app_env()
+        logger.debug(f"_resolve_proxy_url: Resolved environment={env!r}")
+
         if self._config.proxy_urls:
-            return self._config.proxy_urls.get(env)
+            result = self._config.proxy_urls.get(env)
+            logger.debug(f"_resolve_proxy_url: proxy_urls.get({env!r})={_mask_proxy_url(result)}")
+            return result
+
+        logger.debug("_resolve_proxy_url: No proxy_urls configured, returning None")
         return None
 
     def get_proxy_dispatcher(
@@ -161,20 +175,23 @@ class ProxyDispatcherFactory:
         Returns:
             DispatcherResult with configured client.
         """
+        logger.debug(
+            f"get_proxy_dispatcher: environment={environment!r}, disable_tls={disable_tls!r}, "
+            f"timeout={timeout}, async_client={async_client}"
+        )
+
         env = environment or self._config.default_environment or get_app_env()
         proxy_url = self._resolve_proxy_url(environment)
 
         # Priority: disable_tls param > cert_verify from config (YAML)
         if disable_tls is not None:
             verify_ssl = not disable_tls
+            logger.debug(f"get_proxy_dispatcher: verify_ssl from disable_tls param: {verify_ssl}")
         else:
             verify_ssl = self._config.cert_verify if self._config.cert_verify is not None else False
-
-        # Log proxy resolution in development mode
-        if _is_debug_mode():
-            logger.info(
-                f"[get_proxy_dispatcher] env={env}, proxy_url={_mask_proxy_url(proxy_url)}, "
-                f"verify_ssl={verify_ssl}, timeout={timeout}s, async={async_client}"
+            logger.debug(
+                f"get_proxy_dispatcher: verify_ssl from config.cert_verify "
+                f"({self._config.cert_verify}): {verify_ssl}"
             )
 
         config = ProxyConfig(
@@ -184,9 +201,20 @@ class ProxyDispatcherFactory:
             trust_env=False,
         )
 
+        logger.debug(
+            f"get_proxy_dispatcher: Creating ProxyConfig - "
+            f"proxy_url={_mask_proxy_url(config.proxy_url)}, verify_ssl={config.verify_ssl}, "
+            f"timeout={config.timeout}, trust_env={config.trust_env}"
+        )
+
         if async_client:
-            return self._adapter.create_async_client(config)
-        return self._adapter.create_sync_client(config)
+            result = self._adapter.create_async_client(config)
+            logger.debug(f"get_proxy_dispatcher: Created AsyncClient, proxy_dict={result.proxy_dict}")
+            return result
+
+        result = self._adapter.create_sync_client(config)
+        logger.debug(f"get_proxy_dispatcher: Created sync Client, proxy_dict={result.proxy_dict}")
+        return result
 
     def get_dispatcher_for_environment(
         self,

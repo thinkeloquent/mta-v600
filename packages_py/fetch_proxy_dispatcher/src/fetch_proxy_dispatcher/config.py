@@ -6,8 +6,12 @@ and maps to appropriate proxy URLs.
 
 Supports user-defined environment names (case-sensitive).
 """
+import logging
 import os
 from typing import Literal, Optional
+
+# Configure logger
+logger = logging.getLogger("fetch_proxy_dispatcher.config")
 
 # Legacy type alias for backward compatibility
 AppEnv = Literal["DEV", "STAGE", "QA", "PROD"]
@@ -35,12 +39,17 @@ def get_app_env(default: str = "DEV") -> str:
         Environment string from APP_ENV, or default.
     """
     raw = os.environ.get("APP_ENV", "")
-    return raw if raw else default
+    result = raw if raw else default
+    logger.debug(f"get_app_env: APP_ENV={raw!r}, default={default!r}, result={result!r}")
+    return result
 
 
 def is_dev() -> bool:
     """Check if current environment is development."""
-    return get_app_env() == Environment.DEV
+    env = get_app_env()
+    result = env == Environment.DEV
+    logger.debug(f"is_dev: env={env!r}, result={result}")
+    return result
 
 
 def get_proxy_url() -> Optional[str]:
@@ -50,7 +59,10 @@ def get_proxy_url() -> Optional[str]:
     Reads PROXY_DEV_URL, PROXY_STAGE_URL, PROXY_QA_URL, or PROXY_PROD_URL.
     """
     env = get_app_env()
-    return os.environ.get(f"PROXY_{env}_URL")
+    env_var = f"PROXY_{env}_URL"
+    result = os.environ.get(env_var)
+    logger.debug(f"get_proxy_url: env={env!r}, env_var={env_var!r}, result={result!r}")
+    return result
 
 
 def get_agent_proxy_url() -> Optional[str]:
@@ -59,7 +71,13 @@ def get_agent_proxy_url() -> Optional[str]:
 
     HTTPS_PROXY takes precedence over HTTP_PROXY.
     """
-    return os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    https_proxy = os.environ.get("HTTPS_PROXY")
+    http_proxy = os.environ.get("HTTP_PROXY")
+    result = https_proxy or http_proxy
+    logger.debug(
+        f"get_agent_proxy_url: HTTPS_PROXY={https_proxy!r}, HTTP_PROXY={http_proxy!r}, result={result!r}"
+    )
+    return result
 
 
 def get_effective_proxy_url() -> Optional[str]:
@@ -68,9 +86,17 @@ def get_effective_proxy_url() -> Optional[str]:
 
     Priority: Agent proxy > Environment-specific proxy
     """
-    return get_agent_proxy_url() or get_proxy_url()
+    agent_proxy = get_agent_proxy_url()
+    env_proxy = get_proxy_url()
+    result = agent_proxy or env_proxy
+    logger.debug(
+        f"get_effective_proxy_url: agent_proxy={agent_proxy!r}, env_proxy={env_proxy!r}, result={result!r}"
+    )
+    return result
 
 
 def is_proxy_configured() -> bool:
     """Check if any proxy is configured."""
-    return get_effective_proxy_url() is not None
+    result = get_effective_proxy_url() is not None
+    logger.debug(f"is_proxy_configured: result={result}")
+    return result

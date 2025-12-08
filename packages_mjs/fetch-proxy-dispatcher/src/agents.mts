@@ -3,8 +3,45 @@
  * Provides pre-configured Agent and ProxyAgent instances
  */
 
+import process from 'node:process';
 import { Agent, ProxyAgent } from 'undici';
 import { isDev } from './config.mjs';
+
+/**
+ * Simple logger for agents module
+ * Logging is ENABLED by default. Disable with DEBUG=false or DEBUG=0
+ */
+const isDebugEnabled = (): boolean => {
+  const debug = process.env['DEBUG']?.toLowerCase() || '';
+  // Disable only if explicitly set to false/0
+  if (debug === 'false' || debug === '0') {
+    return false;
+  }
+  return true; // Enabled by default
+};
+
+const log = {
+  debug: (message: string) => {
+    if (isDebugEnabled()) {
+      console.log(`[fetch-proxy-dispatcher.agents] ${message}`);
+    }
+  },
+};
+
+/**
+ * Mask proxy URL for safe logging
+ */
+function maskProxyUrl(url: string | undefined): string {
+  if (!url) return 'undefined';
+  if (url.includes('@')) {
+    const protocolEnd = url.indexOf('://');
+    if (protocolEnd !== -1) {
+      const atPos = url.indexOf('@');
+      return `${url.slice(0, protocolEnd + 3)}***@${url.slice(atPos + 1)}`;
+    }
+  }
+  return url;
+}
 
 /**
  * TLS options for development (disabled certificate validation)
@@ -18,12 +55,20 @@ const devTlsOptions = {
  * Use only in development environments
  */
 export function createDevAgent(): Agent {
-  return new Agent({
+  const options = {
     connect: devTlsOptions,
     keepAliveTimeout: 60_000,
     keepAliveMaxTimeout: 60_000,
     connections: 1,
-  });
+  };
+  log.debug(
+    `createDevAgent: Creating Agent with connect.rejectUnauthorized=false, ` +
+      `keepAliveTimeout=${options.keepAliveTimeout}, keepAliveMaxTimeout=${options.keepAliveMaxTimeout}, ` +
+      `connections=${options.connections}`
+  );
+  const agent = new Agent(options);
+  log.debug('createDevAgent: Agent created successfully');
+  return agent;
 }
 
 /**
@@ -31,10 +76,17 @@ export function createDevAgent(): Agent {
  * Good for persistent connections and high-throughput scenarios
  */
 export function createStayAliveAgent(): Agent {
-  return new Agent({
+  const options = {
     keepAliveTimeout: 30_000,
     keepAliveMaxTimeout: 60_000,
-  });
+  };
+  log.debug(
+    `createStayAliveAgent: Creating Agent with keepAliveTimeout=${options.keepAliveTimeout}, ` +
+      `keepAliveMaxTimeout=${options.keepAliveMaxTimeout}`
+  );
+  const agent = new Agent(options);
+  log.debug('createStayAliveAgent: Agent created successfully');
+  return agent;
 }
 
 /**
@@ -43,11 +95,17 @@ export function createStayAliveAgent(): Agent {
  * Good for one-off requests or debugging
  */
 export function createDoNotStayAliveAgent(): Agent {
-  return new Agent({
+  const options = {
     keepAliveTimeout: 0,
     keepAliveMaxTimeout: 0,
     pipelining: 0,
-  });
+  };
+  log.debug(
+    `createDoNotStayAliveAgent: Creating Agent with keepAliveTimeout=0, keepAliveMaxTimeout=0, pipelining=0`
+  );
+  const agent = new Agent(options);
+  log.debug('createDoNotStayAliveAgent: Agent created successfully');
+  return agent;
 }
 
 /**
@@ -58,13 +116,28 @@ export function createDoNotStayAliveAgent(): Agent {
 export function createProxyAgent(proxyUrl: string, disableTls?: boolean): ProxyAgent {
   const shouldDisableTls = disableTls ?? isDev();
 
-  return new ProxyAgent({
+  log.debug(
+    `createProxyAgent: proxyUrl=${maskProxyUrl(proxyUrl)}, disableTls=${disableTls}, ` +
+      `shouldDisableTls=${shouldDisableTls}`
+  );
+
+  const options: ConstructorParameters<typeof ProxyAgent>[0] = {
     uri: proxyUrl,
     ...(shouldDisableTls && {
       requestTls: devTlsOptions,
       proxyTls: devTlsOptions,
     }),
-  });
+  };
+
+  log.debug(
+    `createProxyAgent: ProxyAgent options - uri=${maskProxyUrl(proxyUrl)}, ` +
+      `requestTls.rejectUnauthorized=${shouldDisableTls ? false : 'default'}, ` +
+      `proxyTls.rejectUnauthorized=${shouldDisableTls ? false : 'default'}`
+  );
+
+  const agent = new ProxyAgent(options);
+  log.debug('createProxyAgent: ProxyAgent created successfully');
+  return agent;
 }
 
 /**

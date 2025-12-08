@@ -123,16 +123,15 @@ class ConfigStore {
   }
 
   /**
-   * Get a nested configuration value
+   * Get a nested configuration value.
+   * All arguments are treated as keys for traversing the config.
+   * Returns null if the path doesn't exist.
+   *
+   * Example: getNested('providers', 'figma') returns config.providers.figma
    */
-  getNested(...args) {
-    const keys = args.slice(0, -1);
-    const defaultValue = args.length > 1 ? args[args.length - 1] : null;
-
-    // Check if last arg is actually a key (not a default value)
-    if (typeof defaultValue === "string" && !keys.length) {
-      // Single key case
-      return this.data[defaultValue] ?? null;
+  getNested(...keys) {
+    if (keys.length === 0) {
+      return null;
     }
 
     let current = this.data;
@@ -140,10 +139,10 @@ class ConfigStore {
       if (current && typeof current === "object" && key in current) {
         current = current[key];
       } else {
-        return defaultValue;
+        return null;
       }
     }
-    return current ?? defaultValue;
+    return current;
   }
 
   /**

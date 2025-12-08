@@ -52,30 +52,96 @@ class ProviderClientFactory:
             logger.warning(f"ProviderClientFactory._get_proxy_config: Error getting proxy config: {e}")
             return {}
 
-    def _create_httpx_client(self) -> Any:
-        """Create an httpx client with proxy configuration."""
+    def _create_httpx_client(self, timeout: float = 30.0, async_client: bool = True) -> Any:
+        """
+        Create an httpx client with proxy configuration from YAML.
+
+        Reads proxy config from server.*.yaml:
+        - proxy.default_environment: Environment name for proxy selection
+        - proxy.proxy_urls: Per-environment proxy URLs
+        - proxy.agent_proxy: Agent proxy (http_proxy, https_proxy)
+        - proxy.ca_bundle: CA bundle path (null = use default, undefined = check ENV)
+        - proxy.cert: Client cert path (null = none, undefined = check ENV)
+        - proxy.cert_verify: SSL verification (false = disable)
+
+        Falls back to ENV if YAML value is undefined (not present).
+        Does nothing if YAML value is explicitly null.
+        """
         logger.debug("ProviderClientFactory._create_httpx_client: Creating httpx client")
+
         try:
-            from fetch_proxy_dispatcher import get_proxy_dispatcher
+            from fetch_proxy_dispatcher import (
+                ProxyDispatcherFactory,
+                FactoryConfig,
+                ProxyUrlConfig,
+                AgentProxyConfig,
+            )
             logger.debug("ProviderClientFactory._create_httpx_client: fetch_proxy_dispatcher imported")
         except ImportError:
             logger.warning(
                 "ProviderClientFactory._create_httpx_client: fetch_proxy_dispatcher not available, "
-                "using plain httpx.AsyncClient"
+                "using plain httpx client"
             )
             import httpx
-            return httpx.AsyncClient()
+            return httpx.AsyncClient() if async_client else httpx.Client()
 
         proxy_config = self._get_proxy_config()
-        disable_tls = proxy_config.get("cert_verify") is False
+
+        # Build ProxyUrlConfig from YAML (empty dict if not configured)
+        proxy_urls = None
+        yaml_proxy_urls = proxy_config.get("proxy_urls")
+        if yaml_proxy_urls and isinstance(yaml_proxy_urls, dict) and yaml_proxy_urls:
+            proxy_urls = ProxyUrlConfig(**yaml_proxy_urls)
+            logger.debug(f"ProviderClientFactory._create_httpx_client: proxy_urls={list(yaml_proxy_urls.keys())}")
+
+        # Build AgentProxyConfig from YAML
+        agent_proxy = None
+        yaml_agent_proxy = proxy_config.get("agent_proxy")
+        if yaml_agent_proxy and isinstance(yaml_agent_proxy, dict):
+            http_proxy = yaml_agent_proxy.get("http_proxy")
+            https_proxy = yaml_agent_proxy.get("https_proxy")
+            if http_proxy or https_proxy:
+                agent_proxy = AgentProxyConfig(http_proxy=http_proxy, https_proxy=https_proxy)
+                logger.debug(
+                    f"ProviderClientFactory._create_httpx_client: agent_proxy "
+                    f"http={http_proxy is not None}, https={https_proxy is not None}"
+                )
+
+        # Get other config values (null = don't use, undefined = fall through to ENV)
+        default_environment = proxy_config.get("default_environment")
+        ca_bundle = proxy_config.get("ca_bundle")  # null = no ca_bundle
+        cert = proxy_config.get("cert")  # null = no cert
+        cert_verify = proxy_config.get("cert_verify")  # false = disable SSL verify
+
+        logger.debug(
+            f"ProviderClientFactory._create_httpx_client: default_env={default_environment}, "
+            f"ca_bundle={ca_bundle is not None}, cert={cert is not None}, cert_verify={cert_verify}"
+        )
+
+        # Build factory config
+        factory_config = FactoryConfig(
+            proxy_urls=proxy_urls,
+            agent_proxy=agent_proxy,
+            default_environment=default_environment,
+            ca_bundle=ca_bundle,
+            cert=cert,
+            cert_verify=cert_verify,
+        )
+
+        factory = ProxyDispatcherFactory(config=factory_config)
+
+        # Determine TLS setting: cert_verify=False means disable TLS verification
+        disable_tls = cert_verify is False
+
         logger.debug(
             f"ProviderClientFactory._create_httpx_client: Creating dispatcher with "
-            f"disable_tls={disable_tls}, timeout=30.0, async_client=True"
+            f"disable_tls={disable_tls}, timeout={timeout}, async_client={async_client}"
         )
-        result = get_proxy_dispatcher(
+
+        result = factory.get_proxy_dispatcher(
             disable_tls=disable_tls,
-            timeout=30.0,
-            async_client=True,
+            timeout=timeout,
+            async_client=async_client,
         )
         logger.debug("ProviderClientFactory._create_httpx_client: Dispatcher created successfully")
         return result.client

@@ -13,7 +13,7 @@ const PROJECT_ROOT = resolve(__dirname, '..', '..', '..');
 
 // Dynamic imports for internal modules
 const { loadYamlConfig, config: staticConfig } = await import(
-  resolve(PROJECT_ROOT, 'packages_mjs', 'app_static_config_yaml', 'src', 'index.mjs')
+  resolve(PROJECT_ROOT, 'packages_mjs', 'app-static-config-yaml', 'src', 'index.mjs')
 );
 const { ProviderHealthChecker } = await import(
   resolve(PROJECT_ROOT, 'packages_mjs', 'provider_api_getters', 'src', 'index.mjs')

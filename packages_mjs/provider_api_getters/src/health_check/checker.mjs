@@ -178,16 +178,27 @@ export class ProviderHealthChecker {
   async _checkElasticsearch(apiToken) {
     // Use HTTP directly to support both Elasticsearch and OpenSearch
     // (the official @elastic/elasticsearch client rejects OpenSearch servers)
+    // Uses proxy factory with YAML config for fetch dispatcher
     const startTime = performance.now();
 
     try {
       const connectionUrl = apiToken.getConnectionUrl();
       const healthUrl = `${connectionUrl}/_cluster/health`;
 
-      const response = await fetch(healthUrl, {
+      // Get dispatcher from factory with YAML proxy config
+      const dispatcher = await this.#clientFactory._createDispatcher();
+
+      const fetchOptions = {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
-      });
+      };
+
+      // Add dispatcher if available (for proxy support)
+      if (dispatcher) {
+        fetchOptions.dispatcher = dispatcher;
+      }
+
+      const response = await fetch(healthUrl, fetchOptions);
 
       const latencyMs = performance.now() - startTime;
 

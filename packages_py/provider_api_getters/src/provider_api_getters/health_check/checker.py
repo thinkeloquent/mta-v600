@@ -259,20 +259,23 @@ class ProviderHealthChecker:
 
         Uses httpx for health check to support both Elasticsearch and OpenSearch
         (the official elasticsearch-py client rejects OpenSearch servers).
+        Uses proxy factory with YAML config for HTTP client creation.
         """
         logger.debug("ProviderHealthChecker._check_elasticsearch: Starting Elasticsearch/OpenSearch check")
         start_time = time.perf_counter()
 
         try:
-            import httpx
-
             # Build the health check URL from connection config
             connection_url = api_token.get_connection_url()
             health_url = f"{connection_url}/_cluster/health"
 
             logger.debug(f"ProviderHealthChecker._check_elasticsearch: Checking {health_url}")
 
-            async with httpx.AsyncClient(verify=True, timeout=10.0) as client:
+            # Use proxy factory to create httpx client with YAML config
+            httpx_client = self._client_factory._create_httpx_client(timeout=10.0, async_client=True)
+            logger.debug("ProviderHealthChecker._check_elasticsearch: Created httpx client with proxy config")
+
+            async with httpx_client as client:
                 response = await client.get(health_url)
                 latency_ms = (time.perf_counter() - start_time) * 1000
 

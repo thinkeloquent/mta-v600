@@ -44,9 +44,50 @@ Environment Variables:
     APP_ENV: Environment detection (any user-defined value, case-sensitive)
     HTTP_PROXY: Agent proxy override
     HTTPS_PROXY: Agent proxy override (higher priority)
+    DEBUG: Logging control (set to "false" or "0" to disable, enabled by default)
 """
+import logging
+import os
 
 __version__ = "1.0.0"
+
+
+def _is_debug_enabled() -> bool:
+    """
+    Check if debug logging is enabled.
+    Logging is ENABLED by default. Disable with DEBUG=false or DEBUG=0.
+    """
+    debug = os.environ.get("DEBUG", "").lower()
+    # Disable only if explicitly set to false/0
+    if debug in ("false", "0"):
+        return False
+    return True  # Enabled by default
+
+
+def _configure_logging() -> None:
+    """Configure package logging based on DEBUG environment variable."""
+    package_logger = logging.getLogger("fetch_proxy_dispatcher")
+
+    if _is_debug_enabled():
+        # Enable debug logging by default
+        package_logger.setLevel(logging.DEBUG)
+
+        # Add handler if none exists (avoid duplicate handlers)
+        if not package_logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                "[%(name)s] %(message)s"
+            )
+            handler.setFormatter(formatter)
+            package_logger.addHandler(handler)
+    else:
+        # Disable logging
+        package_logger.setLevel(logging.WARNING)
+
+
+# Configure logging on import
+_configure_logging()
 
 # Config
 from .config import (

@@ -17,7 +17,8 @@ import httpx
 
 from .config import get_effective_proxy_url, is_dev
 
-logger = logging.getLogger(__name__)
+# Configure logger for dispatcher module
+logger = logging.getLogger("fetch_proxy_dispatcher.dispatcher")
 
 
 def _mask_proxy_url(url: str | None) -> str:
@@ -77,22 +78,24 @@ def get_proxy_dispatcher(
         ...     response = await client.get("https://api.example.com")
         >>> print(f"Used proxy: {result.config.proxy_url}")
     """
+    logger.debug(
+        f"get_proxy_dispatcher: disable_tls={disable_tls!r}, cert_verify={cert_verify!r}, "
+        f"timeout={timeout}, async_client={async_client}"
+    )
+
     proxy_url = get_effective_proxy_url()
+    logger.debug(f"get_proxy_dispatcher: effective_proxy_url={_mask_proxy_url(proxy_url)}")
 
     # Priority: disable_tls > cert_verify > is_dev() default
     if disable_tls is not None:
         verify_ssl = not disable_tls
+        logger.debug(f"get_proxy_dispatcher: verify_ssl from disable_tls param: {verify_ssl}")
     elif cert_verify is not None:
         verify_ssl = cert_verify
+        logger.debug(f"get_proxy_dispatcher: verify_ssl from cert_verify param: {verify_ssl}")
     else:
         verify_ssl = not is_dev()
-
-    # Log proxy configuration in development mode
-    if _is_debug_mode():
-        logger.info(
-            f"[get_proxy_dispatcher] proxy_url={_mask_proxy_url(proxy_url)}, "
-            f"verify_ssl={verify_ssl}, timeout={timeout}s, async={async_client}"
-        )
+        logger.debug(f"get_proxy_dispatcher: verify_ssl from is_dev() fallback: {verify_ssl}")
 
     config = ProxyConfig(
         proxy_url=proxy_url,
@@ -101,9 +104,20 @@ def get_proxy_dispatcher(
         trust_env=False,
     )
 
+    logger.debug(
+        f"get_proxy_dispatcher: ProxyConfig created - "
+        f"proxy_url={_mask_proxy_url(config.proxy_url)}, verify_ssl={config.verify_ssl}, "
+        f"timeout={config.timeout}, trust_env={config.trust_env}"
+    )
+
     if async_client:
-        return _default_adapter.create_async_client(config)
-    return _default_adapter.create_sync_client(config)
+        result = _default_adapter.create_async_client(config)
+        logger.debug(f"get_proxy_dispatcher: Created AsyncClient, proxy_dict={result.proxy_dict}")
+        return result
+
+    result = _default_adapter.create_sync_client(config)
+    logger.debug(f"get_proxy_dispatcher: Created sync Client, proxy_dict={result.proxy_dict}")
+    return result
 
 
 def get_proxy_config(

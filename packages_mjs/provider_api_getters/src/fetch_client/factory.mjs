@@ -3,6 +3,15 @@
  *
  * This module uses the ConfigStore singleton from @internal/app-static-config-yaml
  * and the proxy dispatcher from @internal/fetch-proxy-dispatcher.
+ *
+ * Reads proxy configuration from YAML:
+ * - proxy.default_environment: Environment name for proxy selection
+ * - proxy.proxy_urls: Per-environment proxy URLs (DEV, STAGE, QA, PROD)
+ * - proxy.agent_proxy: Agent proxy (http_proxy, https_proxy)
+ * - proxy.cert_verify: SSL verification (false = disable)
+ *
+ * Falls back to ENV if YAML value is undefined (not present).
+ * Does nothing if YAML value is explicitly null.
  */
 import { getApiTokenClass } from '../api_token/index.mjs';
 
@@ -30,13 +39,61 @@ export class ProviderClientFactory {
     }
   }
 
+  /**
+   * Create a dispatcher with proxy configuration from YAML.
+   *
+   * Uses ProxyDispatcherFactory with full YAML config:
+   * - proxy_urls: per-environment proxy URLs
+   * - agent_proxy: http_proxy/https_proxy overrides
+   * - default_environment: env for proxy selection
+   * - cert_verify: false = disable TLS validation
+   *
+   * @returns {Promise<Dispatcher|undefined>} Dispatcher or undefined
+   */
   async _createDispatcher() {
     try {
-      const { getProxyDispatcher } = await import('@internal/fetch-proxy-dispatcher');
+      const { ProxyDispatcherFactory } = await import('@internal/fetch-proxy-dispatcher');
       const proxyConfig = this._getProxyConfig();
-      return getProxyDispatcher({
-        disableTls: proxyConfig?.cert_verify === false,
-      });
+
+      // Build ProxyUrlConfig from YAML (convert to uppercase keys)
+      let proxyUrls;
+      const yamlProxyUrls = proxyConfig?.proxy_urls;
+      if (yamlProxyUrls && typeof yamlProxyUrls === 'object' && Object.keys(yamlProxyUrls).length > 0) {
+        proxyUrls = {};
+        // Convert keys to uppercase for ProxyUrlConfig (DEV, STAGE, QA, PROD)
+        for (const [key, value] of Object.entries(yamlProxyUrls)) {
+          if (value) {
+            proxyUrls[key.toUpperCase()] = value;
+          }
+        }
+      }
+
+      // Build AgentProxyConfig from YAML
+      let agentProxy;
+      const yamlAgentProxy = proxyConfig?.agent_proxy;
+      if (yamlAgentProxy && typeof yamlAgentProxy === 'object') {
+        const httpProxy = yamlAgentProxy.http_proxy;
+        const httpsProxy = yamlAgentProxy.https_proxy;
+        if (httpProxy || httpsProxy) {
+          agentProxy = {
+            httpProxy: httpProxy || undefined,
+            httpsProxy: httpsProxy || undefined,
+          };
+        }
+      }
+
+      // Get other config values
+      const defaultEnvironment = proxyConfig?.default_environment?.toUpperCase();
+      const disableTls = proxyConfig?.cert_verify === false;
+
+      // Build factory config
+      const factoryConfig = {};
+      if (proxyUrls) factoryConfig.proxyUrls = proxyUrls;
+      if (agentProxy) factoryConfig.agentProxy = agentProxy;
+      if (defaultEnvironment) factoryConfig.defaultEnvironment = defaultEnvironment;
+
+      const factory = new ProxyDispatcherFactory(factoryConfig);
+      return factory.getProxyDispatcher({ disableTls });
     } catch {
       return undefined;
     }
