@@ -103,10 +103,10 @@ export function rateLimitInterceptor(
     reset: 0,
   };
 
-  return (dispatch: Dispatcher.DispatchHandlers['dispatch']) => {
+  return (dispatch: Dispatcher.Dispatch) => {
     return (
       opts: Dispatcher.DispatchOptions,
-      handler: Dispatcher.DispatchHandlers
+      handler: Dispatcher.DispatchHandler
     ): boolean => {
       // Check if this method should be rate limited
       if (methods && !methods.includes(opts.method)) {
@@ -114,7 +114,7 @@ export function rateLimitInterceptor(
       }
 
       // Wrap the handler to intercept responses
-      const wrappedHandler: Dispatcher.DispatchHandlers = {
+      const wrappedHandler: Dispatcher.DispatchHandler = {
         ...handler,
         onHeaders: (
           statusCode: number,
@@ -147,7 +147,7 @@ export function rateLimitInterceptor(
             }
           }
 
-          return handler.onHeaders?.(statusCode, headers, resume, statusText);
+          return handler.onHeaders?.(statusCode, headers as Buffer[], resume, statusText) ?? true;
         },
       };
 

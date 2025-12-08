@@ -87,10 +87,10 @@ export function cacheResponseInterceptor(
     // since we need access to the dispatch function
   }
 
-  return (dispatch: Dispatcher.DispatchHandlers['dispatch']) => {
+  return (dispatch: Dispatcher.Dispatch) => {
     return (
       opts: Dispatcher.DispatchOptions,
-      handler: Dispatcher.DispatchHandlers
+      handler: Dispatcher.DispatchHandler
     ): boolean => {
       const method = opts.method;
       const origin = opts.origin?.toString() ?? '';
@@ -129,9 +129,9 @@ export function cacheResponseInterceptor(
  * Handle a request with cache lookup
  */
 async function handleCachedRequest(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   cache: ResponseCache,
   url: string,
   requestHeaders: Record<string, string> | undefined,
@@ -210,10 +210,13 @@ async function handleCachedRequest(
  * Serve a cached response to the handler
  */
 function serveCachedResponse(
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   response: { metadata: { statusCode: number; headers: Record<string, string> }; body: Buffer | string | null }
 ): void {
-  const headersArray = Object.entries(response.metadata.headers).flat();
+  const headersArray: Buffer[] = [];
+  for (const [key, value] of Object.entries(response.metadata.headers)) {
+    headersArray.push(Buffer.from(key), Buffer.from(value));
+  }
 
   handler.onHeaders?.(
     response.metadata.statusCode,
@@ -236,9 +239,9 @@ function serveCachedResponse(
  * Execute request and cache the response
  */
 function executeAndCacheRequest(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   cache: ResponseCache,
   url: string,
   requestHeaders: Record<string, string> | undefined,
@@ -250,9 +253,9 @@ function executeAndCacheRequest(
   let responseHeaders: Record<string, string> = {};
   const responseBody: Buffer[] = [];
 
-  const wrappedHandler: Dispatcher.DispatchHandlers = {
+  const wrappedHandler: Dispatcher.DispatchHandler = {
     ...handler,
-    onHeaders: (statusCode, headers, resume, statusText) => {
+    onHeaders: (statusCode: number, headers: Buffer[], resume: () => void, statusText: string): boolean => {
       responseStatusCode = statusCode;
       responseHeaders = parseHeaders(headers);
 
@@ -263,10 +266,14 @@ function executeAndCacheRequest(
         // Update cache expiration
         cache.revalidate(opts.method, url, responseHeaders, requestHeaders).catch(() => {});
 
-        // Serve the cached response instead
+        // Serve the cached response instead - convert headers to Buffer[]
+        const cachedHeadersArray: Buffer[] = [];
+        for (const [key, value] of Object.entries(cachedResponse.metadata.headers)) {
+          cachedHeadersArray.push(Buffer.from(key), Buffer.from(value));
+        }
         handler.onHeaders?.(
           cachedResponse.metadata.statusCode,
-          Object.entries(cachedResponse.metadata.headers).flat(),
+          cachedHeadersArray,
           resume,
           ''
         );
@@ -282,13 +289,13 @@ function executeAndCacheRequest(
         return false; // Stop processing
       }
 
-      return handler.onHeaders?.(statusCode, headers, resume, statusText);
+      return handler.onHeaders?.(statusCode, headers, resume, statusText) ?? true;
     },
-    onData: (chunk) => {
+    onData: (chunk: Buffer): boolean => {
       responseBody.push(chunk);
-      return handler.onData?.(chunk);
+      return handler.onData?.(chunk) ?? true;
     },
-    onComplete: (trailers) => {
+    onComplete: (trailers: string[] | null): void => {
       // Cache successful responses
       const body = Buffer.concat(responseBody);
 
@@ -314,7 +321,7 @@ function executeAndCacheRequest(
  * Revalidate in background for stale-while-revalidate
  */
 function revalidateInBackground(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
   cache: ResponseCache,
   url: string,
@@ -335,8 +342,8 @@ function revalidateInBackground(
   let responseHeaders: Record<string, string> = {};
   const responseBody: Buffer[] = [];
 
-  const backgroundHandler: Dispatcher.DispatchHandlers = {
-    onHeaders: (statusCode, headers) => {
+  const backgroundHandler: Dispatcher.DispatchHandler = {
+    onHeaders: (statusCode: number, headers: Buffer[]) => {
       responseStatusCode = statusCode;
       responseHeaders = parseHeaders(headers);
 
@@ -347,11 +354,11 @@ function revalidateInBackground(
       }
       return true;
     },
-    onData: (chunk) => {
+    onData: (chunk: Buffer) => {
       responseBody.push(chunk);
       return true;
     },
-    onComplete: () => {
+    onComplete: (_trailers: string[] | null) => {
       if (responseStatusCode !== 304) {
         const body = Buffer.concat(responseBody);
         cache

@@ -27,7 +27,7 @@ export const DEFAULT_CONTENT_TYPE = 'application/json';
  */
 export const defaultSerializer: Serializer = {
   serialize: (data: unknown) => JSON.stringify(data),
-  deserialize: <T = unknown>(text: string): T => JSON.parse(text),
+  deserialize: <T = unknown,>(text: string): T => JSON.parse(text),
 };
 
 /**

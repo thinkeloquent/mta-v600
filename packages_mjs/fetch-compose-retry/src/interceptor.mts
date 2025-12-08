@@ -58,16 +58,16 @@ export function retryInterceptor(
 ): Dispatcher.DispatcherComposeInterceptor {
   const config = mergeConfig(options);
   const {
-    maxRetries = 3,
-    respectRetryAfter = true,
     onRetry,
     onSuccess,
   } = options;
+  const maxRetries = config.maxRetries;
+  const respectRetryAfter = config.respectRetryAfter;
 
-  return (dispatch: Dispatcher.DispatchHandlers['dispatch']) => {
+  return (dispatch: Dispatcher.Dispatch) => {
     return (
       opts: Dispatcher.DispatchOptions,
-      handler: Dispatcher.DispatchHandlers
+      handler: Dispatcher.DispatchHandler
     ): boolean => {
       // Check if this method is retryable
       if (!isRetryableMethod(opts.method, config)) {
@@ -80,7 +80,7 @@ export function retryInterceptor(
 
       const attemptRequest = (): boolean => {
         // Create a wrapped handler to intercept responses
-        const wrappedHandler: Dispatcher.DispatchHandlers = {
+        const wrappedHandler: Dispatcher.DispatchHandler = {
           ...handler,
           onHeaders: (
             statusCode: number,
@@ -126,7 +126,7 @@ export function retryInterceptor(
               onSuccess(attempt, Date.now() - startTime);
             }
 
-            return handler.onHeaders?.(statusCode, headers, resume, statusText);
+            return handler.onHeaders?.(statusCode, headers as Buffer[], resume, statusText) ?? true;
           },
           onError: (err: Error) => {
             // Check if error is retryable

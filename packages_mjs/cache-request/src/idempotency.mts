@@ -142,7 +142,7 @@ export class IdempotencyManager {
   /**
    * Store a response with an idempotency key
    */
-  async store<T>(
+  async storeResponse<T>(
     key: string,
     value: T,
     fingerprint?: RequestFingerprint

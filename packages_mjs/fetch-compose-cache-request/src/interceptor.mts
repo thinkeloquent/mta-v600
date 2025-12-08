@@ -92,10 +92,10 @@ export function cacheRequestInterceptor(
     ? new Singleflight(singleflightConfig, singleflightStore)
     : null;
 
-  return (dispatch: Dispatcher.DispatchHandlers['dispatch']) => {
+  return (dispatch: Dispatcher.Dispatch) => {
     return (
       opts: Dispatcher.DispatchOptions,
-      handler: Dispatcher.DispatchHandlers
+      handler: Dispatcher.DispatchHandler
     ): boolean => {
       const method = opts.method;
       const path = opts.path;
@@ -143,9 +143,9 @@ export function cacheRequestInterceptor(
  * Handle idempotent request with key management
  */
 function handleIdempotentRequest(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   fingerprint: RequestFingerprint,
   manager: IdempotencyManager,
   onKeyGenerated?: (key: string, method: string, path: string) => void
@@ -187,9 +187,13 @@ function handleIdempotentRequest(
       if (result.cached && result.response) {
         // Return cached response
         const cachedResponse = result.response.value as CachedResponseData;
+        // Convert headers to Buffer[] if needed
+        const headersAsBuffers: Buffer[] = cachedResponse.headers.map(h =>
+          Buffer.isBuffer(h) ? h : Buffer.from(h)
+        );
         handler.onHeaders?.(
           cachedResponse.statusCode,
-          cachedResponse.headers,
+          headersAsBuffers,
           () => {},
           cachedResponse.statusText || ''
         );
@@ -229,9 +233,9 @@ interface CachedResponseData {
  * Execute request and cache the response
  */
 function executeAndCacheRequest(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   idempotencyKey: string,
   fingerprint: RequestFingerprint,
   manager: IdempotencyManager,
@@ -253,19 +257,19 @@ function executeAndCacheRequest(
   let responseHeaders: Buffer[] | string[];
   const responseBody: Buffer[] = [];
 
-  const wrappedHandler: Dispatcher.DispatchHandlers = {
+  const wrappedHandler: Dispatcher.DispatchHandler = {
     ...handler,
-    onHeaders: (statusCode, headers, resume, statusText) => {
+    onHeaders: (statusCode: number, headers: Buffer[], resume: () => void, statusText: string): boolean => {
       responseStatusCode = statusCode;
       responseStatusText = statusText;
       responseHeaders = headers ? [...headers] : [];
-      return handler.onHeaders?.(statusCode, headers, resume, statusText);
+      return handler.onHeaders?.(statusCode, headers, resume, statusText) ?? true;
     },
-    onData: (chunk) => {
+    onData: (chunk: Buffer): boolean => {
       responseBody.push(chunk);
-      return handler.onData?.(chunk);
+      return handler.onData?.(chunk) ?? true;
     },
-    onComplete: (trailers) => {
+    onComplete: (trailers: string[] | null): void => {
       // Cache successful responses (2xx)
       if (responseStatusCode >= 200 && responseStatusCode < 300) {
         const cachedData: CachedResponseData = {
@@ -274,7 +278,7 @@ function executeAndCacheRequest(
           headers: responseHeaders,
           body: Buffer.concat(responseBody).toString(),
         };
-        manager.store(idempotencyKey, cachedData, fingerprint).catch(() => {
+        manager.storeResponse(idempotencyKey, cachedData, fingerprint).catch(() => {
           // Ignore cache errors
         });
       }
@@ -289,9 +293,9 @@ function executeAndCacheRequest(
  * Handle singleflight request with coalescing
  */
 function handleSingleflightRequest(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions,
-  handler: Dispatcher.DispatchHandlers,
+  handler: Dispatcher.DispatchHandler,
   fingerprint: RequestFingerprint,
   sf: Singleflight,
   onCoalesced?: (fingerprint: string, subscribers: number) => void
@@ -333,7 +337,7 @@ interface ResponseData {
  * Execute a request and return as a promise
  */
 function executeRequestAsPromise(
-  dispatch: Dispatcher.DispatchHandlers['dispatch'],
+  dispatch: Dispatcher.Dispatch,
   opts: Dispatcher.DispatchOptions
 ): Promise<ResponseData> {
   return new Promise((resolve, reject) => {
@@ -343,18 +347,18 @@ function executeRequestAsPromise(
     const bodyChunks: Buffer[] = [];
     let trailers: string[] | null = null;
 
-    const collectHandler: Dispatcher.DispatchHandlers = {
-      onHeaders: (code, hdrs, resume, text) => {
+    const collectHandler: Dispatcher.DispatchHandler = {
+      onHeaders: (code: number, hdrs: Buffer[], _resume: () => void, text: string): boolean => {
         statusCode = code;
         statusText = text;
         headers = hdrs ? [...hdrs] : [];
         return true;
       },
-      onData: (chunk) => {
+      onData: (chunk: Buffer): boolean => {
         bodyChunks.push(chunk);
         return true;
       },
-      onComplete: (trlrs) => {
+      onComplete: (trlrs: string[] | null): void => {
         trailers = trlrs;
         resolve({
           statusCode,
@@ -364,7 +368,7 @@ function executeRequestAsPromise(
           trailers,
         });
       },
-      onError: (err) => {
+      onError: (err: Error): void => {
         reject(err);
       },
     };
