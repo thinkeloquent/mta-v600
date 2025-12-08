@@ -80,6 +80,7 @@ export {
 // Factory
 export {
   createClient,
+  createClientWithDispatcher,
   createClients,
   closeClients,
   BaseClient,

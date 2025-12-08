@@ -38,6 +38,7 @@ from .streaming.ndjson_reader import (
 )
 from .factory import (
     create_client,
+    create_client_with_dispatcher,
     create_async_client,
     create_sync_client,
     create_rest_adapter,
@@ -78,6 +79,7 @@ __all__ = [
     "encode_ndjson",
     # Factory
     "create_client",
+    "create_client_with_dispatcher",
     "create_async_client",
     "create_sync_client",
     "create_rest_adapter",

@@ -271,9 +271,25 @@ export class ProviderHealthChecker {
 
 let _checker = null;
 
+/**
+ * Check connectivity to a provider.
+ *
+ * Uses the ConfigStore singleton from @internal/static-config-property-management
+ * to automatically load provider configuration.
+ *
+ * @param {string} providerName - Provider name (e.g., 'github', 'jira', 'figma')
+ * @returns {Promise<ProviderConnectionResponse>} Health check result
+ */
 export async function checkProviderConnection(providerName) {
   if (_checker === null) {
-    _checker = new ProviderHealthChecker();
+    // Lazy-load ConfigStore singleton to avoid circular dependencies
+    try {
+      const { config } = await import('@internal/static-config-property-management');
+      _checker = new ProviderHealthChecker(config);
+    } catch {
+      // Fallback to checker without config (will use env vars)
+      _checker = new ProviderHealthChecker();
+    }
   }
   return _checker.check(providerName);
 }

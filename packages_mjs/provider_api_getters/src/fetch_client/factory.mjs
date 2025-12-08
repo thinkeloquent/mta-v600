@@ -1,5 +1,8 @@
 /**
  * Factory for creating pre-configured HTTP clients for providers.
+ *
+ * This module uses the ConfigStore singleton from @internal/static-config-property-management
+ * and the proxy dispatcher from @internal/fetch-proxy-dispatcher.
  */
 import { getApiTokenClass } from '../api_token/index.mjs';
 
@@ -94,9 +97,25 @@ export class ProviderClientFactory {
 
 let _factory = null;
 
+/**
+ * Get a pre-configured HTTP client for a provider.
+ *
+ * Uses the ConfigStore singleton from @internal/static-config-property-management
+ * to automatically load provider configuration.
+ *
+ * @param {string} providerName - Provider name (e.g., 'github', 'jira', 'figma')
+ * @returns {Promise<FetchClient|null>} Configured client or null
+ */
 export async function getProviderClient(providerName) {
   if (_factory === null) {
-    _factory = new ProviderClientFactory();
+    // Lazy-load ConfigStore singleton to avoid circular dependencies
+    try {
+      const { config } = await import('@internal/static-config-property-management');
+      _factory = new ProviderClientFactory(config);
+    } catch {
+      // Fallback to factory without config (will use env vars)
+      _factory = new ProviderClientFactory();
+    }
   }
   return _factory.getClient(providerName);
 }

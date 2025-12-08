@@ -64,9 +64,13 @@
   },
   "peerDependencies": {
     "@internal/fetch-proxy-dispatcher": "workspace:*",
+    "@internal/static-config-property-management": "workspace:*",
     "undici": "^7.0.0"
   },
   "peerDependenciesMeta": {
+    "@internal/static-config-property-management": {
+      "optional": true
+    },
     "fastify": {
       "optional": true
     },

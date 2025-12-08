@@ -1,6 +1,10 @@
 /**
  * Client factory for @internal/fetch-client
+ *
+ * This module provides factory functions for creating HTTP clients.
+ * For automatic proxy/dispatcher configuration, use createClientWithDispatcher.
  */
+import type { Dispatcher } from 'undici';
 import type { ClientConfig, FetchClient } from './types.mjs';
 import { BaseClient } from './core/base-client.mjs';
 import { RestAdapter } from './adapters/rest-adapter.mjs';
@@ -35,6 +39,129 @@ export function createClient(config: ClientConfig): FetchClient {
 
   // For RPC or other protocols, return base client directly
   return baseClient;
+}
+
+/** Proxy config shape from server.*.yaml */
+interface YamlProxyConfig {
+  default_environment?: string;
+  proxy_urls?: Record<string, string>;
+  ca_bundle?: string | null;
+  cert?: string | null;
+  cert_verify?: boolean;
+  agent_proxy?: {
+    http_proxy?: string | null;
+    https_proxy?: string | null;
+  };
+}
+
+/**
+ * Load proxy configuration from ConfigStore (server.*.yaml)
+ * Returns the proxy section from the YAML config.
+ */
+async function getProxyConfigFromYaml(): Promise<YamlProxyConfig | null> {
+  try {
+    // Dynamic import to avoid TypeScript errors for optional peer dependency
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const configModule = await import('@internal/static-config-property-management' as any);
+    const config = configModule.config;
+    if (config && typeof config.getNested === 'function') {
+      return config.getNested('proxy') || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get proxy dispatcher from @internal/fetch-proxy-dispatcher
+ * Configures based on YAML config from ConfigStore.
+ * Returns undefined if the package is not available or no dispatcher is needed.
+ */
+async function getProxyDispatcherSafe(): Promise<Dispatcher | undefined> {
+  try {
+    const { ProxyDispatcherFactory } = await import('@internal/fetch-proxy-dispatcher');
+
+    // Load proxy config from YAML (server.*.yaml)
+    const yamlConfig = await getProxyConfigFromYaml();
+
+    if (yamlConfig) {
+      // Create factory with YAML configuration
+      // Note: proxyUrls and defaultEnvironment support arbitrary environment names
+      // (e.g., "dev", "Live", "STAGING", "Preview") - cast to bypass strict typing
+      const factory = new ProxyDispatcherFactory({
+        proxyUrls: yamlConfig.proxy_urls as Record<string, string> | undefined,
+        agentProxy: yamlConfig.agent_proxy
+          ? {
+              httpProxy: yamlConfig.agent_proxy.http_proxy || undefined,
+              httpsProxy: yamlConfig.agent_proxy.https_proxy || undefined,
+            }
+          : undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        defaultEnvironment: yamlConfig.default_environment as any,
+      });
+
+      return factory.getProxyDispatcher({
+        disableTls: yamlConfig.cert_verify === false,
+      });
+    }
+
+    // Fallback to simple API if no YAML config
+    const { getProxyDispatcher } = await import('@internal/fetch-proxy-dispatcher');
+    return getProxyDispatcher();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Create a fetch client with automatic proxy dispatcher configuration.
+ *
+ * Uses @internal/fetch-proxy-dispatcher to automatically configure
+ * the appropriate dispatcher based on environment (DEV, QA, STAGE, PROD).
+ *
+ * Proxy configuration is loaded from server.*.yaml (via ConfigStore):
+ * ```yaml
+ * proxy:
+ *   default_environment: "dev"
+ *   proxy_urls:
+ *     PROD: "http://proxy.company.com:8080"
+ *     QA: "http://qa-proxy.company.com:8080"
+ *   cert_verify: false
+ *   agent_proxy:
+ *     http_proxy: null
+ *     https_proxy: null
+ * ```
+ *
+ * @param config - Client configuration (dispatcher will be auto-configured if not provided)
+ * @returns Promise<FetchClient> instance
+ *
+ * @example
+ * ```typescript
+ * // Dispatcher is automatically configured based on YAML config
+ * const client = await createClientWithDispatcher({
+ *   baseUrl: 'https://api.example.com',
+ *   auth: {
+ *     type: 'bearer',
+ *     apiKey: process.env.API_KEY,
+ *   },
+ * });
+ *
+ * const response = await client.get('/users');
+ * ```
+ */
+export async function createClientWithDispatcher(
+  config: ClientConfig
+): Promise<FetchClient> {
+  // Only auto-configure dispatcher if not already provided
+  if (!config.dispatcher) {
+    const dispatcher = await getProxyDispatcherSafe();
+    if (dispatcher) {
+      config = { ...config, dispatcher };
+    }
+  }
+
+  return createClient(config);
 }
 
 /**
