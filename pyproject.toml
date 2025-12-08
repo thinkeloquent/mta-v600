@@ -35,6 +35,9 @@ provider-api-getters = {path = "packages_py/provider_api_getters", develop = tru
 app-static-config-yaml = {path = "packages_py/app_static_config_yaml", develop = true}
 vault-file = {path = "packages_py/vault_file", develop = true}
 
+# FastAPI apps
+fastapi-main-entry = {path = "fastapi_apps/main_entry", develop = true}
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 httpx = "^0.28.1"

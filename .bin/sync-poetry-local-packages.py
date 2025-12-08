@@ -2,8 +2,8 @@
 """
 python .bin/sync-poetry-local-packages.py
 
-Scans packages_py/ directory and updates pyproject.toml to include all
-local Python packages as editable dependencies.
+Scans packages_py/ and fastapi_apps/ directories and updates pyproject.toml
+to include all local Python packages as editable dependencies.
 
 Usage:
     python .bin/sync-poetry-local-packages.py [--dry-run]
@@ -29,7 +29,7 @@ def get_script_root() -> Path:
 
 def find_python_packages(packages_dir: Path) -> list[str]:
     """
-    Find all valid Python packages in packages_py/.
+    Find all valid Python packages in a directory.
 
     A valid package has a pyproject.toml file.
     """
@@ -50,6 +50,31 @@ def find_python_packages(packages_dir: Path) -> list[str]:
     return packages
 
 
+# Type alias for package info: (folder_name, base_dir)
+PackageInfo = tuple[str, str]
+
+
+def find_all_packages(root: Path) -> list[PackageInfo]:
+    """
+    Find all Python packages in packages_py/ and fastapi_apps/.
+
+    Returns list of (folder_name, base_dir) tuples.
+    """
+    packages: list[PackageInfo] = []
+
+    # Scan packages_py/
+    packages_py_dir = root / 'packages_py'
+    for pkg in find_python_packages(packages_py_dir):
+        packages.append((pkg, 'packages_py'))
+
+    # Scan fastapi_apps/
+    fastapi_apps_dir = root / 'fastapi_apps'
+    for pkg in find_python_packages(fastapi_apps_dir):
+        packages.append((pkg, 'fastapi_apps'))
+
+    return packages
+
+
 def parse_existing_local_packages(content: str) -> dict[str, str]:
     """
     Parse existing local package entries from pyproject.toml.
@@ -59,7 +84,8 @@ def parse_existing_local_packages(content: str) -> dict[str, str]:
     packages = {}
 
     # Match lines like: package-name = {path = "packages_py/package_name", develop = true}
-    pattern = r'^([\w-]+)\s*=\s*\{path\s*=\s*"packages_py/[^"]+",\s*develop\s*=\s*true\}'
+    # or: package-name = {path = "fastapi_apps/package_name", develop = true}
+    pattern = r'^([\w-]+)\s*=\s*\{path\s*=\s*"(?:packages_py|fastapi_apps)/[^"]+",\s*develop\s*=\s*true\}'
 
     for line in content.split('\n'):
         match = re.match(pattern, line.strip())
@@ -75,19 +101,49 @@ def folder_to_package_name(folder_name: str) -> str:
     return folder_name.replace('_', '-')
 
 
-def generate_package_entry(folder_name: str) -> str:
+def read_package_name_from_pyproject(package_dir: Path) -> str | None:
+    """Read the package name from a package's pyproject.toml.
+
+    Normalizes underscores to hyphens (pip/poetry convention).
+    """
+    pyproject_file = package_dir / 'pyproject.toml'
+    if not pyproject_file.exists():
+        return None
+
+    content = pyproject_file.read_text()
+    # Match: name = "package-name" or name = 'package-name'
+    match = re.search(r'^name\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+    if match:
+        # Normalize underscores to hyphens (pip/poetry convention)
+        return match.group(1).replace('_', '-')
+    return None
+
+
+def generate_package_entry(folder_name: str, base_dir: str, root: Path) -> str:
     """Generate a pyproject.toml entry for a local package."""
-    pkg_name = folder_to_package_name(folder_name)
-    return f'{pkg_name} = {{path = "packages_py/{folder_name}", develop = true}}'
+    # Try to read the actual package name from the package's pyproject.toml
+    package_dir = root / base_dir / folder_name
+    pkg_name = read_package_name_from_pyproject(package_dir)
+
+    # Fallback to folder name conversion if we can't read it
+    if not pkg_name:
+        pkg_name = folder_to_package_name(folder_name)
+
+    return f'{pkg_name} = {{path = "{base_dir}/{folder_name}", develop = true}}'
 
 
 def update_pyproject_toml(
     pyproject_path: Path,
-    packages: list[str],
+    packages: list[PackageInfo],
+    root: Path,
     dry_run: bool = False
 ) -> tuple[bool, list[str], list[str]]:
     """
     Update pyproject.toml with local packages.
+
+    Args:
+        packages: List of (folder_name, base_dir) tuples
+        root: Monorepo root path
 
     Returns:
         (changed, added, removed) - whether file changed, packages added, packages removed
@@ -97,7 +153,13 @@ def update_pyproject_toml(
     # Find existing local packages
     existing = parse_existing_local_packages(content)
     existing_names = set(existing.keys())
-    desired_names = set(folder_to_package_name(p) for p in packages)
+
+    # Get actual package names from their pyproject.toml files
+    def get_pkg_name(folder_name: str, base_dir: str) -> str:
+        pkg_name = read_package_name_from_pyproject(root / base_dir / folder_name)
+        return pkg_name if pkg_name else folder_to_package_name(folder_name)
+
+    desired_names = set(get_pkg_name(f, b) for f, b in packages)
 
     # Calculate diff
     to_add = sorted(desired_names - existing_names)
@@ -141,9 +203,22 @@ def update_pyproject_toml(
             break
 
     # Build new local packages section
-    new_entries = []
-    for pkg in sorted(packages):
-        new_entries.append(generate_package_entry(pkg))
+    # Group by base_dir for organized output
+    packages_py_entries = []
+    fastapi_apps_entries = []
+
+    for folder_name, base_dir in sorted(packages, key=lambda x: (x[1], x[0])):
+        entry = generate_package_entry(folder_name, base_dir, root)
+        if base_dir == 'packages_py':
+            packages_py_entries.append(entry)
+        else:
+            fastapi_apps_entries.append(entry)
+
+    new_entries = packages_py_entries
+    if fastapi_apps_entries:
+        new_entries.append('')
+        new_entries.append('# FastAPI apps')
+        new_entries.extend(fastapi_apps_entries)
 
     # Reconstruct content
     new_content = (
@@ -164,7 +239,7 @@ def update_pyproject_toml(
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Sync packages_py/ with pyproject.toml local dependencies'
+        description='Sync packages_py/ and fastapi_apps/ with pyproject.toml local dependencies'
     )
     parser.add_argument(
         '--dry-run',
@@ -174,33 +249,39 @@ def main():
     args = parser.parse_args()
 
     root = get_script_root()
-    packages_dir = root / 'packages_py'
     pyproject_path = root / 'pyproject.toml'
 
-    print(f"Scanning: {packages_dir}")
+    print(f"Scanning: {root / 'packages_py'}")
+    print(f"Scanning: {root / 'fastapi_apps'}")
     print(f"Target:   {pyproject_path}")
     print()
-
-    if not packages_dir.exists():
-        print(f"ERROR: packages_py directory not found at {packages_dir}")
-        sys.exit(1)
 
     if not pyproject_path.exists():
         print(f"ERROR: pyproject.toml not found at {pyproject_path}")
         sys.exit(1)
 
-    # Find all packages
-    packages = find_python_packages(packages_dir)
+    # Find all packages from both directories
+    packages = find_all_packages(root)
 
-    print(f"Found {len(packages)} Python packages:")
-    for pkg in packages:
+    # Group for display
+    packages_py = [(f, b) for f, b in packages if b == 'packages_py']
+    fastapi_apps = [(f, b) for f, b in packages if b == 'fastapi_apps']
+
+    print(f"Found {len(packages_py)} packages in packages_py/:")
+    for pkg, _ in packages_py:
         print(f"  - {pkg}")
+
+    if fastapi_apps:
+        print(f"\nFound {len(fastapi_apps)} apps in fastapi_apps/:")
+        for pkg, _ in fastapi_apps:
+            print(f"  - {pkg}")
     print()
 
     # Update pyproject.toml
     changed, added, removed = update_pyproject_toml(
         pyproject_path,
         packages,
+        root,
         dry_run=args.dry_run
     )
 

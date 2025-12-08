@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "fastapi-main-entry"
+version = "1.0.0"
+description = "Main Entry FastAPI Application"
+authors = []
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+pydantic = "^2.0.0"
+pydantic-settings = "^2.0.0"
+
+# Local dependencies (resolved from monorepo root)
+app-static-config-yaml = {path = "../../packages_py/app_static_config_yaml", develop = true}
+vault-file = {path = "../../packages_py/vault_file", develop = true}
+provider-api-getters = {path = "../../packages_py/provider_api_getters", develop = true}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
