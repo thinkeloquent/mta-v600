@@ -1,6 +1,7 @@
 """
 Base HTTP client using httpx.
 """
+import logging
 from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 
 import httpx
@@ -15,6 +16,8 @@ from .request_builder import (
 )
 from ..streaming.sse_reader import parse_sse_stream, parse_sse_stream_sync
 from ..streaming.ndjson_reader import parse_ndjson_stream, parse_ndjson_stream_sync
+
+logger = logging.getLogger("fetch_client.base_client")
 
 
 class AsyncFetchClient:
@@ -54,8 +57,17 @@ class AsyncFetchClient:
         context = create_request_context(method, path, headers, json)
         has_body = json is not None or body is not None
 
+        logger.debug(f"AsyncFetchClient.request: method={method}, path={path}, base_url={self._config.base_url}")
+        logger.debug(f"AsyncFetchClient.request: built url={url}")
+        logger.debug(f"AsyncFetchClient.request: config.auth={self._config.auth}")
+        logger.debug(f"AsyncFetchClient.request: context={context}")
+
         request_headers = build_headers(self._config, headers, context, has_body)
         request_body = build_body(json, body, self._config.serializer)
+
+        # Mask sensitive headers for logging
+        logged_headers = {k: ('***' if k.lower() == 'authorization' else v) for k, v in request_headers.items()}
+        logger.debug(f"AsyncFetchClient.request: request_headers={logged_headers}")
 
         response = await self._client.request(
             method=method,

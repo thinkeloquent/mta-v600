@@ -25,6 +25,10 @@ def _mask_sensitive(value: Optional[str], visible_chars: int = 4) -> str:
     return value[:visible_chars] + "*" * (len(value) - visible_chars)
 
 
+# Public alias for external use
+mask_sensitive = _mask_sensitive
+
+
 @dataclass
 class RequestContext:
     """

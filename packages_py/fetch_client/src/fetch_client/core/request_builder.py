@@ -1,6 +1,7 @@
 """
 Request builder utilities for fetch_client.
 """
+import logging
 from typing import Any, Dict, Optional, Union
 from urllib.parse import urlencode, urljoin, urlparse
 
@@ -11,6 +12,8 @@ from ..config import (
     get_auth_header_name,
     format_auth_header_value,
 )
+
+logger = logging.getLogger("fetch_client.request_builder")
 
 
 def build_url(
@@ -23,8 +26,15 @@ def build_url(
     if path.startswith("/"):
         parsed = urlparse(base_url)
         url = f"{parsed.scheme}://{parsed.netloc}{path}"
-    else:
+    elif path:
+        # urljoin replaces the last segment if base doesn't end with /
+        # Ensure base_url ends with / for proper joining with relative paths
+        if not base_url.endswith("/"):
+            base_url = base_url + "/"
         url = urljoin(base_url, path)
+    else:
+        # Empty path - use base_url as-is
+        url = base_url
 
     if query:
         query_str = urlencode({k: str(v) for k, v in query.items()})
@@ -41,6 +51,7 @@ def build_headers(
     has_body: bool = False,
 ) -> Dict[str, str]:
     """Build request headers."""
+    logger.debug(f"build_headers: config.auth={config.auth}, context={context}, has_body={has_body}")
     result = dict(config.headers)
 
     if headers:
@@ -55,10 +66,15 @@ def build_headers(
         result["accept"] = "application/json"
 
     # Apply auth header
+    logger.debug(f"build_headers: checking auth - config.auth={config.auth is not None}, context={context is not None}")
     if config.auth and context:
+        logger.debug(f"build_headers: calling resolve_auth_header with auth.type={config.auth.type}, auth.api_key={bool(config.auth.api_key)}")
         auth_header = resolve_auth_header(config.auth, context)
+        logger.debug(f"build_headers: resolve_auth_header returned={auth_header}")
         if auth_header:
             result.update(auth_header)
+    else:
+        logger.debug(f"build_headers: skipping auth - config.auth={config.auth}, context={context}")
 
     return result
 
@@ -70,20 +86,26 @@ def resolve_auth_header(
     """Resolve auth header from config and context."""
     api_key: Optional[str] = None
 
+    logger.debug(f"resolve_auth_header: auth.type={auth.type}, has_callback={auth.get_api_key_for_request is not None}")
+
     # Try dynamic callback first
     if auth.get_api_key_for_request:
         api_key = auth.get_api_key_for_request(context)
+        logger.debug(f"resolve_auth_header: got key from callback: {bool(api_key)}")
 
     # Fall back to static key
     if not api_key:
         api_key = auth.api_key
+        logger.debug(f"resolve_auth_header: using static key: {bool(api_key)}")
 
     if not api_key:
+        logger.debug("resolve_auth_header: no api_key found, returning None")
         return None
 
     header_name = get_auth_header_name(auth)
     header_value = format_auth_header_value(auth, api_key)
 
+    logger.debug(f"resolve_auth_header: returning header {header_name}=***")
     return {header_name: header_value}
 
 
