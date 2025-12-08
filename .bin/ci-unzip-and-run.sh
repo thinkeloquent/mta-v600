@@ -20,7 +20,23 @@ UNZIP_PATH="/hello/world"
 
 echo "Unzipping ${ZIP_PATH} to ${UNZIP_PATH}..."
 mkdir -p "${UNZIP_PATH}"
-unzip -o "${ZIP_PATH}" -d "${UNZIP_PATH}"
+
+# Extract to temp directory, then move contents to target (avoids nested folder)
+TEMP_DIR=$(mktemp -d)
+unzip -o "${ZIP_PATH}" -d "${TEMP_DIR}"
+
+# Move contents (handles single root folder in zip)
+shopt -s dotglob
+EXTRACTED_ITEMS=("${TEMP_DIR}"/*)
+if [ ${#EXTRACTED_ITEMS[@]} -eq 1 ] && [ -d "${EXTRACTED_ITEMS[0]}" ]; then
+    # Single folder in zip - move its contents
+    mv "${EXTRACTED_ITEMS[0]}"/* "${UNZIP_PATH}/"
+else
+    # Multiple items or files - move all
+    mv "${TEMP_DIR}"/* "${UNZIP_PATH}/"
+fi
+shopt -u dotglob
+rm -rf "${TEMP_DIR}"
 
 echo "Deleting ${ZIP_PATH}..."
 rm -f "${ZIP_PATH}"
