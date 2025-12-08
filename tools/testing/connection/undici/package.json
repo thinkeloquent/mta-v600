@@ -1,0 +1,27 @@
+{
+  "name": "@tools/connection-test-undici",
+  "version": "1.0.0",
+  "description": "Provider connection testing with Node.js + undici",
+  "type": "module",
+  "scripts": {
+    "test:github": "node github.mjs",
+    "test:jira": "node jira.mjs",
+    "test:confluence": "node confluence.mjs",
+    "test:figma": "node figma.mjs",
+    "test:gemini": "node gemini.mjs",
+    "test:saucelabs": "node saucelabs.mjs",
+    "test:elasticsearch": "node elasticsearch.mjs",
+    "test:redis": "node redis.mjs",
+    "test:postgres": "node postgres.mjs",
+    "test:rally": "node rally.mjs",
+    "test:all": "node github.mjs && node jira.mjs && node confluence.mjs && node figma.mjs && node gemini.mjs && node saucelabs.mjs && node elasticsearch.mjs && node redis.mjs && node postgres.mjs && node rally.mjs"
+  },
+  "dependencies": {
+    "undici": "^7.0.0",
+    "ioredis": "^5.4.0",
+    "pg": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
