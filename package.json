@@ -19,6 +19,7 @@
     "build:logerror": "mkdir -p logs && pnpm nx run-many --skip-nx-cache --verbose --target=build --output-style=stream 2>&1 | tee logs/pnpm-build-error.log && python3 .bin/parse_pnpm_build_errors.py",
     "dev": "nx run-many -t dev --output-style=stream",
     "test": "nx run-many -t test",
+    "test:logerror": "mkdir -p logs && pnpm nx run-many --skip-nx-cache --verbose --target=test --output-style=stream 2>&1 | tee logs/pnpm-test-error.log && python3 .bin/parse_pnpm_build_errors.py",
     "clean": "nx run-many -t clean",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
