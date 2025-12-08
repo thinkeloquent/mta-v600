@@ -25,12 +25,43 @@ providers:
   github:
     base_url: "https://api.github.com"
     env_api_key: "GITHUB_TOKEN"
+    env_api_key_fallbacks:
+      - "GH_TOKEN"
+      - "GITHUB_ACCESS_TOKEN"
+      - "GITHUB_PAT"
   jira:
     base_url: null  # Set per-tenant or via JIRA_BASE_URL
     env_api_key: "JIRA_API_TOKEN"
+    env_email: "JIRA_EMAIL"
+    health_endpoint: "/rest/api/2/myself"
   confluence:
     base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL
     env_api_key: "CONFLUENCE_API_TOKEN"
+    env_email: "CONFLUENCE_EMAIL"
+    health_endpoint: "/wiki/rest/api/user/current"
+  # Database providers
+  postgres:
+    env_connection_url: "DATABASE_URL"
+    health_query: "SELECT 1"
+  redis:
+    env_connection_url: "REDIS_URL"
+  # SauceLabs
+  saucelabs:
+    base_url: "https://api.us-west-1.saucelabs.com"
+    env_username: "SAUCE_USERNAME"
+    env_username_fallbacks:
+      - "SAUCELABS_USERNAME"
+    env_api_key: "SAUCE_ACCESS_KEY"
+    env_api_key_fallbacks:
+      - "SAUCELABS_ACCESS_KEY"
+    health_endpoint: "/rest/v1/users/:username"
+  # Placeholder providers (not implemented)
+  rally:
+    placeholder: true
+    message: "Rally integration not implemented"
+  elasticsearch:
+    placeholder: true
+    message: "Elasticsearch integration not implemented"
 
 # Default provider for backward compatibility
 default_provider: "gemini"

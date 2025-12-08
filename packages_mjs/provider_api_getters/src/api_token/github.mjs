@@ -2,6 +2,7 @@
  * GitHub API token getter.
  *
  * Supports multiple fallback environment variable names for flexibility.
+ * Fallbacks are configured in server.{APP_ENV}.yaml under providers.github.env_api_key_fallbacks.
  */
 import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
 
@@ -10,14 +11,6 @@ const logger = {
   debug: (msg) => console.debug(`[DEBUG] provider_api_getters.github: ${msg}`),
   warn: (msg) => console.warn(`[WARN] provider_api_getters.github: ${msg}`),
 };
-
-// Fallback environment variable names (in order of priority)
-export const GITHUB_FALLBACK_ENV_VARS = [
-  'GITHUB_TOKEN',
-  'GH_TOKEN',
-  'GITHUB_ACCESS_TOKEN',
-  'GITHUB_PAT',
-];
 
 export class GithubApiToken extends BaseApiToken {
   get providerName() {
@@ -30,11 +23,11 @@ export class GithubApiToken extends BaseApiToken {
   }
 
   /**
-   * Get the list of fallback environment variable names.
+   * Get the list of fallback environment variable names from config.
    * @returns {string[]}
    */
   _getFallbackEnvVars() {
-    return GITHUB_FALLBACK_ENV_VARS;
+    return this._getEnvApiKeyFallbacks();
   }
 
   /**
@@ -113,9 +106,12 @@ export class GithubApiToken extends BaseApiToken {
       );
       return result;
     } else {
+      const configuredKey = this._getEnvApiKeyName();
+      const fallbackVars = this._getFallbackEnvVars();
+      const allVars = configuredKey ? [configuredKey, ...fallbackVars] : fallbackVars;
       logger.warn(
         'GithubApiToken.getApiKey: No API key found. ' +
-        `Ensure one of these environment variables is set: [${GITHUB_FALLBACK_ENV_VARS.join(', ')}]`
+        `Ensure one of these environment variables is set: [${allVars.join(', ')}]`
       );
       const result = new ApiKeyResult({
         apiKey: null,

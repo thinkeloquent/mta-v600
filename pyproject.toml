@@ -17,6 +17,7 @@ httpx = "^0.28.1"
 pyyaml = "^6.0"
 
 # Local packages
+app-static-config-yaml = {path = "packages_py/app_static_config_yaml", develop = true}
 cache-dsn = {path = "packages_py/cache_dsn", develop = true}
 cache-request = {path = "packages_py/cache_request", develop = true}
 cache-response = {path = "packages_py/cache_response", develop = true}
@@ -32,7 +33,6 @@ fetch-proxy-dispatcher = {path = "packages_py/fetch_proxy_dispatcher", develop =
 fetch-rate-limiter = {path = "packages_py/fetch_rate_limiter", develop = true}
 fetch-retry = {path = "packages_py/fetch_retry", develop = true}
 provider-api-getters = {path = "packages_py/provider_api_getters", develop = true}
-app-static-config-yaml = {path = "packages_py/app_static_config_yaml", develop = true}
 vault-file = {path = "packages_py/vault_file", develop = true}
 
 # FastAPI apps

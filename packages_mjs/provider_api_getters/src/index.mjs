@@ -14,6 +14,7 @@ export {
   RedisApiToken,
   RallyApiToken,
   ElasticsearchApiToken,
+  SaucelabsApiToken,
   getApiTokenClass,
   PROVIDER_REGISTRY,
 } from './api_token/index.mjs';

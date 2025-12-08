@@ -81,6 +81,8 @@ export class ProviderHealthChecker {
       return this._checkPostgres(apiToken);
     } else if (providerNameLower === 'redis') {
       return this._checkRedis(apiToken);
+    } else if (providerNameLower === 'elasticsearch') {
+      return this._checkElasticsearch(apiToken);
     } else {
       return this._checkHttp(providerName, apiToken, apiKeyResult);
     }
@@ -166,6 +168,61 @@ export class ProviderHealthChecker {
       const latencyMs = performance.now() - startTime;
       return new ProviderConnectionResponse({
         provider: 'redis',
+        status: 'error',
+        latencyMs: Math.round(latencyMs * 100) / 100,
+        error: e.message,
+      });
+    }
+  }
+
+  async _checkElasticsearch(apiToken) {
+    // Use HTTP directly to support both Elasticsearch and OpenSearch
+    // (the official @elastic/elasticsearch client rejects OpenSearch servers)
+    const startTime = performance.now();
+
+    try {
+      const connectionUrl = apiToken.getConnectionUrl();
+      const healthUrl = `${connectionUrl}/_cluster/health`;
+
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+
+      const latencyMs = performance.now() - startTime;
+
+      if (response.ok) {
+        const result = await response.json();
+
+        if (result && result.cluster_name) {
+          const status = result.status || 'unknown';
+          return new ProviderConnectionResponse({
+            provider: 'elasticsearch',
+            status: 'connected',
+            latencyMs: Math.round(latencyMs * 100) / 100,
+            message: `Cluster '${result.cluster_name}' is ${status}`,
+          });
+        }
+
+        return new ProviderConnectionResponse({
+          provider: 'elasticsearch',
+          status: 'error',
+          latencyMs: Math.round(latencyMs * 100) / 100,
+          error: 'Unexpected response from cluster health check',
+        });
+      } else {
+        const text = await response.text();
+        return new ProviderConnectionResponse({
+          provider: 'elasticsearch',
+          status: 'error',
+          latencyMs: Math.round(latencyMs * 100) / 100,
+          error: `HTTP ${response.status}: ${text.substring(0, 200)}`,
+        });
+      }
+    } catch (e) {
+      const latencyMs = performance.now() - startTime;
+      return new ProviderConnectionResponse({
+        provider: 'elasticsearch',
         status: 'error',
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,

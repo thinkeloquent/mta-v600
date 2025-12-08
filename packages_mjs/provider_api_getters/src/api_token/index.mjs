@@ -11,6 +11,7 @@ export { PostgresApiToken } from './postgres.mjs';
 export { RedisApiToken } from './redis.mjs';
 export { RallyApiToken } from './rally.mjs';
 export { ElasticsearchApiToken } from './elasticsearch.mjs';
+export { SaucelabsApiToken } from './saucelabs.mjs';
 
 import { FigmaApiToken } from './figma.mjs';
 import { GithubApiToken } from './github.mjs';
@@ -21,6 +22,7 @@ import { PostgresApiToken } from './postgres.mjs';
 import { RedisApiToken } from './redis.mjs';
 import { RallyApiToken } from './rally.mjs';
 import { ElasticsearchApiToken } from './elasticsearch.mjs';
+import { SaucelabsApiToken } from './saucelabs.mjs';
 
 /**
  * Registry mapping provider names to their token classes.
@@ -37,6 +39,7 @@ export const PROVIDER_REGISTRY = {
   redis: RedisApiToken,
   rally: RallyApiToken,
   elasticsearch: ElasticsearchApiToken,
+  saucelabs: SaucelabsApiToken,
 };
 
 /**

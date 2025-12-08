@@ -3,6 +3,7 @@ GitHub API token getter.
 
 This module provides API token resolution for the GitHub API.
 Supports multiple fallback environment variable names for flexibility.
+Fallbacks are configured in server.{APP_ENV}.yaml under providers.github.env_api_key_fallbacks.
 """
 import logging
 import os
@@ -11,14 +12,6 @@ from typing import List, Optional, Tuple
 from .base import BaseApiToken, ApiKeyResult, _mask_sensitive
 
 logger = logging.getLogger(__name__)
-
-# Fallback environment variable names for GitHub token (in order of priority)
-GITHUB_FALLBACK_ENV_VARS: Tuple[str, ...] = (
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
-    "GITHUB_ACCESS_TOKEN",
-    "GITHUB_PAT",
-)
 
 
 class GithubApiToken(BaseApiToken):
@@ -32,12 +25,11 @@ class GithubApiToken(BaseApiToken):
     Configuration:
         providers.github.base_url: "https://api.github.com"
         providers.github.env_api_key: "GITHUB_TOKEN"
+        providers.github.env_api_key_fallbacks: ["GH_TOKEN", "GITHUB_ACCESS_TOKEN", "GITHUB_PAT"]
 
-    Environment Variables (checked in order):
-        GITHUB_TOKEN: Standard GitHub token
-        GH_TOKEN: GitHub CLI token
-        GITHUB_ACCESS_TOKEN: Alternative naming
-        GITHUB_PAT: Personal Access Token naming
+    Environment Variables (checked in order from config):
+        Primary: env_api_key (GITHUB_TOKEN)
+        Fallbacks: env_api_key_fallbacks (GH_TOKEN, GITHUB_ACCESS_TOKEN, GITHUB_PAT)
     """
 
     @property
@@ -58,12 +50,13 @@ class GithubApiToken(BaseApiToken):
 
     def _get_fallback_env_vars(self) -> Tuple[str, ...]:
         """
-        Get the list of fallback environment variable names.
+        Get the list of fallback environment variable names from config.
 
         Returns:
             Tuple of environment variable names to check
         """
-        return GITHUB_FALLBACK_ENV_VARS
+        fallbacks = self._get_env_api_key_fallbacks()
+        return tuple(fallbacks)
 
     def _lookup_with_fallbacks(self) -> Tuple[Optional[str], Optional[str]]:
         """
@@ -154,9 +147,12 @@ class GithubApiToken(BaseApiToken):
                 header_name="Authorization",
             )
         else:
+            configured_key = self._get_env_api_key_name()
+            fallback_vars = self._get_fallback_env_vars()
+            all_vars = (configured_key,) + fallback_vars if configured_key else fallback_vars
             logger.warning(
                 "GithubApiToken.get_api_key: No API key found. "
-                f"Ensure one of these environment variables is set: {GITHUB_FALLBACK_ENV_VARS}"
+                f"Ensure one of these environment variables is set: {all_vars}"
             )
             result = ApiKeyResult(
                 api_key=None,

@@ -389,6 +389,29 @@ export class BaseApiToken {
   }
 
   /**
+   * Get the fallback environment variable names for the API key.
+   * @returns {string[]}
+   */
+  _getEnvApiKeyFallbacks() {
+    const className = this.constructor.name;
+    logger.debug(`${className}._getEnvApiKeyFallbacks: Getting fallback env vars`);
+
+    const providerConfig = this._getProviderConfig();
+    const fallbacks = providerConfig?.env_api_key_fallbacks || [];
+
+    if (fallbacks.length > 0) {
+      logger.debug(
+        `${className}._getEnvApiKeyFallbacks: Found ${fallbacks.length} fallbacks: ` +
+        `[${fallbacks.join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}._getEnvApiKeyFallbacks: No fallbacks configured`);
+    }
+
+    return fallbacks;
+  }
+
+  /**
    * Get the base URL from config or environment.
    * @returns {string|null}
    */

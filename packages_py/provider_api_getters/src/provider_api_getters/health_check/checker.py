@@ -14,6 +14,7 @@ from typing import Any, Optional
 from ..api_token import get_api_token_class, BaseApiToken, ApiKeyResult
 from ..api_token.postgres import PostgresApiToken
 from ..api_token.redis import RedisApiToken
+from ..api_token.elasticsearch import ElasticsearchApiToken
 from ..fetch_client import ProviderClientFactory
 
 # Configure logger
@@ -112,6 +113,9 @@ class ProviderHealthChecker:
         elif provider_name_lower == "redis":
             logger.debug("ProviderHealthChecker.check: Routing to Redis check")
             return await self._check_redis(api_token)
+        elif provider_name_lower == "elasticsearch":
+            logger.debug("ProviderHealthChecker.check: Routing to Elasticsearch check")
+            return await self._check_elasticsearch(api_token)
         else:
             logger.debug("ProviderHealthChecker.check: Routing to HTTP check")
             return await self._check_http(provider_name, api_token, api_key_result)
@@ -245,6 +249,77 @@ class ProviderHealthChecker:
             logger.exception(f"ProviderHealthChecker._check_redis: Exception: {e}")
             return ProviderConnectionResponse(
                 provider="redis",
+                status="error",
+                latency_ms=round(latency_ms, 2),
+                error=str(e),
+            )
+
+    async def _check_elasticsearch(self, api_token: ElasticsearchApiToken) -> ProviderConnectionResponse:
+        """Check Elasticsearch/OpenSearch connection using HTTP directly.
+
+        Uses httpx for health check to support both Elasticsearch and OpenSearch
+        (the official elasticsearch-py client rejects OpenSearch servers).
+        """
+        logger.debug("ProviderHealthChecker._check_elasticsearch: Starting Elasticsearch/OpenSearch check")
+        start_time = time.perf_counter()
+
+        try:
+            import httpx
+
+            # Build the health check URL from connection config
+            connection_url = api_token.get_connection_url()
+            health_url = f"{connection_url}/_cluster/health"
+
+            logger.debug(f"ProviderHealthChecker._check_elasticsearch: Checking {health_url}")
+
+            async with httpx.AsyncClient(verify=True, timeout=10.0) as client:
+                response = await client.get(health_url)
+                latency_ms = (time.perf_counter() - start_time) * 1000
+
+                logger.debug(
+                    f"ProviderHealthChecker._check_elasticsearch: Response status={response.status_code}"
+                )
+
+                if response.status_code == 200:
+                    result = response.json()
+                    logger.debug(f"ProviderHealthChecker._check_elasticsearch: Health result = {result}")
+
+                    if result and result.get("cluster_name"):
+                        cluster_status = result.get("status", "unknown")
+                        logger.info(
+                            f"ProviderHealthChecker._check_elasticsearch: Connection successful, "
+                            f"cluster={result['cluster_name']}, status={cluster_status}, latency={latency_ms:.2f}ms"
+                        )
+                        return ProviderConnectionResponse(
+                            provider="elasticsearch",
+                            status="connected",
+                            latency_ms=round(latency_ms, 2),
+                            message=f"Cluster '{result['cluster_name']}' is {cluster_status}",
+                        )
+
+                    logger.error("ProviderHealthChecker._check_elasticsearch: Unexpected response format")
+                    return ProviderConnectionResponse(
+                        provider="elasticsearch",
+                        status="error",
+                        latency_ms=round(latency_ms, 2),
+                        error="Unexpected response from cluster health check",
+                    )
+                else:
+                    logger.error(
+                        f"ProviderHealthChecker._check_elasticsearch: HTTP {response.status_code}"
+                    )
+                    return ProviderConnectionResponse(
+                        provider="elasticsearch",
+                        status="error",
+                        latency_ms=round(latency_ms, 2),
+                        error=f"HTTP {response.status_code}: {response.text[:200]}",
+                    )
+
+        except Exception as e:
+            latency_ms = (time.perf_counter() - start_time) * 1000
+            logger.exception(f"ProviderHealthChecker._check_elasticsearch: Exception: {e}")
+            return ProviderConnectionResponse(
+                provider="elasticsearch",
                 status="error",
                 latency_ms=round(latency_ms, 2),
                 error=str(e),

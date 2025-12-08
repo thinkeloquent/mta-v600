@@ -360,6 +360,31 @@ class BaseApiToken(ABC):
 
         return env_key_name
 
+    def _get_env_api_key_fallbacks(self) -> list[str]:
+        """
+        Get the fallback environment variable names for the API key.
+
+        Returns:
+            List of fallback environment variable names (empty if not configured)
+        """
+        logger.debug(f"{self.__class__.__name__}._get_env_api_key_fallbacks: Getting fallback env vars")
+
+        provider_config = self._get_provider_config()
+        fallbacks = provider_config.get("env_api_key_fallbacks", [])
+
+        if fallbacks:
+            logger.debug(
+                f"{self.__class__.__name__}._get_env_api_key_fallbacks: "
+                f"Found {len(fallbacks)} fallbacks: {fallbacks}"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}._get_env_api_key_fallbacks: "
+                "No fallbacks configured"
+            )
+
+        return fallbacks if fallbacks else []
+
     def _get_base_url(self) -> Optional[str]:
         """
         Get the base URL from config or environment.

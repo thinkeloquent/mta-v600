@@ -19,6 +19,7 @@ from .api_token import (
     RedisApiToken,
     RallyApiToken,
     ElasticsearchApiToken,
+    SaucelabsApiToken,
     get_api_token_class,
     PROVIDER_REGISTRY,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "RedisApiToken",
     "RallyApiToken",
     "ElasticsearchApiToken",
+    "SaucelabsApiToken",
     # Registry
     "get_api_token_class",
     "PROVIDER_REGISTRY",
