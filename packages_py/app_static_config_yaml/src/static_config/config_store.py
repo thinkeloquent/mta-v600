@@ -12,9 +12,17 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+import json
 
 # Rich console for pretty printing
 console = Console()
+
+
+def _format_yaml_content(data: dict) -> str:
+    """Format dict as YAML for pretty printing."""
+    return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 from .types import ServerConfig
 
@@ -144,11 +152,29 @@ class ConfigStore:
 
         self._load_result = result
         self._initialized = True
-        console.print("[bold magenta]YAML config loaded:[/bold magenta]", {
+
+        # Pretty print loaded config info
+        load_info = {
             "config_file": result.config_file,
             "app_env": result.app_env,
             "files_loaded": result.files_loaded,
-        })
+        }
+        load_info_str = json.dumps(load_info, indent=2)
+        console.print(Panel(
+            Syntax(load_info_str, "json", theme="monokai"),
+            title="[bold magenta]YAML Config Loaded[/bold magenta]",
+            expand=False
+        ))
+
+        # Pretty print the full config content
+        if self._data:
+            yaml_content = _format_yaml_content(self._data)
+            console.print(Panel(
+                Syntax(yaml_content, "yaml", theme="monokai"),
+                title="[bold cyan]Config Content[/bold cyan]",
+                expand=False
+            ))
+
         return result
 
     def get(self, key: str, default: Any = None) -> Any:
