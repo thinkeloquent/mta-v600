@@ -11,11 +11,15 @@ and configuration issues.
 """
 import logging
 from typing import Any, Optional
+from rich.console import Console
 from ..api_token import get_api_token_class, BaseApiToken
 from ..api_token.base import mask_sensitive
 
 # Configure logger
 logger = logging.getLogger("provider_api_getters.fetch_client")
+
+# Rich console for pretty printing
+console = Console()
 
 
 class ProviderClientFactory:
@@ -127,6 +131,14 @@ class ProviderClientFactory:
             cert=cert,
             cert_verify=cert_verify,
         )
+        console.print("[bold blue]FactoryConfig:[/bold blue]", {
+            "proxy_urls": proxy_urls is not None,
+            "agent_proxy": agent_proxy is not None,
+            "default_environment": default_environment,
+            "ca_bundle": ca_bundle is not None,
+            "cert": cert is not None,
+            "cert_verify": cert_verify,
+        })
 
         factory = ProxyDispatcherFactory(config=factory_config)
 
@@ -214,6 +226,11 @@ class ProviderClientFactory:
                     api_key=api_key_result.api_key,
                     header_name=api_key_result.header_name,
                 )
+                console.print("[bold green]AuthConfig (Basic):[/bold green]", {
+                    "type": "custom",
+                    "header_name": api_key_result.header_name,
+                    "api_key": api_key_masked,
+                })
             elif api_key_result.auth_type == "x-api-key":
                 logger.debug(
                     f"ProviderClientFactory.get_client: Using X-API-Key auth with "
@@ -224,6 +241,11 @@ class ProviderClientFactory:
                     api_key=api_key_result.api_key,
                     header_name=api_key_result.header_name,
                 )
+                console.print("[bold green]AuthConfig (X-API-Key):[/bold green]", {
+                    "type": "custom",
+                    "header_name": api_key_result.header_name,
+                    "api_key": api_key_masked,
+                })
             else:
                 logger.debug(
                     f"ProviderClientFactory.get_client: Using Bearer auth with key={api_key_masked}"
@@ -232,6 +254,10 @@ class ProviderClientFactory:
                     type="bearer",
                     api_key=api_key_result.api_key,
                 )
+                console.print("[bold green]AuthConfig (Bearer):[/bold green]", {
+                    "type": "bearer",
+                    "api_key": api_key_masked,
+                })
         else:
             logger.warning(f"ProviderClientFactory.get_client: No API key for '{provider_name}'")
 
@@ -244,6 +270,10 @@ class ProviderClientFactory:
             httpx_client=httpx_client,
             auth=auth_config,
         )
+        console.print("[bold cyan]AsyncFetchClient created:[/bold cyan]", {
+            "provider": provider_name,
+            "base_url": base_url,
+        })
         logger.debug(f"ProviderClientFactory.get_client: Client created successfully for '{provider_name}'")
 
         return client

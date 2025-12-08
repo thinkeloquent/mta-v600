@@ -5,6 +5,10 @@ import logging
 from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 
 import httpx
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+import json
 
 from ..types import FetchResponse, HttpMethod, RequestContext, SSEEvent
 from ..config import ClientConfig, resolve_config, ResolvedConfig
@@ -18,6 +22,36 @@ from ..streaming.sse_reader import parse_sse_stream, parse_sse_stream_sync
 from ..streaming.ndjson_reader import parse_ndjson_stream, parse_ndjson_stream_sync
 
 logger = logging.getLogger("fetch_client.base_client")
+
+# Rich console for pretty printing
+console = Console()
+
+
+def _mask_auth_header(headers: Dict[str, str]) -> Dict[str, str]:
+    """Mask authorization header for safe logging."""
+    masked = dict(headers)
+    for key in masked:
+        if key.lower() in ('authorization', 'x-api-key'):
+            value = masked[key]
+            if len(value) > 10:
+                masked[key] = value[:10] + '*' * (len(value) - 10)
+            else:
+                masked[key] = '*' * len(value)
+    return masked
+
+
+def _format_body(body: Any) -> str:
+    """Format body for pretty printing."""
+    if body is None:
+        return ""
+    if isinstance(body, (dict, list)):
+        return json.dumps(body, indent=2, ensure_ascii=False)
+    if isinstance(body, bytes):
+        try:
+            return body.decode('utf-8')
+        except UnicodeDecodeError:
+            return f"<binary data: {len(body)} bytes>"
+    return str(body)
 
 
 class AsyncFetchClient:
@@ -65,9 +99,14 @@ class AsyncFetchClient:
         request_headers = build_headers(self._config, headers, context, has_body)
         request_body = build_body(json, body, self._config.serializer)
 
-        # Mask sensitive headers for logging
-        logged_headers = {k: ('***' if k.lower() == 'authorization' else v) for k, v in request_headers.items()}
-        logger.debug(f"AsyncFetchClient.request: request_headers={logged_headers}")
+        # Pretty print request
+        masked_headers = _mask_auth_header(request_headers)
+        request_info = f"[bold cyan]{method}[/bold cyan] {url}"
+        console.print(Panel(request_info, title="[bold blue]Request[/bold blue]", expand=False))
+        console.print("[bold]Headers:[/bold]", masked_headers)
+        if json is not None:
+            body_str = _format_body(json)
+            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Request Body[/bold]", expand=False))
 
         response = await self._client.request(
             method=method,
@@ -84,6 +123,15 @@ class AsyncFetchClient:
             data = self._config.serializer.deserialize(text)
         except Exception:
             data = text
+
+        # Pretty print response
+        status_color = "green" if 200 <= response.status_code < 300 else "red"
+        response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
+        console.print(Panel(response_info, title="[bold blue]Response[/bold blue]", expand=False))
+        console.print("[bold]Headers:[/bold]", dict(response_headers))
+        if data:
+            body_str = _format_body(data)
+            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Response Body[/bold]", expand=False))
 
         return FetchResponse(
             status=response.status_code,
@@ -229,6 +277,15 @@ class SyncFetchClient:
         request_headers = build_headers(self._config, headers, context, has_body)
         request_body = build_body(json, body, self._config.serializer)
 
+        # Pretty print request
+        masked_headers = _mask_auth_header(request_headers)
+        request_info = f"[bold cyan]{method}[/bold cyan] {url}"
+        console.print(Panel(request_info, title="[bold blue]Request[/bold blue]", expand=False))
+        console.print("[bold]Headers:[/bold]", masked_headers)
+        if json is not None:
+            body_str = _format_body(json)
+            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Request Body[/bold]", expand=False))
+
         response = self._client.request(
             method=method,
             url=url,
@@ -244,6 +301,15 @@ class SyncFetchClient:
             data = self._config.serializer.deserialize(text)
         except Exception:
             data = text
+
+        # Pretty print response
+        status_color = "green" if 200 <= response.status_code < 300 else "red"
+        response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
+        console.print(Panel(response_info, title="[bold blue]Response[/bold blue]", expand=False))
+        console.print("[bold]Headers:[/bold]", dict(response_headers))
+        if data:
+            body_str = _format_body(data)
+            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Response Body[/bold]", expand=False))
 
         return FetchResponse(
             status=response.status_code,

@@ -13,7 +13,18 @@
  * Falls back to ENV if YAML value is undefined (not present).
  * Does nothing if YAML value is explicitly null.
  */
+import pino from 'pino';
 import { getApiTokenClass } from '../api_token/index.mjs';
+
+// Create pino logger with pretty printing
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+    },
+  },
+});
 
 export class ProviderClientFactory {
   #configStore = null;
@@ -93,6 +104,7 @@ export class ProviderClientFactory {
       if (defaultEnvironment) factoryConfig.defaultEnvironment = defaultEnvironment;
 
       const factory = new ProxyDispatcherFactory(factoryConfig);
+      logger.info({ factoryConfig, disableTls }, 'ProxyDispatcherFactory config');
       return factory.getProxyDispatcher({ disableTls });
     } catch {
       return undefined;
@@ -117,6 +129,7 @@ export class ProviderClientFactory {
 
     const apiToken = this.getApiToken(providerName);
     if (!apiToken) return null;
+    logger.info({ providerName }, 'API token retrieved');
 
     const baseUrl = apiToken.getBaseUrl();
     if (!baseUrl) return null;
@@ -147,6 +160,7 @@ export class ProviderClientFactory {
       dispatcher,
       auth,
     });
+    logger.info({ providerName, baseUrl }, 'FetchClient created');
 
     return client;
   }

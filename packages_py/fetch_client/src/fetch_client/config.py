@@ -9,7 +9,7 @@ import json
 from .types import AuthType, RequestContext
 
 
-def _mask_sensitive(value: Optional[str], visible_chars: int = 4) -> str:
+def _mask_sensitive(value: Optional[str], visible_chars: int = 10) -> str:
     """Mask sensitive value for safe logging."""
     if value is None:
         return "<None>"

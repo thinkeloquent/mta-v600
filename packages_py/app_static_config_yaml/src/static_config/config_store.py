@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+from rich.console import Console
+
+# Rich console for pretty printing
+console = Console()
 
 from .types import ServerConfig
 
@@ -140,6 +144,11 @@ class ConfigStore:
 
         self._load_result = result
         self._initialized = True
+        console.print("[bold magenta]YAML config loaded:[/bold magenta]", {
+            "config_file": result.config_file,
+            "app_env": result.app_env,
+            "files_loaded": result.files_loaded,
+        })
         return result
 
     def get(self, key: str, default: Any = None) -> Any:

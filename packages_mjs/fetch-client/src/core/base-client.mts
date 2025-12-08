@@ -3,6 +3,7 @@
  */
 import { request } from 'undici';
 import type { Dispatcher } from 'undici';
+import pino from 'pino';
 import type {
   ClientConfig,
   RequestOptions,
@@ -20,6 +21,34 @@ import {
 } from './request-builder.mjs';
 import { parseSSEStream } from '../streaming/sse-reader.mjs';
 import { parseNdjsonStream } from '../streaming/ndjson-reader.mjs';
+
+// Create pino logger with pretty printing
+const logger = pino({
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+    },
+  },
+});
+
+/**
+ * Mask auth header values for safe logging
+ */
+function maskAuthHeader(headers: Record<string, string>): Record<string, string> {
+  const masked = { ...headers };
+  for (const key of Object.keys(masked)) {
+    if (key.toLowerCase() === 'authorization' || key.toLowerCase() === 'x-api-key') {
+      const value = masked[key];
+      if (value.length > 10) {
+        masked[key] = value.slice(0, 10) + '*'.repeat(value.length - 10);
+      } else {
+        masked[key] = '*'.repeat(value.length);
+      }
+    }
+  }
+  return masked;
+}
 
 /**
  * Base HTTP client implementation
@@ -49,6 +78,16 @@ export class BaseClient implements FetchClient {
     const context = createRequestContext(method, options.path, options);
     const undiciOptions = buildUndiciOptions(this.config, options, context);
 
+    // Log request
+    const maskedHeaders = maskAuthHeader(undiciOptions.headers as Record<string, string>);
+    logger.info({
+      type: 'request',
+      method,
+      url,
+      headers: maskedHeaders,
+      body: options.json,
+    }, `Request: ${method} ${url}`);
+
     const response = await request(url, {
       ...undiciOptions,
       dispatcher: this.dispatcher,
@@ -72,12 +111,22 @@ export class BaseClient implements FetchClient {
       data = text as unknown as T;
     }
 
+    // Log response
+    const isOk = response.statusCode >= 200 && response.statusCode < 300;
+    const logLevel = isOk ? 'info' : 'error';
+    logger[logLevel]({
+      type: 'response',
+      status: response.statusCode,
+      headers: responseHeaders,
+      body: data,
+    }, `Response: ${response.statusCode}`);
+
     return {
       status: response.statusCode,
       statusText: '',
       headers: responseHeaders,
       data,
-      ok: response.statusCode >= 200 && response.statusCode < 300,
+      ok: isOk,
     };
   }
 

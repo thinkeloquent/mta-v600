@@ -14,7 +14,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def _mask_sensitive(value: Optional[str], visible_chars: int = 4) -> str:
+def _mask_sensitive(value: Optional[str], visible_chars: int = 10) -> str:
     """Mask sensitive values for safe logging."""
     if value is None:
         return "<None>"
