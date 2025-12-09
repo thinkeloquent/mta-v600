@@ -85,7 +85,8 @@ export HTTP_PROXY http_proxy HTTPS_PROXY https_proxy NO_PROXY no_proxy
         inject run runpip \
         clean info \
         requirements requirements-dev requirements-all \
-        pip-install pip-install-dev pip-install-all
+        pip-install pip-install-dev pip-install-all \
+        pip-install-constrained pip-install-pkg pip-install-all-constrained
 
 help:
 	@echo "pipx Package Management Commands"
@@ -115,6 +116,11 @@ help:
 	@echo "  make -f Makefile.pipx pip-install           - Install PyPI deps only"
 	@echo "  make -f Makefile.pipx pip-install-dev       - Install PyPI deps + dev deps"
 	@echo "  make -f Makefile.pipx pip-install-all       - Install all (PyPI + local editable)"
+	@echo ""
+	@echo "pip Install with Constraints (Root as Source of Truth):"
+	@echo "  make -f Makefile.pipx pip-install-constrained      - Install with constraints.txt"
+	@echo "  make -f Makefile.pipx pip-install-pkg PKG=x        - Install sub-package with constraints"
+	@echo "  make -f Makefile.pipx pip-install-all-constrained  - Install all with constraints"
 	@echo ""
 	@echo "Runtime:"
 	@echo "  make -f Makefile.pipx run PKG=x CMD=y       - Run command in package environment"
@@ -147,6 +153,7 @@ help:
 	@echo "  pip install -r requirements.txt             # Install without Poetry"
 	@echo "  make -f Makefile.pipx SSL_VERIFY=false pip-install  # Disable SSL"
 	@echo "  make -f Makefile.pipx HTTPS_PROXY=http://proxy:8080 pip-install"
+	@echo "  make -f Makefile.pipx pip-install-pkg PKG=packages_py/fetch_client  # Sub-package"
 	@echo ""
 	@echo "Note: Poetry 2.x requires export plugin: poetry self add poetry-plugin-export"
 
@@ -438,3 +445,92 @@ pip-install-all: requirements-all
 	@echo "Note: Installing local packages in editable mode..."
 	pip install $(PIP_SSL_ARGS) -r requirements-all.txt
 	@echo "Done!"
+
+# ============================================================================
+# pip Install with Constraints (Root as Source of Truth)
+# ============================================================================
+# These targets use constraints.txt to pin versions from the root pyproject.toml.
+# Sub-packages can use "*" or ">=0" for shared deps in their pyproject.toml/requirements.txt.
+# The constraints file ensures consistent versions across all environments.
+#
+# Generate constraints.txt first: make -f Makefile.poetry constraints
+
+# Constraints file location (must match Makefile.poetry)
+CONSTRAINTS_FILE := constraints.txt
+
+# Install with constraints from root (for cloud/CI deployment)
+# Usage: make -f Makefile.pipx pip-install-constrained
+pip-install-constrained:
+	@if [ ! -f "$(MAKEFILE_DIR)$(CONSTRAINTS_FILE)" ]; then \
+		echo "Error: $(CONSTRAINTS_FILE) not found."; \
+		echo "Generate it first: make -f Makefile.poetry constraints"; \
+		exit 1; \
+	fi
+	@echo "Installing with constraints from $(CONSTRAINTS_FILE)..."
+	pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -r requirements.txt
+	@echo "Done!"
+
+# Install a specific sub-package with root constraints
+# Usage: make -f Makefile.pipx pip-install-pkg PKG=packages_py/fetch_client
+# Usage: make -f Makefile.pipx pip-install-pkg PKG=fastapi_apps/main_entry
+pip-install-pkg:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx pip-install-pkg PKG=<package_path>"; \
+		echo "Example: make -f Makefile.pipx pip-install-pkg PKG=packages_py/fetch_client"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(PKG)" ]; then \
+		echo "Error: Package directory '$(PKG)' not found."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$(MAKEFILE_DIR)$(CONSTRAINTS_FILE)" ]; then \
+		echo "Error: $(CONSTRAINTS_FILE) not found."; \
+		echo "Generate it first: make -f Makefile.poetry constraints"; \
+		exit 1; \
+	fi
+	@echo "Installing $(PKG) with root constraints..."
+	@# Install dependencies from requirements.txt if it exists
+	@if [ -f "$(PKG)/requirements.txt" ]; then \
+		echo "Installing dependencies from $(PKG)/requirements.txt..."; \
+		pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -r $(PKG)/requirements.txt; \
+	fi
+	@# Install the package itself in editable mode
+	@echo "Installing $(PKG) in editable mode..."
+	pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -e $(PKG)
+	@echo "Done!"
+
+# Install all sub-packages with root constraints
+# Usage: make -f Makefile.pipx pip-install-all-constrained
+pip-install-all-constrained:
+	@if [ ! -f "$(MAKEFILE_DIR)$(CONSTRAINTS_FILE)" ]; then \
+		echo "Error: $(CONSTRAINTS_FILE) not found."; \
+		echo "Generate it first: make -f Makefile.poetry constraints"; \
+		exit 1; \
+	fi
+	@echo "Installing all packages with root constraints..."
+	@echo ""
+	@# First install root requirements.txt with constraints
+	@if [ -f "requirements.txt" ]; then \
+		echo "Installing root requirements.txt..."; \
+		pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -r requirements.txt; \
+	fi
+	@echo ""
+	@# Install packages_py packages
+	@echo "Installing packages_py packages..."
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" | sort); do \
+		echo "  Installing $$pkg..."; \
+		pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -e $$pkg 2>/dev/null || \
+			echo "    Warning: Failed to install $$pkg (may have missing dependencies)"; \
+	done
+	@echo ""
+	@# Install fastapi_apps packages
+	@echo "Installing fastapi_apps packages..."
+	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" | sort); do \
+		if [ -f "$$app/pyproject.toml" ]; then \
+			echo "  Installing $$app..."; \
+			pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -e $$app 2>/dev/null || \
+				echo "    Warning: Failed to install $$app (may have missing dependencies)"; \
+		fi; \
+	done
+	@echo ""
+	@echo "Done! All packages installed with constraints from $(CONSTRAINTS_FILE)"

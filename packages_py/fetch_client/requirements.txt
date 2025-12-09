@@ -1,0 +1,9 @@
+# requirements.txt for fetch_client
+# Use root constraints for version pinning (pip install -c ../../constraints.txt -r requirements.txt)
+-c ../../constraints.txt
+
+# Shared dependencies - versions come from constraints.txt
+httpx
+
+# Package-specific dependencies (not in root) - pin directly
+# (none for this package)

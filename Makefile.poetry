@@ -86,7 +86,8 @@ export HTTP_PROXY http_proxy HTTPS_PROXY https_proxy NO_PROXY no_proxy
 .PHONY: help install install-dev lock update sync shell \
         list outdated show add remove \
         build-wheel publish-test publish clean \
-        venv venv-remove
+        venv venv-remove \
+        constraints constraints-lock sync-versions sync-subpackages
 
 help:
 	@echo "Poetry Package Management Commands"
@@ -97,6 +98,12 @@ help:
 	@echo "  make -f Makefile.poetry lock         - Update poetry.lock without installing"
 	@echo "  make -f Makefile.poetry update       - Update all dependencies"
 	@echo "  make -f Makefile.poetry sync         - Sync local packages to pyproject.toml"
+	@echo ""
+	@echo "Version Constraints (Root as Source of Truth):"
+	@echo "  make -f Makefile.poetry constraints       - Generate constraints.txt from poetry.lock"
+	@echo "  make -f Makefile.poetry constraints-lock  - Update lock then generate constraints.txt"
+	@echo "  make -f Makefile.poetry sync-versions     - Sync pyproject.toml versions to constraints.txt"
+	@echo "  make -f Makefile.poetry sync-subpackages  - Update sub-packages to use flexible versions"
 	@echo ""
 	@echo "Environment:"
 	@echo "  make -f Makefile.poetry shell        - Spawn shell in virtualenv"
@@ -137,6 +144,7 @@ help:
 	@echo "  make -f Makefile.poetry SSL_VERIFY=false install"
 	@echo "  make -f Makefile.poetry HTTPS_PROXY=http://proxy:8080 install"
 	@echo "  make -f Makefile.poetry CA_BUNDLE=/etc/ssl/ca.crt install"
+	@echo "  make -f Makefile.poetry constraints  # Generate constraints.txt for pip"
 
 # ============================================================================
 # Installation
@@ -174,6 +182,58 @@ sync:
 	@echo "Running poetry lock..."
 	$(POETRY) lock
 	@echo "Done!"
+
+# ============================================================================
+# Version Constraints (Root as Source of Truth)
+# ============================================================================
+# These targets generate constraints.txt from Poetry's lock file.
+# Sub-packages can use flexible versions ("*" or ">=0") in their pyproject.toml
+# and reference -c constraints.txt when installing with pip.
+#
+# Workflow:
+#   1. Local dev: Poetry uses pyproject.toml as source of truth
+#   2. Cloud/CI: pip uses constraints.txt as source of truth
+#   3. Sub-packages: Use "*" for shared deps, constraints.txt pins actual versions
+
+# Constraints file location
+CONSTRAINTS_FILE := constraints.txt
+
+# Generate constraints.txt from poetry.lock (pinned versions for pip)
+# Usage: make -f Makefile.poetry constraints
+constraints:
+	@echo "Generating $(CONSTRAINTS_FILE) from poetry.lock..."
+	@$(PYTHON) .bin/sync-constraints.py
+	@echo "Done! Created $(CONSTRAINTS_FILE)"
+	@echo ""
+	@echo "Sub-packages can now use:"
+	@echo "  pip install -c $(CONSTRAINTS_FILE) -r requirements.txt"
+
+# Update poetry.lock and then generate constraints.txt
+# Usage: make -f Makefile.poetry constraints-lock
+constraints-lock: lock constraints
+	@echo "Lock updated and constraints.txt generated!"
+
+# Sync versions from pyproject.toml to constraints.txt (one-way sync)
+# This reads [tool.poetry.dependencies] and generates constraints.txt
+# Usage: make -f Makefile.poetry sync-versions
+sync-versions:
+	@echo "Syncing versions from pyproject.toml to $(CONSTRAINTS_FILE)..."
+	@$(PYTHON) .bin/sync-constraints.py --from-pyproject
+	@echo "Done!"
+
+# Update sub-packages to use flexible versions ("*") for root-defined dependencies
+# Sub-packages will inherit actual versions from constraints.txt at install time
+# Usage: make -f Makefile.poetry sync-subpackages
+# Usage: make -f Makefile.poetry sync-subpackages PKG=packages_py/fetch_client
+sync-subpackages:
+	@echo "Updating sub-packages to use flexible versions..."
+	@if [ -n "$(PKG)" ]; then \
+		$(PYTHON) .bin/sync-subpackage-versions.py --package $(PKG); \
+	else \
+		$(PYTHON) .bin/sync-subpackage-versions.py; \
+	fi
+	@echo ""
+	@echo "Remember to run 'make -f Makefile.poetry constraints' to update constraints.txt"
 
 # ============================================================================
 # Environment

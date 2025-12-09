@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""
+Sync constraints.txt from Poetry lock file or pyproject.toml.
+
+This script generates a constraints.txt file that can be used with pip to ensure
+consistent package versions across all environments (local dev, cloud, CI).
+
+Usage:
+    # Generate from poetry.lock (recommended - exact pinned versions)
+    python .bin/sync-constraints.py
+
+    # Generate from pyproject.toml (uses declared versions, not resolved)
+    python .bin/sync-constraints.py --from-pyproject
+
+The generated constraints.txt can be used with pip:
+    pip install -c constraints.txt -r requirements.txt
+    pip install -c constraints.txt -e packages_py/my_package
+
+Sub-packages can use flexible versions ("*", ">=0") in their pyproject.toml,
+and the constraints file will pin the actual versions at install time.
+"""
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+# Try tomllib (Python 3.11+) or fall back to tomli
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        print("Error: tomllib (Python 3.11+) or tomli package required.")
+        print("Install with: pip install tomli")
+        sys.exit(1)
+
+
+def get_project_root() -> Path:
+    """Get the project root directory."""
+    return Path(__file__).parent.parent
+
+
+def parse_poetry_lock(lock_path: Path) -> dict[str, str]:
+    """
+    Parse poetry.lock and extract package versions.
+
+    Returns:
+        Dictionary mapping package names to pinned versions.
+    """
+    if not lock_path.exists():
+        raise FileNotFoundError(f"poetry.lock not found at {lock_path}")
+
+    with open(lock_path, "rb") as f:
+        lock_data = tomllib.load(f)
+
+    packages = {}
+    for package in lock_data.get("package", []):
+        name = package.get("name", "").lower()
+        version = package.get("version", "")
+        source = package.get("source", {})
+
+        # Skip packages from local paths (they're our own packages)
+        if source.get("type") == "directory":
+            continue
+
+        # Skip packages from git
+        if source.get("type") == "git":
+            continue
+
+        if name and version:
+            # Normalize package name (PEP 503)
+            normalized_name = re.sub(r"[-_.]+", "-", name).lower()
+            packages[normalized_name] = version
+
+    return packages
+
+
+def parse_pyproject_toml(pyproject_path: Path) -> dict[str, str]:
+    """
+    Parse pyproject.toml and extract dependency versions.
+
+    Returns:
+        Dictionary mapping package names to version constraints.
+    """
+    if not pyproject_path.exists():
+        raise FileNotFoundError(f"pyproject.toml not found at {pyproject_path}")
+
+    with open(pyproject_path, "rb") as f:
+        pyproject_data = tomllib.load(f)
+
+    poetry_deps = (
+        pyproject_data.get("tool", {}).get("poetry", {}).get("dependencies", {})
+    )
+
+    packages = {}
+    for name, version_spec in poetry_deps.items():
+        # Skip python version constraint
+        if name.lower() == "python":
+            continue
+
+        # Skip path dependencies (local packages)
+        if isinstance(version_spec, dict):
+            if "path" in version_spec:
+                continue
+            # Handle extras like uvicorn = {extras = ["standard"], version = "^0.32.0"}
+            version_spec = version_spec.get("version", "")
+
+        if not version_spec or not isinstance(version_spec, str):
+            continue
+
+        # Convert Poetry version specifier to pip constraint
+        # ^1.2.3 -> >=1.2.3,<2.0.0 (but we'll just use >=1.2.3 for simplicity)
+        # ~1.2.3 -> >=1.2.3,<1.3.0 (but we'll just use >=1.2.3 for simplicity)
+        # For constraints file, we extract the base version
+        version = version_spec.lstrip("^~>=<!=")
+
+        # Normalize package name (PEP 503)
+        normalized_name = re.sub(r"[-_.]+", "-", name).lower()
+
+        # For constraints, we pin to exact version if from lock, or >= if from pyproject
+        if version_spec.startswith("^") or version_spec.startswith("~"):
+            packages[normalized_name] = f">={version}"
+        elif version_spec.startswith(">="):
+            packages[normalized_name] = version_spec
+        elif version_spec.startswith("=="):
+            packages[normalized_name] = version_spec
+        else:
+            # Assume it's an exact version
+            packages[normalized_name] = f"=={version}"
+
+    return packages
+
+
+def generate_constraints_file(
+    packages: dict[str, str], output_path: Path, source: str
+) -> None:
+    """
+    Generate constraints.txt from package versions.
+
+    Args:
+        packages: Dictionary mapping package names to versions.
+        output_path: Path to write constraints.txt.
+        source: Source of the constraints (for header comment).
+    """
+    lines = [
+        "# Auto-generated constraints file - DO NOT EDIT MANUALLY",
+        f"# Source: {source}",
+        f"# Generated by: .bin/sync-constraints.py",
+        "#",
+        "# Usage:",
+        "#   pip install -c constraints.txt -r requirements.txt",
+        "#   pip install -c constraints.txt -e packages_py/my_package",
+        "#",
+        "# Sub-packages can use '*' or '>=0' for shared dependencies,",
+        "# and this file will pin the actual versions at install time.",
+        "",
+    ]
+
+    # Sort packages alphabetically for consistent output
+    for name in sorted(packages.keys()):
+        version = packages[name]
+        # For lock file source, always use exact pins
+        if source == "poetry.lock" and not version.startswith((">=", "==", "<", ">")):
+            lines.append(f"{name}=={version}")
+        else:
+            lines.append(f"{name}{version}" if version.startswith((">=", "==", "<", ">", "!")) else f"{name}=={version}")
+
+    # Add trailing newline
+    lines.append("")
+
+    with open(output_path, "w") as f:
+        f.write("\n".join(lines))
+
+    print(f"Generated {output_path} with {len(packages)} packages")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate constraints.txt from Poetry lock file or pyproject.toml"
+    )
+    parser.add_argument(
+        "--from-pyproject",
+        action="store_true",
+        help="Generate from pyproject.toml instead of poetry.lock",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=None,
+        help="Output file path (default: constraints.txt in project root)",
+    )
+
+    args = parser.parse_args()
+
+    root = get_project_root()
+    output_path = args.output or root / "constraints.txt"
+
+    try:
+        if args.from_pyproject:
+            pyproject_path = root / "pyproject.toml"
+            packages = parse_pyproject_toml(pyproject_path)
+            source = "pyproject.toml"
+        else:
+            lock_path = root / "poetry.lock"
+            packages = parse_poetry_lock(lock_path)
+            source = "poetry.lock"
+
+        generate_constraints_file(packages, output_path, source)
+
+        print(f"\nSub-packages can now use:")
+        print(f"  pip install -c {output_path.name} -r requirements.txt")
+        print(f"  pip install -c {output_path.name} -e packages_py/<package>")
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
