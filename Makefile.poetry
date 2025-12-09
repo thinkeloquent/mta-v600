@@ -5,6 +5,16 @@
 # Get the directory where Makefile is located (project root)
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# ============================================================================
+# PYTHONPATH Configuration
+# ============================================================================
+# Build PYTHONPATH with packages_py/*/src and fastapi_apps/*
+PYTHON_PATHS := $(shell for pkg in $(MAKEFILE_DIR)packages_py/*/src; do [ -d "$$pkg" ] && printf "%s:" "$$pkg"; done)
+PYTHON_PATHS := $(PYTHON_PATHS)$(shell for app in $(MAKEFILE_DIR)fastapi_apps/*/; do [ -d "$$app" ] && printf "%s:" "$$app"; done)
+# Remove trailing colon and export
+PYTHON_PATHS := $(PYTHON_PATHS:%:=%)
+export PYTHONPATH := $(PYTHON_PATHS):$(PYTHONPATH)
+
 # Use local .venv if it exists, otherwise use system Python
 VENV_DIR := $(MAKEFILE_DIR).venv
 PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
