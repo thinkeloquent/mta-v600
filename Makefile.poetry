@@ -14,6 +14,63 @@ POETRY := poetry
 PACKAGES_PY_DIR := packages_py
 FASTAPI_APPS_DIR := fastapi_apps
 
+# ============================================================================
+# SSL/TLS and Network Configuration
+# ============================================================================
+# Set these variables to configure SSL verification, proxy, and registry settings
+# Example: make -f Makefile.poetry SSL_VERIFY=false install
+#          make -f Makefile.poetry HTTPS_PROXY=http://proxy:8080 install
+
+# SSL verification (set to "false" to disable SSL verification)
+SSL_VERIFY ?= true
+
+# Certificate authority bundle path (optional)
+CA_BUNDLE ?=
+
+# Client certificate path (optional)
+CERT ?=
+
+# Proxy settings (optional)
+HTTP_PROXY ?=
+HTTPS_PROXY ?=
+NO_PROXY ?=
+
+# PyPI registry/index URL (optional, defaults to PyPI)
+PIP_INDEX_URL ?=
+PIP_TRUSTED_HOST ?=
+
+# Configure Poetry SSL and certificates based on configuration
+ifeq ($(SSL_VERIFY),false)
+    export POETRY_HTTP_BASIC_PYPI_USERNAME=
+    export POETRY_CERTIFICATES_PYPI_CERT=false
+    export CURL_CA_BUNDLE=
+    export REQUESTS_CA_BUNDLE=
+    export SSL_CERT_FILE=
+    export PYTHONHTTPSVERIFY=0
+endif
+ifdef CA_BUNDLE
+    export REQUESTS_CA_BUNDLE=$(CA_BUNDLE)
+    export SSL_CERT_FILE=$(CA_BUNDLE)
+    export CURL_CA_BUNDLE=$(CA_BUNDLE)
+endif
+ifdef CERT
+    export POETRY_CERTIFICATES_PYPI_CLIENT_CERT=$(CERT)
+endif
+
+# Export proxy environment variables if set
+ifdef HTTP_PROXY
+    export HTTP_PROXY
+    export http_proxy=$(HTTP_PROXY)
+endif
+ifdef HTTPS_PROXY
+    export HTTPS_PROXY
+    export https_proxy=$(HTTPS_PROXY)
+endif
+ifdef NO_PROXY
+    export NO_PROXY
+    export no_proxy=$(NO_PROXY)
+endif
+
 .PHONY: help install install-dev lock update sync shell \
         list outdated show add remove \
         build-wheel publish-test publish clean \
@@ -51,10 +108,23 @@ help:
 	@echo "Cleanup:"
 	@echo "  make -f Makefile.poetry clean        - Remove build artifacts"
 	@echo ""
+	@echo "SSL/Network Variables:"
+	@echo "  SSL_VERIFY=false                     - Disable SSL verification"
+	@echo "  CA_BUNDLE=/path/to/ca.crt            - Custom CA bundle"
+	@echo "  CERT=/path/to/client.crt             - Client certificate"
+	@echo "  HTTP_PROXY=http://proxy:8080         - HTTP proxy"
+	@echo "  HTTPS_PROXY=http://proxy:8080        - HTTPS proxy"
+	@echo "  NO_PROXY=localhost,127.0.0.1         - Proxy bypass list"
+	@echo ""
 	@echo "Local Packages:"
 	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
 		echo "  - $$pkg"; \
 	done
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.poetry SSL_VERIFY=false install"
+	@echo "  make -f Makefile.poetry HTTPS_PROXY=http://proxy:8080 install"
+	@echo "  make -f Makefile.poetry CA_BUNDLE=/etc/ssl/ca.crt install"
 
 # ============================================================================
 # Installation

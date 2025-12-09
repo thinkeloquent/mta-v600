@@ -16,6 +16,67 @@ DIST_DIR := dist_pipx
 GIT_REMOTE ?= $(shell git config --get remote.origin.url 2>/dev/null || echo "")
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
 
+# ============================================================================
+# SSL/TLS and Network Configuration
+# ============================================================================
+# Set these variables to configure SSL verification, proxy, and registry settings
+# Example: make -f Makefile.pipx SSL_VERIFY=false pip-install
+#          make -f Makefile.pipx HTTPS_PROXY=http://proxy:8080 pip-install
+
+# SSL verification (set to "false" to disable SSL verification)
+SSL_VERIFY ?= true
+
+# Certificate authority bundle path (optional)
+CA_BUNDLE ?=
+
+# Client certificate path (optional)
+CERT ?=
+
+# Proxy settings (optional)
+HTTP_PROXY ?=
+HTTPS_PROXY ?=
+NO_PROXY ?=
+
+# PyPI registry/index URL (optional, defaults to PyPI)
+PIP_INDEX_URL ?=
+PIP_TRUSTED_HOST ?=
+
+# Build pip/pipx SSL and proxy arguments based on configuration
+PIP_SSL_ARGS :=
+ifeq ($(SSL_VERIFY),false)
+    PIP_SSL_ARGS += --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org
+    export PIP_DISABLE_PIP_VERSION_CHECK=1
+    export PYTHONHTTPSVERIFY=0
+endif
+ifdef CA_BUNDLE
+    PIP_SSL_ARGS += --cert $(CA_BUNDLE)
+    export REQUESTS_CA_BUNDLE=$(CA_BUNDLE)
+    export SSL_CERT_FILE=$(CA_BUNDLE)
+endif
+ifdef CERT
+    PIP_SSL_ARGS += --client-cert $(CERT)
+endif
+ifdef PIP_INDEX_URL
+    PIP_SSL_ARGS += --index-url $(PIP_INDEX_URL)
+endif
+ifdef PIP_TRUSTED_HOST
+    PIP_SSL_ARGS += --trusted-host $(PIP_TRUSTED_HOST)
+endif
+
+# Export proxy environment variables if set
+ifdef HTTP_PROXY
+    export HTTP_PROXY
+    export http_proxy=$(HTTP_PROXY)
+endif
+ifdef HTTPS_PROXY
+    export HTTPS_PROXY
+    export https_proxy=$(HTTPS_PROXY)
+endif
+ifdef NO_PROXY
+    export NO_PROXY
+    export no_proxy=$(NO_PROXY)
+endif
+
 .PHONY: help install install-local install-git install-editable \
         uninstall reinstall upgrade list \
         build-standalone build-all-standalone \
@@ -62,6 +123,16 @@ help:
 	@echo "  make -f Makefile.pipx info                  - Show pipx environment info"
 	@echo "  make -f Makefile.pipx clean                 - Remove build artifacts"
 	@echo ""
+	@echo "SSL/Network Variables:"
+	@echo "  SSL_VERIFY=false                            - Disable SSL verification"
+	@echo "  CA_BUNDLE=/path/to/ca.crt                   - Custom CA bundle"
+	@echo "  CERT=/path/to/client.crt                    - Client certificate"
+	@echo "  HTTP_PROXY=http://proxy:8080                - HTTP proxy"
+	@echo "  HTTPS_PROXY=http://proxy:8080               - HTTPS proxy"
+	@echo "  NO_PROXY=localhost,127.0.0.1                - Proxy bypass list"
+	@echo "  PIP_INDEX_URL=https://pypi.example.com      - Custom PyPI registry"
+	@echo "  PIP_TRUSTED_HOST=pypi.example.com           - Trusted host (no SSL verify)"
+	@echo ""
 	@echo "Available Local Packages:"
 	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
 		echo "  - $$pkg"; \
@@ -71,7 +142,9 @@ help:
 	@echo "  make -f Makefile.pipx install-local PKG=provider_api_getters"
 	@echo "  make -f Makefile.pipx install-git PKG=provider_api_getters"
 	@echo "  make -f Makefile.pipx requirements          # Creates requirements.txt"
-	@echo "  pip install -r requirements.txt            # Install without Poetry"
+	@echo "  pip install -r requirements.txt             # Install without Poetry"
+	@echo "  make -f Makefile.pipx SSL_VERIFY=false pip-install  # Disable SSL"
+	@echo "  make -f Makefile.pipx HTTPS_PROXY=http://proxy:8080 pip-install"
 
 # ============================================================================
 # Installation
@@ -330,10 +403,11 @@ requirements-all:
 
 # Install main PyPI dependencies with pip (no local packages)
 # Usage: make -f Makefile.pipx pip-install
+# Usage: make -f Makefile.pipx SSL_VERIFY=false pip-install
 pip-install: requirements
 	@echo ""
 	@echo "Installing PyPI dependencies with pip..."
-	pip install -r requirements.txt
+	pip install $(PIP_SSL_ARGS) -r requirements.txt
 	@echo "Done!"
 
 # Install main + dev PyPI dependencies with pip (no local packages)
@@ -341,7 +415,7 @@ pip-install: requirements
 pip-install-dev: requirements-dev
 	@echo ""
 	@echo "Installing PyPI dependencies (with dev) with pip..."
-	pip install -r requirements-dev.txt
+	pip install $(PIP_SSL_ARGS) -r requirements-dev.txt
 	@echo "Done!"
 
 # Install everything: PyPI deps + local packages as editable
@@ -350,5 +424,5 @@ pip-install-all: requirements-all
 	@echo ""
 	@echo "Installing all dependencies with pip..."
 	@echo "Note: Installing local packages in editable mode..."
-	pip install -r requirements-all.txt
+	pip install $(PIP_SSL_ARGS) -r requirements-all.txt
 	@echo "Done!"
