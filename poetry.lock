@@ -142,6 +142,22 @@ type = "directory"
 url = "packages_py/connection_pool"
 
 [[package]]
+name = "console-print"
+version = "1.0.0"
+description = "Console printing with optional Rich support - falls back to standard logging if Rich unavailable"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.extras]
+rich = ["rich (>=13.0.0,<14.0.0)"]
+
+[package.source]
+type = "directory"
+url = "packages_py/console_print"
+
+[[package]]
 name = "fastapi"
 version = "0.115.14"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -1257,4 +1273,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "04c61c5d83f77c75aae323395ad7a00cb2a41152e3ec7056a5299a7e1746afa7"
+content-hash = "a04a962ed77902461a3d1f091321196da6ed3d04f1520654077b051da3383ae3"

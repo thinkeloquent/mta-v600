@@ -22,6 +22,7 @@ cache-dsn = {path = "packages_py/cache_dsn", develop = true}
 cache-request = {path = "packages_py/cache_request", develop = true}
 cache-response = {path = "packages_py/cache_response", develop = true}
 connection-pool = {path = "packages_py/connection_pool", develop = true}
+console-print = {path = "packages_py/console_print", develop = true}
 fetch-client = {path = "packages_py/fetch_client", develop = true}
 fetch-compose-cache-dsn = {path = "packages_py/fetch_compose_cache_dsn", develop = true}
 fetch-compose-cache-request = {path = "packages_py/fetch_compose_cache_request", develop = true}
@@ -37,7 +38,6 @@ vault-file = {path = "packages_py/vault_file", develop = true}
 
 # FastAPI apps
 fastapi-main-entry = {path = "fastapi_apps/main_entry", develop = true}
-rich = "^14"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
