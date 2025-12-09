@@ -45,13 +45,13 @@ PIP_TRUSTED_HOST ?=
 PIP_SSL_ARGS :=
 ifeq ($(SSL_VERIFY),false)
     PIP_SSL_ARGS += --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org
-    export PIP_DISABLE_PIP_VERSION_CHECK=1
-    export PYTHONHTTPSVERIFY=0
+    PIP_DISABLE_PIP_VERSION_CHECK := 1
+    PYTHONHTTPSVERIFY := 0
 endif
 ifdef CA_BUNDLE
     PIP_SSL_ARGS += --cert $(CA_BUNDLE)
-    export REQUESTS_CA_BUNDLE=$(CA_BUNDLE)
-    export SSL_CERT_FILE=$(CA_BUNDLE)
+    REQUESTS_CA_BUNDLE := $(CA_BUNDLE)
+    SSL_CERT_FILE := $(CA_BUNDLE)
 endif
 ifdef CERT
     PIP_SSL_ARGS += --client-cert $(CERT)
@@ -63,19 +63,21 @@ ifdef PIP_TRUSTED_HOST
     PIP_SSL_ARGS += --trusted-host $(PIP_TRUSTED_HOST)
 endif
 
-# Export proxy environment variables if set
+# Set proxy variables if provided
 ifdef HTTP_PROXY
-    export HTTP_PROXY
-    export http_proxy=$(HTTP_PROXY)
+    http_proxy := $(HTTP_PROXY)
 endif
 ifdef HTTPS_PROXY
-    export HTTPS_PROXY
-    export https_proxy=$(HTTPS_PROXY)
+    https_proxy := $(HTTPS_PROXY)
 endif
 ifdef NO_PROXY
-    export NO_PROXY
-    export no_proxy=$(NO_PROXY)
+    no_proxy := $(NO_PROXY)
 endif
+
+# Export all environment variables that are set
+export PIP_DISABLE_PIP_VERSION_CHECK PYTHONHTTPSVERIFY
+export REQUESTS_CA_BUNDLE SSL_CERT_FILE
+export HTTP_PROXY http_proxy HTTPS_PROXY https_proxy NO_PROXY no_proxy
 
 .PHONY: help install install-local install-git install-editable \
         uninstall reinstall upgrade list \
@@ -145,6 +147,8 @@ help:
 	@echo "  pip install -r requirements.txt             # Install without Poetry"
 	@echo "  make -f Makefile.pipx SSL_VERIFY=false pip-install  # Disable SSL"
 	@echo "  make -f Makefile.pipx HTTPS_PROXY=http://proxy:8080 pip-install"
+	@echo ""
+	@echo "Note: Poetry 2.x requires export plugin: poetry self add poetry-plugin-export"
 
 # ============================================================================
 # Installation
@@ -348,12 +352,16 @@ clean:
 # ============================================================================
 # Requirements Export (from root pyproject.toml)
 # ============================================================================
+# Note: Poetry 2.x requires poetry-plugin-export to be installed:
+#   poetry self add poetry-plugin-export
 
 # Export main dependencies to requirements.txt (PyPI deps only, no local packages)
 # Usage: make -f Makefile.pipx requirements
 requirements:
 	@echo "Exporting PyPI dependencies to requirements.txt..."
-	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes -o requirements.txt.tmp
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes -o requirements.txt.tmp 2>&1 || \
+		(echo ""; echo "ERROR: poetry export failed. If using Poetry 2.x, install the export plugin:"; \
+		 echo "  poetry self add poetry-plugin-export"; exit 1)
 	@# Filter out local file:// dependencies, keep only PyPI packages
 	@grep -v "^-e file://" requirements.txt.tmp | grep -v "^file://" > requirements.txt || true
 	@rm -f requirements.txt.tmp
@@ -365,7 +373,9 @@ requirements:
 # Usage: make -f Makefile.pipx requirements-dev
 requirements-dev:
 	@echo "Exporting PyPI dependencies (with dev) to requirements-dev.txt..."
-	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-dev.txt.tmp
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-dev.txt.tmp 2>&1 || \
+		(echo ""; echo "ERROR: poetry export failed. If using Poetry 2.x, install the export plugin:"; \
+		 echo "  poetry self add poetry-plugin-export"; exit 1)
 	@# Filter out local file:// dependencies, keep only PyPI packages
 	@grep -v "^-e file://" requirements-dev.txt.tmp | grep -v "^file://" > requirements-dev.txt || true
 	@rm -f requirements-dev.txt.tmp
@@ -377,7 +387,9 @@ requirements-dev:
 # Usage: make -f Makefile.pipx requirements-all
 requirements-all:
 	@echo "Exporting all dependencies to requirements-all.txt..."
-	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-all.txt.tmp
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-all.txt.tmp 2>&1 || \
+		(echo ""; echo "ERROR: poetry export failed. If using Poetry 2.x, install the export plugin:"; \
+		 echo "  poetry self add poetry-plugin-export"; exit 1)
 	@# Filter out local file:// dependencies first
 	@grep -v "^-e file://" requirements-all.txt.tmp | grep -v "^file://" > requirements-all.txt || true
 	@rm -f requirements-all.txt.tmp

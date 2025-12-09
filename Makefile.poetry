@@ -41,35 +41,37 @@ PIP_TRUSTED_HOST ?=
 
 # Configure Poetry SSL and certificates based on configuration
 ifeq ($(SSL_VERIFY),false)
-    export POETRY_HTTP_BASIC_PYPI_USERNAME=
-    export POETRY_CERTIFICATES_PYPI_CERT=false
-    export CURL_CA_BUNDLE=
-    export REQUESTS_CA_BUNDLE=
-    export SSL_CERT_FILE=
-    export PYTHONHTTPSVERIFY=0
+    POETRY_CERTIFICATES_PYPI_CERT := false
+    PYTHONHTTPSVERIFY := 0
+    # Clear CA bundles to disable verification
+    CURL_CA_BUNDLE :=
+    REQUESTS_CA_BUNDLE :=
+    SSL_CERT_FILE :=
 endif
 ifdef CA_BUNDLE
-    export REQUESTS_CA_BUNDLE=$(CA_BUNDLE)
-    export SSL_CERT_FILE=$(CA_BUNDLE)
-    export CURL_CA_BUNDLE=$(CA_BUNDLE)
+    REQUESTS_CA_BUNDLE := $(CA_BUNDLE)
+    SSL_CERT_FILE := $(CA_BUNDLE)
+    CURL_CA_BUNDLE := $(CA_BUNDLE)
 endif
 ifdef CERT
-    export POETRY_CERTIFICATES_PYPI_CLIENT_CERT=$(CERT)
+    POETRY_CERTIFICATES_PYPI_CLIENT_CERT := $(CERT)
 endif
 
-# Export proxy environment variables if set
+# Set proxy variables if provided
 ifdef HTTP_PROXY
-    export HTTP_PROXY
-    export http_proxy=$(HTTP_PROXY)
+    http_proxy := $(HTTP_PROXY)
 endif
 ifdef HTTPS_PROXY
-    export HTTPS_PROXY
-    export https_proxy=$(HTTPS_PROXY)
+    https_proxy := $(HTTPS_PROXY)
 endif
 ifdef NO_PROXY
-    export NO_PROXY
-    export no_proxy=$(NO_PROXY)
+    no_proxy := $(NO_PROXY)
 endif
+
+# Export all environment variables
+export POETRY_CERTIFICATES_PYPI_CERT POETRY_CERTIFICATES_PYPI_CLIENT_CERT PYTHONHTTPSVERIFY
+export REQUESTS_CA_BUNDLE SSL_CERT_FILE CURL_CA_BUNDLE
+export HTTP_PROXY http_proxy HTTPS_PROXY https_proxy NO_PROXY no_proxy
 
 .PHONY: help install install-dev lock update sync shell \
         list outdated show add remove \
