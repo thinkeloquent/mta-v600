@@ -175,14 +175,34 @@ export class ProviderHealthChecker {
 
     try {
       const connectionUrl = apiToken.getConnectionUrl();
-      const healthUrl = `${connectionUrl}/_cluster/health`;
+
+      // Parse the URL to extract credentials and build auth header
+      // fetch() doesn't allow credentials in the URL directly
+      const parsedUrl = new URL(connectionUrl);
+      const username = parsedUrl.username;
+      const password = parsedUrl.password;
+
+      // Remove credentials from URL for fetch
+      parsedUrl.username = '';
+      parsedUrl.password = '';
+      // Build health URL - ensure no double slashes
+      const baseUrl = parsedUrl.toString().replace(/\/+$/, '');
+      const healthUrl = `${baseUrl}/_cluster/health`;
 
       // Get dispatcher from factory with YAML proxy config
       const dispatcher = await this.#clientFactory._createDispatcher();
 
+      const headers = { 'Accept': 'application/json' };
+
+      // Add Basic Auth header if credentials were in the URL
+      if (username && password) {
+        const credentials = Buffer.from(`${username}:${password}`).toString('base64');
+        headers['Authorization'] = `Basic ${credentials}`;
+      }
+
       const fetchOptions = {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers,
       };
 
       // Add dispatcher if available (for proxy support)
