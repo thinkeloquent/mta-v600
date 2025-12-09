@@ -2,6 +2,7 @@
  * API token getters for external providers.
  */
 export { BaseApiToken, ApiKeyResult, RequestContext } from './base.mjs';
+export { AuthHeaderFactory, AuthHeader, AUTH_SCHEMES, CONFIG_AUTH_TYPE_MAP } from './auth_header_factory.mjs';
 export { FigmaApiToken } from './figma.mjs';
 export { GithubApiToken } from './github.mjs';
 export { JiraApiToken } from './jira.mjs';

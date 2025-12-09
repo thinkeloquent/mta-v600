@@ -4,6 +4,7 @@
  * Confluence Cloud uses Basic Authentication with email:api_token format.
  */
 import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
+import { AuthHeaderFactory } from './auth_header_factory.mjs';
 
 // Simple logger
 const logger = {
@@ -135,12 +136,13 @@ export class ConfluenceApiToken extends BaseApiToken {
 
   /**
    * Encode email and token for Basic Authentication.
+   * Uses AuthHeaderFactory for RFC-compliant encoding.
    * @param {string} email
    * @param {string} token
    * @returns {string}
    */
   _encodeBasicAuth(email, token) {
-    logger.debug('ConfluenceApiToken._encodeBasicAuth: Encoding credentials');
+    logger.debug('ConfluenceApiToken._encodeBasicAuth: Encoding credentials via AuthHeaderFactory');
 
     if (!email || !token) {
       logger.error(
@@ -150,14 +152,13 @@ export class ConfluenceApiToken extends BaseApiToken {
       throw new Error('Both email and token are required for Basic Auth encoding');
     }
 
-    const credentials = `${email}:${token}`;
-    const encoded = Buffer.from(credentials).toString('base64');
+    const authHeader = AuthHeaderFactory.createBasic(email, token);
 
     logger.debug(
-      `ConfluenceApiToken._encodeBasicAuth: Encoded credentials (length=${encoded.length})`
+      `ConfluenceApiToken._encodeBasicAuth: Encoded credentials (length=${authHeader.headerValue.length})`
     );
 
-    return `Basic ${encoded}`;
+    return authHeader.headerValue;
   }
 
   getApiKey() {

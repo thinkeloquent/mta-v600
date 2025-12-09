@@ -4,12 +4,12 @@ Confluence API token getter.
 This module provides API token resolution for the Confluence (Atlassian Cloud) API.
 Uses Basic Authentication with email:token format.
 """
-import base64
 import logging
 import os
 from typing import Optional
 
 from .base import BaseApiToken, ApiKeyResult, _mask_sensitive
+from .auth_header_factory import AuthHeaderFactory
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,8 @@ class ConfluenceApiToken(BaseApiToken):
         """
         Encode email and token for Basic Authentication.
 
+        Uses AuthHeaderFactory for RFC-compliant encoding.
+
         Args:
             email: The email address
             token: The API token
@@ -170,7 +172,7 @@ class ConfluenceApiToken(BaseApiToken):
         Returns:
             Base64-encoded credentials string with 'Basic ' prefix
         """
-        logger.debug("ConfluenceApiToken._encode_basic_auth: Encoding credentials")
+        logger.debug("ConfluenceApiToken._encode_basic_auth: Encoding credentials via AuthHeaderFactory")
 
         if not email or not token:
             logger.error(
@@ -179,15 +181,14 @@ class ConfluenceApiToken(BaseApiToken):
             )
             raise ValueError("Both email and token are required for Basic Auth encoding")
 
-        credentials = f"{email}:{token}"
-        encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+        auth_header = AuthHeaderFactory.create_basic(email, token)
 
         logger.debug(
             f"ConfluenceApiToken._encode_basic_auth: "
-            f"Encoded credentials (length={len(encoded)})"
+            f"Encoded credentials (length={len(auth_header.header_value)})"
         )
 
-        return f"Basic {encoded}"
+        return auth_header.header_value
 
     def get_api_key(self) -> ApiKeyResult:
         """

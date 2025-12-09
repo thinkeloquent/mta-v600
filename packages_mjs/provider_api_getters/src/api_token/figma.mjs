@@ -2,6 +2,8 @@
  * Figma API token getter.
  *
  * Figma uses the X-Figma-Token header for authentication.
+ * Note: Figma uses a custom header, not Basic or Bearer auth.
+ * The AuthHeaderFactory.createCustom() method can be used if needed.
  */
 import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
 

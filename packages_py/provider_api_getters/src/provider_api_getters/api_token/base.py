@@ -7,12 +7,18 @@ with comprehensive defensive programming, validation, and observability.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .auth_header_factory import AuthHeader
 import logging
 import os
 
 # Import token registry for dynamic token resolution
 from ..token_resolver import token_registry
+
+# Import auth header factory - lazy import to avoid circular dependency
+# Will be imported on first use in get_auth_header() method
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +206,32 @@ class ApiKeyResult:
                 result["username"] = self.username
 
         return result
+
+    def get_auth_header(self) -> "AuthHeader":
+        """
+        Get an AuthHeader instance from this result.
+
+        Uses the AuthHeaderFactory to create an RFC-compliant Authorization header
+        based on the auth_type and credentials in this result.
+
+        Returns:
+            AuthHeader instance for use in HTTP requests
+        """
+        logger.debug(
+            f"ApiKeyResult.get_auth_header: Creating auth header "
+            f"auth_type={self.auth_type}, has_api_key={self.api_key is not None}"
+        )
+
+        if not self.api_key and not self.client:
+            logger.warning(
+                "ApiKeyResult.get_auth_header: No api_key or client available, "
+                "returning null-safe header"
+            )
+
+        # Lazy import to avoid circular dependency
+        from .auth_header_factory import AuthHeaderFactory
+
+        return AuthHeaderFactory.from_api_key_result(self)
 
 
 class BaseApiToken(ABC):

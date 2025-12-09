@@ -5,12 +5,12 @@ This module provides API token resolution for the SauceLabs API.
 SauceLabs uses Basic authentication with username:access_key.
 Fallbacks are configured in server.{APP_ENV}.yaml under providers.saucelabs.
 """
-import base64
 import logging
 import os
 from typing import Tuple, Optional
 
 from .base import BaseApiToken, ApiKeyResult, _mask_sensitive
+from .auth_header_factory import AuthHeaderFactory
 
 logger = logging.getLogger(__name__)
 
@@ -136,19 +136,18 @@ class SaucelabsApiToken(BaseApiToken):
         access_key, access_key_var = self._lookup_access_key()
 
         if username and access_key:
-            # Combine as username:access_key and base64 encode for Basic auth
-            combined_key = f"{username}:{access_key}"
-            encoded_credentials = base64.b64encode(combined_key.encode()).decode()
-            basic_auth_value = f"Basic {encoded_credentials}"
+            # Use AuthHeaderFactory for RFC-compliant Basic auth encoding
+            auth_header = AuthHeaderFactory.create_basic(username, access_key)
             logger.debug(
                 f"SaucelabsApiToken.get_api_key: Found credentials from "
                 f"'{username_var}' and '{access_key_var}' "
-                f"(masked={_mask_sensitive(combined_key)})"
+                f"(masked={_mask_sensitive(f'{username}:{access_key}')})"
             )
             result = ApiKeyResult(
-                api_key=basic_auth_value,
+                api_key=auth_header.header_value,
                 auth_type="basic",
                 header_name="Authorization",
+                username=username,
             )
         else:
             missing = []

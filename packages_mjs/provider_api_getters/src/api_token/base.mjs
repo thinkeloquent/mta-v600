@@ -9,6 +9,9 @@
 // Import token registry for dynamic token resolution
 import { tokenRegistry } from '../token_resolver/index.mjs';
 
+// Import auth header factory for header construction
+import { AuthHeaderFactory } from './auth_header_factory.mjs';
+
 // Simple console logger for defensive programming
 const logger = {
   debug: (msg) => console.debug(`[DEBUG] provider_api_getters: ${msg}`),
@@ -246,6 +249,30 @@ export class ApiKeyResult {
     }
 
     return result;
+  }
+
+  /**
+   * Get an AuthHeader instance from this result.
+   *
+   * Uses the AuthHeaderFactory to create an RFC-compliant Authorization header
+   * based on the authType and credentials in this result.
+   *
+   * @returns {AuthHeader} AuthHeader instance for use in HTTP requests
+   */
+  getAuthHeader() {
+    logger.debug(
+      `ApiKeyResult.getAuthHeader: Creating auth header ` +
+      `authType=${this.authType}, hasApiKey=${this.apiKey !== null}`
+    );
+
+    if (!this.apiKey && !this.client) {
+      logger.warn(
+        'ApiKeyResult.getAuthHeader: No apiKey or client available, ' +
+        'returning null-safe header'
+      );
+    }
+
+    return AuthHeaderFactory.fromApiKeyResult(this);
   }
 }
 

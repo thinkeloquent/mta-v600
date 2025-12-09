@@ -5,6 +5,7 @@
  * Fallbacks are configured in server.{APP_ENV}.yaml under providers.saucelabs.
  */
 import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
+import { AuthHeaderFactory } from './auth_header_factory.mjs';
 
 // Simple logger
 const logger = {
@@ -97,18 +98,17 @@ export class SaucelabsApiToken extends BaseApiToken {
     const { accessKey, sourceVar: accessKeyVar } = this._lookupAccessKey();
 
     if (username && accessKey) {
-      // Combine as username:access_key and base64 encode for Basic auth
-      const combinedKey = `${username}:${accessKey}`;
-      const encodedCredentials = Buffer.from(combinedKey).toString('base64');
-      const basicAuthValue = `Basic ${encodedCredentials}`;
+      // Use AuthHeaderFactory for RFC-compliant Basic auth encoding
+      const authHeader = AuthHeaderFactory.createBasic(username, accessKey);
       logger.debug(
         `SaucelabsApiToken.getApiKey: Found credentials from ` +
-        `'${usernameVar}' and '${accessKeyVar}' (masked=${maskSensitive(combinedKey)})`
+        `'${usernameVar}' and '${accessKeyVar}' (masked=${maskSensitive(`${username}:${accessKey}`)})`
       );
       const result = new ApiKeyResult({
-        apiKey: basicAuthValue,
+        apiKey: authHeader.headerValue,
         authType: 'basic',
         headerName: 'Authorization',
+        username: username,
       });
       logger.debug(
         `SaucelabsApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

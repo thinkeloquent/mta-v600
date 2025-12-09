@@ -6,6 +6,7 @@ Each provider has its own class that handles API key resolution:
 - Computed values based on request context (OAuth, per-tenant, etc.)
 """
 from .base import BaseApiToken, ApiKeyResult, RequestContext
+from .auth_header_factory import AuthHeaderFactory, AuthHeader, AuthScheme, CONFIG_AUTH_TYPE_MAP
 from .figma import FigmaApiToken
 from .github import GithubApiToken
 from .jira import JiraApiToken
@@ -43,6 +44,10 @@ __all__ = [
     "BaseApiToken",
     "ApiKeyResult",
     "RequestContext",
+    "AuthHeaderFactory",
+    "AuthHeader",
+    "AuthScheme",
+    "CONFIG_AUTH_TYPE_MAP",
     "FigmaApiToken",
     "GithubApiToken",
     "JiraApiToken",
