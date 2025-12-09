@@ -117,10 +117,12 @@ dev-fastapi:
 
 # Build
 build:
-	pnpm build
+	npm run build:log
 
 test:
-	pnpm test
+	npm run test:log
+	make -f Makefile.pytest build-log
+	make -f Makefile.pytest test-log
 
 # Code Quality
 lint:

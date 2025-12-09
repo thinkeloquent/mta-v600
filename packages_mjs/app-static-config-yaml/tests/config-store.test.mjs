@@ -152,16 +152,18 @@ client:
     });
 
     it('should get nested values', () => {
-      const geminiUrl = config.getNested('providers', 'gemini', 'base_url', null);
+      // getNested takes only keys as arguments, returns null for missing paths
+      const geminiUrl = config.getNested('providers', 'gemini', 'base_url');
       expect(geminiUrl).toBe('https://api.gemini.test');
 
-      const timeout = config.getNested('client', 'timeout_seconds', null);
+      const timeout = config.getNested('client', 'timeout_seconds');
       expect(timeout).toBe(30.0);
     });
 
-    it('should return default for missing nested values', () => {
-      const missing = config.getNested('foo', 'bar', 'baz', 'missing');
-      expect(missing).toBe('missing');
+    it('should return null for missing nested values', () => {
+      // getNested returns null when path doesn't exist
+      const missing = config.getNested('foo', 'bar', 'baz');
+      expect(missing).toBeNull();
     });
 
     it('should get all config as object', () => {

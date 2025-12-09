@@ -55,16 +55,18 @@ describe('FigmaApiToken', () => {
     });
 
     it('should return correct health endpoint', () => {
+      // Note: base_url already includes /v1, so health endpoint is just /me
       const token = new FigmaApiToken();
-      expect(token.healthEndpoint).toBe('/v1/me');
+      expect(token.healthEndpoint).toBe('/me');
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Returning /v1/me')
+        expect.stringContaining('Returning /me')
       );
     });
   });
 
   describe('getApiKey - Decision Coverage', () => {
     it('should return API key when env var is set via config', () => {
+      // Note: Figma uses auth_type='custom' because it uses the non-standard X-Figma-Token header
       const mockStore = createMockStore({ figma: { env_api_key: 'FIGMA_TOKEN' } });
       const token = new FigmaApiToken(mockStore);
       process.env.FIGMA_TOKEN = 'figma-test-token-12345';
@@ -73,7 +75,7 @@ describe('FigmaApiToken', () => {
 
       expect(result.hasCredentials).toBe(true);
       expect(result.apiKey).toBe('figma-test-token-12345');
-      expect(result.authType).toBe('x-api-key');
+      expect(result.authType).toBe('custom');
       expect(result.headerName).toBe('X-Figma-Token');
       expect(consoleSpy.debug).toHaveBeenCalledWith(
         expect.stringContaining('Found API key')
@@ -89,7 +91,7 @@ describe('FigmaApiToken', () => {
 
       expect(result.hasCredentials).toBe(false);
       expect(result.apiKey).toBeNull();
-      expect(result.authType).toBe('x-api-key');
+      expect(result.authType).toBe('custom');
       expect(result.headerName).toBe('X-Figma-Token');
       expect(consoleSpy.warn).toHaveBeenCalledWith(
         expect.stringContaining('No API key found')

@@ -63,10 +63,11 @@ describe('ConfluenceApiToken', () => {
     });
 
     it('should return correct health endpoint', () => {
+      // Note: base_url already includes /wiki, so health endpoint is just /rest/api/user/current
       const token = new ConfluenceApiToken();
-      expect(token.healthEndpoint).toBe('/wiki/rest/api/user/current');
+      expect(token.healthEndpoint).toBe('/rest/api/user/current');
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Returning /wiki/rest/api/user/current')
+        expect.stringContaining('Returning /rest/api/user/current')
       );
     });
   });
