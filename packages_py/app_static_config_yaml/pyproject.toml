@@ -8,7 +8,11 @@ packages = [{include = "static_config", from = "src"}]
 [tool.poetry.dependencies]
 python = "^3.9"
 pyyaml = "^6.0"
-pydantic = "^2.0"
+pydantic = "^2.12.5"
+pydantic-core = "^2.41.5"
+typing-extensions = "^4.15.0"
+annotated-types = "^0.7.0"
+typing-inspection = "^0.4.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
