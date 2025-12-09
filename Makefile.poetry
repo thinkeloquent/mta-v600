@@ -145,9 +145,10 @@ install-dev:
 	@echo "Done!"
 
 # Update lock file without installing
+# Poetry 2.x: use --regenerate (replaces --no-update)
 lock:
 	@echo "Updating poetry.lock..."
-	$(POETRY) lock --no-update
+	$(POETRY) lock
 	@echo "Done!"
 
 # Update all dependencies to latest compatible versions
@@ -161,7 +162,7 @@ sync:
 	@echo "Syncing local packages..."
 	@$(PYTHON) .bin/sync-poetry-local-packages.py
 	@echo "Running poetry lock..."
-	$(POETRY) lock --no-update
+	$(POETRY) lock
 	@echo "Done!"
 
 # ============================================================================

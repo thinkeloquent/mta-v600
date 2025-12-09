@@ -1,0 +1,260 @@
+# Makefile.pip
+# Pure pip-based Python package management (no Poetry/pipx required)
+# Use this for CI/CD pipelines or environments where Poetry is not available
+#
+# CI Usage:
+#   make -f Makefile.pip install-all          # Install everything
+#   make -f Makefile.pip CI=true install-all  # CI mode (quieter output)
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Python configuration
+# Override PYTHON to use a specific interpreter: make -f Makefile.pip PYTHON=python3.11 install
+PYTHON ?= python3
+PIP := $(PYTHON) -m pip
+
+# Package directories
+PACKAGES_PY_DIR := packages_py
+FASTAPI_APPS_DIR := fastapi_apps
+
+# CI mode (set CI=true for quieter output)
+CI ?= false
+ifeq ($(CI),true)
+    PIP_QUIET := -q
+    SILENT := @
+else
+    PIP_QUIET :=
+    SILENT :=
+endif
+
+# ============================================================================
+# SSL/TLS and Network Configuration
+# ============================================================================
+# Set these variables to configure SSL verification, proxy, and registry settings
+# Example: make -f Makefile.pip SSL_VERIFY=false install
+#          make -f Makefile.pip HTTPS_PROXY=http://proxy:8080 install
+
+# SSL verification (set to "false" to disable SSL verification)
+SSL_VERIFY ?= true
+
+# Certificate authority bundle path (optional)
+CA_BUNDLE ?=
+
+# Client certificate path (optional)
+CERT ?=
+
+# Proxy settings (optional)
+HTTP_PROXY ?=
+HTTPS_PROXY ?=
+NO_PROXY ?=
+
+# PyPI registry/index URL (optional, defaults to PyPI)
+PIP_INDEX_URL ?=
+PIP_TRUSTED_HOST ?=
+
+# Build pip SSL and proxy arguments based on configuration
+PIP_ARGS :=
+ifeq ($(SSL_VERIFY),false)
+    PIP_ARGS += --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org
+    PIP_DISABLE_PIP_VERSION_CHECK := 1
+    PYTHONHTTPSVERIFY := 0
+endif
+ifdef CA_BUNDLE
+    PIP_ARGS += --cert $(CA_BUNDLE)
+    REQUESTS_CA_BUNDLE := $(CA_BUNDLE)
+    SSL_CERT_FILE := $(CA_BUNDLE)
+endif
+ifdef CERT
+    PIP_ARGS += --client-cert $(CERT)
+endif
+ifdef PIP_INDEX_URL
+    PIP_ARGS += --index-url $(PIP_INDEX_URL)
+endif
+ifdef PIP_TRUSTED_HOST
+    PIP_ARGS += --trusted-host $(PIP_TRUSTED_HOST)
+endif
+
+# Set proxy variables if provided
+ifdef HTTP_PROXY
+    http_proxy := $(HTTP_PROXY)
+endif
+ifdef HTTPS_PROXY
+    https_proxy := $(HTTPS_PROXY)
+endif
+ifdef NO_PROXY
+    no_proxy := $(NO_PROXY)
+endif
+
+# Export all environment variables
+export PIP_DISABLE_PIP_VERSION_CHECK PYTHONHTTPSVERIFY
+export REQUESTS_CA_BUNDLE SSL_CERT_FILE
+export HTTP_PROXY http_proxy HTTPS_PROXY https_proxy NO_PROXY no_proxy
+
+.PHONY: help install install-dev install-local install-all ci \
+        upgrade list outdated freeze \
+        clean info
+
+help:
+	@echo "pip Package Management Commands"
+	@echo ""
+	@echo "Installation:"
+	@echo "  make -f Makefile.pip install              - Install PyPI dependencies only"
+	@echo "  make -f Makefile.pip install-dev          - Install with dev dependencies"
+	@echo "  make -f Makefile.pip install-local        - Install local packages (editable)"
+	@echo "  make -f Makefile.pip install-all          - Install everything (PyPI + local)"
+	@echo "  make -f Makefile.pip ci                   - CI mode: install-all with quiet output"
+	@echo ""
+	@echo "Package Info:"
+	@echo "  make -f Makefile.pip list                 - List installed packages"
+	@echo "  make -f Makefile.pip outdated             - Show outdated packages"
+	@echo "  make -f Makefile.pip freeze               - Output installed packages (freeze)"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make -f Makefile.pip upgrade              - Upgrade pip and tools"
+	@echo "  make -f Makefile.pip clean                - Remove build artifacts"
+	@echo "  make -f Makefile.pip info                 - Show pip environment info"
+	@echo ""
+	@echo "Configuration Variables:"
+	@echo "  PYTHON=python3.11                         - Python interpreter to use"
+	@echo ""
+	@echo "SSL/Network Variables:"
+	@echo "  SSL_VERIFY=false                          - Disable SSL verification"
+	@echo "  CA_BUNDLE=/path/to/ca.crt                 - Custom CA bundle"
+	@echo "  CERT=/path/to/client.crt                  - Client certificate"
+	@echo "  HTTP_PROXY=http://proxy:8080              - HTTP proxy"
+	@echo "  HTTPS_PROXY=http://proxy:8080             - HTTPS proxy"
+	@echo "  NO_PROXY=localhost,127.0.0.1              - Proxy bypass list"
+	@echo "  PIP_INDEX_URL=https://pypi.example.com    - Custom PyPI registry"
+	@echo "  PIP_TRUSTED_HOST=pypi.example.com         - Trusted host (no SSL verify)"
+	@echo ""
+	@echo "Local Packages:"
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		echo "  - $$pkg"; \
+	done
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.pip install-all"
+	@echo "  make -f Makefile.pip ci                      # CI/CD pipelines"
+	@echo "  make -f Makefile.pip PYTHON=python3.11 install-all"
+	@echo "  make -f Makefile.pip SSL_VERIFY=false install"
+	@echo "  make -f Makefile.pip HTTPS_PROXY=http://proxy:8080 install-all"
+
+# ============================================================================
+# Installation
+# ============================================================================
+
+# Install PyPI dependencies only (from requirements.txt if exists, or inline list)
+# Note: Root pyproject.toml has package-mode=false, cannot pip install -e .
+install:
+	$(SILENT)echo "Installing PyPI dependencies with pip..."
+	$(SILENT)if [ -f requirements.txt ]; then \
+		echo "Using requirements.txt..."; \
+		$(PIP) install $(PIP_QUIET) $(PIP_ARGS) -r requirements.txt; \
+	else \
+		echo "Installing core dependencies..."; \
+		$(PIP) install $(PIP_QUIET) $(PIP_ARGS) \
+			fastapi "uvicorn[standard]" pydantic pydantic-settings \
+			python-dotenv python-multipart httpx pyyaml rich; \
+	fi
+	$(SILENT)echo "Done!"
+
+# Install with dev dependencies
+install-dev:
+	$(SILENT)echo "Installing PyPI dependencies with dev tools..."
+	$(SILENT)if [ -f requirements-dev.txt ]; then \
+		echo "Using requirements-dev.txt..."; \
+		$(PIP) install $(PIP_QUIET) $(PIP_ARGS) -r requirements-dev.txt; \
+	else \
+		$(MAKE) -f Makefile.pip install CI=$(CI); \
+		echo "Installing dev dependencies..."; \
+		$(PIP) install $(PIP_QUIET) $(PIP_ARGS) \
+			pytest pytest-asyncio pytest-cov pytest-mock \
+			mypy ruff; \
+	fi
+	$(SILENT)echo "Done!"
+
+# Install local packages as editable
+install-local:
+	$(SILENT)echo "Installing local packages in editable mode..."
+	$(SILENT)# Install packages_py
+	$(SILENT)for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		if [ -f "$(PACKAGES_PY_DIR)/$$pkg/pyproject.toml" ]; then \
+			echo "  Installing $(PACKAGES_PY_DIR)/$$pkg..."; \
+			$(PIP) install $(PIP_QUIET) $(PIP_ARGS) -e "$(PACKAGES_PY_DIR)/$$pkg" 2>&1 | grep -v "already satisfied" || true; \
+		fi; \
+	done
+	$(SILENT)# Install fastapi_apps
+	$(SILENT)for app in $$(find $(FASTAPI_APPS_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		if [ -f "$(FASTAPI_APPS_DIR)/$$app/pyproject.toml" ]; then \
+			echo "  Installing $(FASTAPI_APPS_DIR)/$$app..."; \
+			$(PIP) install $(PIP_QUIET) $(PIP_ARGS) -e "$(FASTAPI_APPS_DIR)/$$app" 2>&1 | grep -v "already satisfied" || true; \
+		fi; \
+	done
+	$(SILENT)echo "Done!"
+
+# Install everything: PyPI deps + local packages
+install-all: install install-local
+	$(SILENT)echo ""
+	$(SILENT)echo "All dependencies installed!"
+
+# CI target: install all with quiet output
+ci:
+	@$(MAKE) -f Makefile.pip CI=true install-all
+
+# ============================================================================
+# Package Info
+# ============================================================================
+
+# List installed packages
+list:
+	$(PIP) list
+
+# Show outdated packages
+outdated:
+	$(PIP) list --outdated
+
+# Output installed packages in requirements format
+freeze:
+	$(PIP) freeze
+
+# ============================================================================
+# Maintenance
+# ============================================================================
+
+# Upgrade pip and core tools
+upgrade:
+	@echo "Upgrading pip and tools..."
+	$(PIP) install $(PIP_ARGS) --upgrade pip setuptools wheel
+	@echo "Done!"
+
+# Show pip environment info
+info:
+	@echo "pip Environment Info"
+	@echo "===================="
+	@echo ""
+	@echo "Python: $$($(PYTHON) --version 2>&1) ($$(which $(PYTHON)))"
+	@echo "pip: $$($(PIP) --version 2>&1)"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  PYTHON=$(PYTHON)"
+	@echo "  PIP_ARGS=$(PIP_ARGS)"
+	@echo ""
+	@echo "SSL/Network:"
+	@echo "  SSL_VERIFY=$(SSL_VERIFY)"
+	@echo "  CA_BUNDLE=$(CA_BUNDLE)"
+	@echo "  CERT=$(CERT)"
+	@echo "  HTTP_PROXY=$(HTTP_PROXY)"
+	@echo "  HTTPS_PROXY=$(HTTPS_PROXY)"
+	@echo "  PIP_INDEX_URL=$(PIP_INDEX_URL)"
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning pip build artifacts..."
+	@find $(PACKAGES_PY_DIR) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@find $(FASTAPI_APPS_DIR) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "Done!"
