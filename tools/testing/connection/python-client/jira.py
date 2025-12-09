@@ -106,10 +106,10 @@ async def get_myself() -> dict[str, Any]:
     async with client:
         response = await client.get("/rest/api/2/myself")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def list_projects() -> dict[str, Any]:
@@ -127,15 +127,15 @@ async def list_projects() -> dict[str, Any]:
     async with client:
         response = await client.get("/rest/api/2/project")
 
-        print(f"Status: {response.status}")
-        if response.ok and isinstance(response.data, list):
-            print(f"Found {len(response.data)} projects")
-            for project in response.data[:10]:
+        print(f"Status: {response['status']}")
+        if response["ok"] and isinstance(response["data"], list):
+            print(f"Found {len(response['data'])} projects")
+            for project in response["data"][:10]:
                 print(f"  - {project['key']}: {project['name']}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def search_issues(jql: str) -> dict[str, Any]:
@@ -156,15 +156,15 @@ async def search_issues(jql: str) -> dict[str, Any]:
             params={"jql": jql, "maxResults": 10},
         )
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            print(f"Found {response.data.get('total', 0)} issues")
-            for issue in response.data.get("issues", [])[:5]:
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            print(f"Found {response['data'].get('total', 0)} issues")
+            for issue in response["data"].get("issues", [])[:5]:
                 print(f"  - {issue['key']}: {issue['fields']['summary']}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_issue(issue_key: str) -> dict[str, Any]:
@@ -182,10 +182,10 @@ async def get_issue(issue_key: str) -> dict[str, Any]:
     async with client:
         response = await client.get(f"/rest/api/2/issue/{issue_key}")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================

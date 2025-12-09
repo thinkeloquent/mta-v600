@@ -96,14 +96,14 @@ async def chat_completion(messages: list[dict], model: str = "gemini-1.5-flash")
             json={"model": model, "messages": messages},
         )
 
-        print(f"Status: {response.status}")
-        if response.ok and "choices" in response.data:
-            content = response.data["choices"][0].get("message", {}).get("content", "")
+        print(f"Status: {response['status']}")
+        if response["ok"] and "choices" in response["data"]:
+            content = response["data"]["choices"][0].get("message", {}).get("content", "")
             print(f"Response: {content}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def stream_chat_completion(messages: list[dict], model: str = "gemini-1.5-flash") -> dict[str, Any]:
@@ -151,15 +151,15 @@ async def create_embedding(input_text: str, model: str = "text-embedding-004") -
             json={"model": model, "input": input_text},
         )
 
-        print(f"Status: {response.status}")
-        if response.ok and "data" in response.data:
-            embedding = response.data["data"][0].get("embedding", [])
+        print(f"Status: {response['status']}")
+        if response["ok"] and "data" in response["data"]:
+            embedding = response["data"]["data"][0].get("embedding", [])
             print(f"Embedding dimensions: {len(embedding)}")
             print(f"First 5 values: {embedding[:5]}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================

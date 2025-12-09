@@ -97,10 +97,10 @@ async def get_user() -> dict[str, Any]:
     async with client:
         response = await client.get("/user")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def list_repositories() -> dict[str, Any]:
@@ -119,15 +119,15 @@ async def list_repositories() -> dict[str, Any]:
     async with client:
         response = await client.get("/user/repos")
 
-        print(f"Status: {response.status}")
-        if response.ok and isinstance(response.data, list):
-            print(f"Found {len(response.data)} repositories")
-            for repo in response.data[:5]:
+        print(f"Status: {response['status']}")
+        if response["ok"] and isinstance(response["data"], list):
+            print(f"Found {len(response['data'])} repositories")
+            for repo in response["data"][:5]:
                 print(f"  - {repo['full_name']}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_repository(owner: str, repo: str) -> dict[str, Any]:
@@ -146,10 +146,10 @@ async def get_repository(owner: str, repo: str) -> dict[str, Any]:
     async with client:
         response = await client.get(f"/repos/{owner}/{repo}")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================

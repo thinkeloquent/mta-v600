@@ -94,10 +94,10 @@ async def get_me() -> dict[str, Any]:
     async with client:
         response = await client.get("/v1/me")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_file(file_key: str) -> dict[str, Any]:
@@ -112,15 +112,15 @@ async def get_file(file_key: str) -> dict[str, Any]:
     async with client:
         response = await client.get(f"/v1/files/{file_key}")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            print(f"File name: {response.data.get('name')}")
-            print(f"Last modified: {response.data.get('lastModified')}")
-            print(f"Version: {response.data.get('version')}")
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            print(f"File name: {response['data'].get('name')}")
+            print(f"Last modified: {response['data'].get('lastModified')}")
+            print(f"Version: {response['data'].get('version')}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_file_nodes(file_key: str, node_ids: list[str]) -> dict[str, Any]:
@@ -138,10 +138,10 @@ async def get_file_nodes(file_key: str, node_ids: list[str]) -> dict[str, Any]:
             params={"ids": ",".join(node_ids)},
         )
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_team_projects(team_id: str) -> dict[str, Any]:
@@ -156,16 +156,16 @@ async def get_team_projects(team_id: str) -> dict[str, Any]:
     async with client:
         response = await client.get(f"/v1/teams/{team_id}/projects")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            projects = response.data.get("projects", [])
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            projects = response["data"].get("projects", [])
             print(f"Found {len(projects)} projects")
             for project in projects[:10]:
                 print(f"  - {project['name']} (id: {project['id']})")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================

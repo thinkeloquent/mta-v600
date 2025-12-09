@@ -103,15 +103,15 @@ async def get_cluster_info() -> dict[str, Any]:
     async with client:
         response = await client.get("/")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            print(f"Name: {response.data.get('name')}")
-            print(f"Cluster: {response.data.get('cluster_name')}")
-            print(f"Version: {response.data.get('version', {}).get('number')}")
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            print(f"Name: {response['data'].get('name')}")
+            print(f"Cluster: {response['data'].get('cluster_name')}")
+            print(f"Version: {response['data'].get('version', {}).get('number')}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_cluster_health() -> dict[str, Any]:
@@ -135,16 +135,16 @@ async def get_cluster_health() -> dict[str, Any]:
     async with client:
         response = await client.get("/_cluster/health")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            print(f"Cluster: {response.data.get('cluster_name')}")
-            print(f"Health: {response.data.get('status')}")
-            print(f"Nodes: {response.data.get('number_of_nodes')}")
-            print(f"Data Nodes: {response.data.get('number_of_data_nodes')}")
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            print(f"Cluster: {response['data'].get('cluster_name')}")
+            print(f"Health: {response['data'].get('status')}")
+            print(f"Nodes: {response['data'].get('number_of_nodes')}")
+            print(f"Data Nodes: {response['data'].get('number_of_data_nodes')}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def list_indices() -> dict[str, Any]:
@@ -168,15 +168,15 @@ async def list_indices() -> dict[str, Any]:
     async with client:
         response = await client.get("/_cat/indices", params={"format": "json"})
 
-        print(f"Status: {response.status}")
-        if response.ok and isinstance(response.data, list):
-            print(f"Found {len(response.data)} indices")
-            for idx in response.data[:10]:
+        print(f"Status: {response['status']}")
+        if response["ok"] and isinstance(response["data"], list):
+            print(f"Found {len(response['data'])} indices")
+            for idx in response["data"][:10]:
                 print(f"  - {idx.get('index')}: {idx.get('docs.count')} docs ({idx.get('store.size')})")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def search_index(index: str, query: dict) -> dict[str, Any]:
@@ -201,16 +201,16 @@ async def search_index(index: str, query: dict) -> dict[str, Any]:
     async with client:
         response = await client.post(f"/{index}/_search", json=query)
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            hits = response.data.get("hits", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            hits = response["data"].get("hits", {})
             print(f"Total hits: {hits.get('total', {}).get('value', 0)}")
             for hit in hits.get("hits", [])[:5]:
                 print(f"  - {hit.get('_id')}: {hit.get('_source', {})}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================

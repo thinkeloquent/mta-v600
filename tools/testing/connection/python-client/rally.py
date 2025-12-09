@@ -96,15 +96,15 @@ async def get_subscription() -> dict[str, Any]:
     async with client:
         response = await client.get("/subscription")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            subscription = response.data.get("Subscription", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            subscription = response["data"].get("Subscription", {})
             print(f"Name: {subscription.get('_refObjectName')}")
             print(f"ID: {subscription.get('SubscriptionID')}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_current_user() -> dict[str, Any]:
@@ -122,15 +122,15 @@ async def get_current_user() -> dict[str, Any]:
     async with client:
         response = await client.get("/user")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            user = response.data.get("User", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            user = response["data"].get("User", {})
             print(f"Name: {user.get('_refObjectName')}")
             print(f"Email: {user.get('EmailAddress')}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def list_projects() -> dict[str, Any]:
@@ -151,17 +151,17 @@ async def list_projects() -> dict[str, Any]:
             params={"pagesize": 10, "fetch": "Name,ObjectID,State"},
         )
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            query_result = response.data.get("QueryResult", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            query_result = response["data"].get("QueryResult", {})
             results = query_result.get("Results", [])
             print(f"Total: {query_result.get('TotalResultCount', 0)}")
             for project in results[:10]:
                 print(f"  - {project.get('_refObjectName')} ({project.get('State')})")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def query_user_stories(project_id: str = None) -> dict[str, Any]:
@@ -188,18 +188,18 @@ async def query_user_stories(project_id: str = None) -> dict[str, Any]:
     async with client:
         response = await client.get("/hierarchicalrequirement", params=params)
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            query_result = response.data.get("QueryResult", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            query_result = response["data"].get("QueryResult", {})
             results = query_result.get("Results", [])
             print(f"Total: {query_result.get('TotalResultCount', 0)}")
             for story in results[:10]:
                 owner = story.get("Owner", {}).get("_refObjectName", "Unassigned")
                 print(f"  - {story.get('FormattedID')}: {story.get('Name')[:50]}... ({story.get('ScheduleState')}) - {owner}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def query_defects() -> dict[str, Any]:
@@ -224,18 +224,18 @@ async def query_defects() -> dict[str, Any]:
             },
         )
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            query_result = response.data.get("QueryResult", {})
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            query_result = response["data"].get("QueryResult", {})
             results = query_result.get("Results", [])
             print(f"Total: {query_result.get('TotalResultCount', 0)}")
             for defect in results[:10]:
                 owner = defect.get("Owner", {}).get("_refObjectName", "Unassigned")
                 print(f"  - {defect.get('FormattedID')}: {defect.get('Name')[:40]}... ({defect.get('State')}) - {owner}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================
