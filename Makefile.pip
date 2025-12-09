@@ -155,7 +155,7 @@ install:
 		echo "Installing core dependencies..."; \
 		$(PIP) install $(PIP_QUIET) $(PIP_ARGS) \
 			fastapi "uvicorn[standard]" pydantic pydantic-settings \
-			python-dotenv python-multipart httpx pyyaml rich; \
+			python-dotenv python-multipart httpx pyyaml; \
 	fi
 	$(SILENT)echo "Done!"
 

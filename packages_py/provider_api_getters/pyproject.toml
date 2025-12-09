@@ -12,7 +12,6 @@ app_static_config_yaml = {path = "../app_static_config_yaml", develop = true}
 fetch_client = {path = "../fetch_client", develop = true}
 fetch_proxy_dispatcher = {path = "../fetch_proxy_dispatcher", develop = true}
 httpx = "^0.28.0"
-rich = "^14.0.0"
 asyncpg = {version = "^0.30.0", optional = true}
 redis = {version = "^5.0.0", optional = true}
 elasticsearch = {version = "^8.0.0", extras = ["async"], optional = true}

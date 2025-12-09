@@ -9,7 +9,6 @@ packages = [{include = "static_config", from = "src"}]
 python = "^3.9"
 pyyaml = "^6.0"
 pydantic = "^2.0"
-rich = "^14.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
