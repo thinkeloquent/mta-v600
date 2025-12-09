@@ -1,0 +1,154 @@
+# Connection Testing Scripts
+
+Test scripts for verifying provider connectivity using the internal monorepo modules.
+
+## Quick Start
+
+```bash
+# From project root
+cd /path/to/mta-v600
+
+# Python - test single provider
+python tools/testing/connection/figma.py
+
+# Python - test all providers
+python tools/testing/connection/all_providers.py
+
+# JavaScript - test single provider
+node tools/testing/connection/figma.mjs
+
+# JavaScript - test all providers
+node tools/testing/connection/all_providers.mjs
+```
+
+## Available Scripts
+
+| Provider          | Python             | JavaScript          |
+| ----------------- | ------------------ | ------------------- |
+| Figma             | `figma.py`         | `figma.mjs`         |
+| GitHub            | `github.py`        | `github.mjs`        |
+| Jira              | `jira.py`          | `jira.mjs`          |
+| Confluence        | `confluence.py`    | `confluence.mjs`    |
+| SauceLabs         | `saucelabs.py`     | `saucelabs.mjs`     |
+| Gemini            | `gemini.py`        | `gemini.mjs`        |
+| OpenAI            | `openai.py`        | `openai.mjs`        |
+| PostgreSQL        | `postgres.py`      | `postgres.mjs`      |
+| Redis             | `redis.py`         | `redis.mjs`         |
+| **All Providers** | `all_providers.py` | `all_providers.mjs` |
+
+## Environment Variables
+
+Each provider requires specific environment variables to be set. Configuration is loaded from `common/config/server.{APP_ENV}.yaml`.
+
+### Required Variables by Provider
+
+| Provider   | Variables                                                         | Notes                     |
+| ---------- | ----------------------------------------------------------------- | ------------------------- |
+| figma      | `FIGMA_TOKEN`                                                     | Personal access token     |
+| github     | `GITHUB_TOKEN`                                                    | PAT or `GH_TOKEN`         |
+| jira       | `JIRA_API_TOKEN`, `JIRA_EMAIL`, `JIRA_BASE_URL`                   | Atlassian API token       |
+| confluence | `CONFLUENCE_API_TOKEN`, `CONFLUENCE_EMAIL`, `CONFLUENCE_BASE_URL` | Atlassian API token       |
+| saucelabs  | `SAUCE_USERNAME`, `SAUCE_ACCESS_KEY`                              | SauceLabs credentials     |
+| gemini     | `GEMINI_API_KEY`                                                  | Google AI API key         |
+| openai     | `OPENAI_API_KEY`                                                  | OpenAI API key            |
+| postgres   | `DATABASE_URL`                                                    | PostgreSQL connection URL |
+| redis      | `REDIS_URL`                                                       | Redis connection URL      |
+
+### Optional Variables
+
+| Variable            | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `APP_ENV`           | Environment name (`dev`, `qa`, `stage`, `prod`). Defaults to `dev` |
+| `VAULT_SECRET_FILE` | Path to vault secrets file for automatic credential loading        |
+
+## Output Format
+
+Each test displays:
+
+- Status icon: ✓ (connected), ✗ (error), ○ (not implemented)
+- Provider name
+- Connection status
+- Latency in milliseconds
+- Success message or error details
+- Timestamp
+
+Example output:
+
+```
+============================================================
+✓ Provider: figma
+  Status: connected
+  Latency: 245.32ms
+  Message: Connected as user@example.com
+  Timestamp: 2025-12-08T12:30:45.123456
+============================================================
+```
+
+## Internal Modules Used
+
+These scripts use the following internal monorepo packages:
+
+| Package                  | Purpose                                                  |
+| ------------------------ | -------------------------------------------------------- |
+| `provider_api_getters`   | API token resolution, credential lookup, health checking |
+| `app_static_config_yaml` | Load provider configuration from YAML files              |
+| `fetch_client`           | HTTP client with provider-specific authentication        |
+| `fetch_proxy_dispatcher` | Corporate proxy configuration and SSL handling           |
+
+## Exit Codes
+
+| Code | Meaning                                     |
+| ---- | ------------------------------------------- |
+| `0`  | All tested providers connected successfully |
+| `1`  | One or more providers failed to connect     |
+
+## Troubleshooting
+
+### "No API credentials configured"
+
+- Ensure the required environment variables are set
+- Check that `APP_ENV` matches your config file (e.g., `server.dev.yaml`)
+
+### "No base URL configured"
+
+- For Jira/Confluence: Set `JIRA_BASE_URL` or `CONFLUENCE_BASE_URL`
+- Check `common/config/server.*.yaml` for provider configuration
+
+### SSL/Proxy errors
+
+- Set `cert_verify: false` in config for development environments
+- Configure proxy settings in `common/config/server.*.yaml` under `proxy:`
+
+### Module not found errors
+
+- Run `poetry install` from project root
+- Run `pnpm install` from project root
+
+  TLS/SSL Options
+
+Node.js (undici):
+
+- NODE_TLS_REJECT_UNAUTHORIZED=0 - Ignore certificate errors
+- REQUEST_CA_BUNDLE=/path/to/ca - Custom CA bundle
+- SSL_CERT_FILE=/path/to/cert - Custom SSL certificate
+- NODE_EXTRA_CA_CERTS=/path/to/ca - Additional CA certs (automatic)
+
+Python (httpx):
+
+- SSL_CERT_VERIFY=0 - Ignore certificate errors
+- REQUEST_CA_BUNDLE=/path/to/ca - Custom CA bundle
+- SSL_CERT_FILE=/path/to/cert - Custom SSL certificate
+- REQUESTS_CA_BUNDLE=/path/to/ca - Requests compatibility
+
+Usage Examples
+
+Ignore self-signed cert (Node.js):
+NODE_TLS_REJECT_UNAUTHORIZED=0 node gemini.mjs
+
+Ignore self-signed cert (Python):
+SSL_CERT_VERIFY=0 python gemini.py
+
+Custom CA bundle with proxy:
+HTTPS_PROXY=http://proxy.corp.com:8080 \
+REQUEST_CA_BUNDLE=/etc/ssl/certs/corporate-ca.crt \
+node jira.mjs

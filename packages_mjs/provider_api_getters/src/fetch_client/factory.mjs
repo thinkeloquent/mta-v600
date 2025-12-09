@@ -15,6 +15,7 @@
  */
 import pino from 'pino';
 import { getApiTokenClass } from '../api_token/index.mjs';
+import { deepMerge } from '../utils/deep_merge.mjs';
 
 // Create pino logger with pretty printing
 const logger = pino({
@@ -50,21 +51,76 @@ export class ProviderClientFactory {
     }
   }
 
+  _getClientConfig() {
+    try {
+      if (!this.configStore) return {};
+      return this.configStore.getNested('client') || {};
+    } catch {
+      return {};
+    }
+  }
+
   /**
-   * Create a dispatcher with proxy configuration from YAML.
+   * Get merged configuration for a provider, combining global config with provider overrides.
    *
-   * Uses ProxyDispatcherFactory with full YAML config:
+   * Resolution priority (deep merge):
+   * 1. providers.{name}.overwrite_config.* (provider-specific)
+   * 2. Global settings (proxy.*, client.*)
+   *
+   * @param {string} providerName - Provider name
+   * @returns {Object} Merged configuration with proxy, client, and headers
+   */
+  _getMergedConfigForProvider(providerName) {
+    const apiToken = this.getApiToken(providerName);
+    if (!apiToken) {
+      return {
+        proxy: this._getProxyConfig(),
+        client: this._getClientConfig(),
+        headers: {},
+      };
+    }
+
+    const overwrite = apiToken.getOverwriteConfig() || {};
+    const globalProxy = this._getProxyConfig();
+    const globalClient = this._getClientConfig();
+
+    const mergedProxy = deepMerge(globalProxy, overwrite.proxy || {});
+    const mergedClient = deepMerge(globalClient, overwrite.client || {});
+    const headers = overwrite.headers || {};
+
+    const hasOverrides = Object.keys(overwrite).length > 0;
+    if (hasOverrides) {
+      logger.info(
+        { providerName, overwriteKeys: Object.keys(overwrite) },
+        'Provider-specific config overrides applied'
+      );
+    }
+
+    return {
+      proxy: mergedProxy,
+      client: mergedClient,
+      headers,
+    };
+  }
+
+  /**
+   * Create a dispatcher with proxy configuration.
+   *
+   * Uses ProxyDispatcherFactory with full config:
    * - proxy_urls: per-environment proxy URLs
    * - agent_proxy: http_proxy/https_proxy overrides
    * - default_environment: env for proxy selection
    * - cert_verify: false = disable TLS validation
+   * - ca_bundle: path to CA bundle file
    *
+   * @param {Object} proxyConfig - Merged proxy configuration (global + provider overrides)
    * @returns {Promise<Dispatcher|undefined>} Dispatcher or undefined
    */
-  async _createDispatcher() {
+  async _createDispatcher(proxyConfig = null) {
     try {
       const { ProxyDispatcherFactory } = await import('@internal/fetch-proxy-dispatcher');
-      const proxyConfig = this._getProxyConfig();
+      // Use provided config or fall back to global
+      proxyConfig = proxyConfig || this._getProxyConfig();
 
       // Build ProxyUrlConfig from YAML (convert to uppercase keys)
       let proxyUrls;
@@ -137,7 +193,11 @@ export class ProviderClientFactory {
     const apiKeyResult = apiToken.getApiKey();
     if (apiKeyResult.isPlaceholder) return null;
 
-    const dispatcher = await this._createDispatcher();
+    // Get merged config (global + provider overrides)
+    const mergedConfig = this._getMergedConfigForProvider(providerName);
+
+    // Create dispatcher with merged proxy config
+    const dispatcher = await this._createDispatcher(mergedConfig.proxy);
 
     let auth;
     if (apiKeyResult.apiKey) {
@@ -155,12 +215,25 @@ export class ProviderClientFactory {
       }
     }
 
-    const client = createClient({
+    // Build client options with merged config
+    const clientOptions = {
       baseUrl,
       dispatcher,
       auth,
-    });
-    logger.info({ providerName, baseUrl }, 'FetchClient created');
+    };
+
+    // Apply timeout from merged client config
+    if (mergedConfig.client?.timeout_ms) {
+      clientOptions.timeout = mergedConfig.client.timeout_ms;
+    }
+
+    // Apply additional headers from overwrite_config
+    if (Object.keys(mergedConfig.headers).length > 0) {
+      clientOptions.headers = mergedConfig.headers;
+    }
+
+    const client = createClient(clientOptions);
+    logger.info({ providerName, baseUrl, hasOverrideHeaders: Object.keys(mergedConfig.headers).length > 0 }, 'FetchClient created');
 
     return client;
   }

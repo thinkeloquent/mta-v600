@@ -8,9 +8,16 @@
  * Authentication: Password or ACL (username:password)
  * Default Port: 6379
  * Health Command: PING
+ *
+ * TLS/SSL Options:
+ *   NODE_TLS_REJECT_UNAUTHORIZED=0  - Ignore all certificate errors
+ *   REQUEST_CA_BUNDLE=/path/to/ca   - Custom CA bundle file
+ *   SSL_CERT_FILE=/path/to/cert     - Custom SSL certificate file
+ *   NODE_EXTRA_CA_CERTS=/path/to/ca - Additional CA certificates
  */
 
 import Redis from 'ioredis';
+import { readFileSync } from 'node:fs';
 
 // ============================================================================
 // Configuration - Override these values
@@ -29,20 +36,48 @@ const CONFIG = {
   REDIS_TLS: process.env.REDIS_TLS || 'false', // 'true' for TLS
 
   // Optional: TLS Configuration
-  REJECT_UNAUTHORIZED: true, // Set to false to skip TLS verification (testing only)
+  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to ignore certificate errors
+  REJECT_UNAUTHORIZED: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0',
+
+  // Optional: Custom CA certificates
+  // REQUEST_CA_BUNDLE or SSL_CERT_FILE - path to custom CA bundle
+  // NODE_EXTRA_CA_CERTS - handled automatically by Node.js
+  CA_BUNDLE: process.env.REQUEST_CA_BUNDLE || process.env.SSL_CERT_FILE || '',
 };
+
+// ============================================================================
+// TLS Configuration Helper
+// ============================================================================
+
+function getTlsOptions() {
+  const options = {
+    rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
+  };
+
+  // Load custom CA bundle if specified
+  if (CONFIG.CA_BUNDLE) {
+    try {
+      options.ca = readFileSync(CONFIG.CA_BUNDLE);
+      console.log(`Using custom CA bundle: ${CONFIG.CA_BUNDLE}`);
+    } catch (err) {
+      console.warn(`Warning: Could not read CA bundle: ${err.message}`);
+    }
+  }
+
+  return options;
+}
 
 // ============================================================================
 // Create Redis Client
 // ============================================================================
 
 function createClient() {
+  const tlsOptions = getTlsOptions();
+
   if (CONFIG.REDIS_URL) {
     console.log(`Using connection URL: ${CONFIG.REDIS_URL.replace(/:[^:@]+@/, ':***@')}`);
     return new Redis(CONFIG.REDIS_URL, {
-      tls: CONFIG.REDIS_URL.startsWith('rediss://') ? {
-        rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
-      } : undefined,
+      tls: CONFIG.REDIS_URL.startsWith('rediss://') ? tlsOptions : undefined,
     });
   }
 
@@ -63,9 +98,7 @@ function createClient() {
   }
 
   if (useTls) {
-    options.tls = {
-      rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
-    };
+    options.tls = tlsOptions;
   }
 
   console.log(`Connecting to: ${CONFIG.REDIS_HOST}:${CONFIG.REDIS_PORT}`);
@@ -208,6 +241,8 @@ async function main() {
   console.log(`Host: ${CONFIG.REDIS_HOST}:${CONFIG.REDIS_PORT}`);
   console.log(`Database: ${CONFIG.REDIS_DB}`);
   console.log(`TLS: ${CONFIG.REDIS_TLS}`);
+  console.log(`TLS Verify: ${CONFIG.REJECT_UNAUTHORIZED}`);
+  console.log(`CA Bundle: ${CONFIG.CA_BUNDLE || 'System default'}`);
 
   await healthCheck();
   // await serverInfo();

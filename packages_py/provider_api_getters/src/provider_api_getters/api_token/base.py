@@ -533,6 +533,114 @@ class BaseApiToken(ABC):
         )
         return result
 
+    def get_overwrite_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the overwrite_config block for this provider.
+
+        Returns:
+            Overwrite config dictionary or None if not configured
+        """
+        logger.debug(f"{self.__class__.__name__}.get_overwrite_config: Getting overwrite config")
+
+        provider_config = self._get_provider_config()
+        overwrite = provider_config.get("overwrite_config")
+
+        if overwrite:
+            logger.debug(
+                f"{self.__class__.__name__}.get_overwrite_config: "
+                f"Found overwrite_config with keys: {list(overwrite.keys())}"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}.get_overwrite_config: No overwrite_config found"
+            )
+
+        return overwrite
+
+    def get_proxy_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Get provider-specific proxy configuration from overwrite_config.
+
+        Returns:
+            Proxy config dictionary or None if not configured
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_proxy_config: "
+            "Getting proxy config from overwrite_config"
+        )
+
+        overwrite = self.get_overwrite_config()
+        proxy_config = overwrite.get("proxy") if overwrite else None
+
+        if proxy_config:
+            logger.debug(
+                f"{self.__class__.__name__}.get_proxy_config: "
+                f"Found proxy config with keys: {list(proxy_config.keys())}"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}.get_proxy_config: "
+                "No proxy config in overwrite_config"
+            )
+
+        return proxy_config
+
+    def get_client_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Get provider-specific client configuration from overwrite_config.
+
+        Returns:
+            Client config dictionary or None if not configured
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_client_config: "
+            "Getting client config from overwrite_config"
+        )
+
+        overwrite = self.get_overwrite_config()
+        client_config = overwrite.get("client") if overwrite else None
+
+        if client_config:
+            logger.debug(
+                f"{self.__class__.__name__}.get_client_config: "
+                f"Found client config with keys: {list(client_config.keys())}"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}.get_client_config: "
+                "No client config in overwrite_config"
+            )
+
+        return client_config
+
+    def get_headers_config(self) -> Optional[Dict[str, str]]:
+        """
+        Get provider-specific headers configuration from overwrite_config.
+
+        Returns:
+            Headers config dictionary or None if not configured
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_headers_config: "
+            "Getting headers config from overwrite_config"
+        )
+
+        overwrite = self.get_overwrite_config()
+        headers_config = overwrite.get("headers") if overwrite else None
+
+        if headers_config:
+            logger.debug(
+                f"{self.__class__.__name__}.get_headers_config: "
+                f"Found headers config with keys: {list(headers_config.keys())}"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}.get_headers_config: "
+                "No headers config in overwrite_config"
+            )
+
+        return headers_config
+
     def validate(self) -> Dict[str, Any]:
         """
         Validate the provider configuration.

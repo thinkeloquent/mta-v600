@@ -522,6 +522,98 @@ export class BaseApiToken {
   }
 
   /**
+   * Get the overwrite_config block for this provider.
+   * @returns {Object|null}
+   */
+  getOverwriteConfig() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getOverwriteConfig: Getting overwrite config`);
+
+    const providerConfig = this._getProviderConfig();
+    const overwrite = providerConfig?.overwrite_config || null;
+
+    if (overwrite) {
+      logger.debug(
+        `${className}.getOverwriteConfig: Found overwrite_config with keys: ` +
+        `[${Object.keys(overwrite).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getOverwriteConfig: No overwrite_config found`);
+    }
+
+    return overwrite;
+  }
+
+  /**
+   * Get provider-specific proxy configuration from overwrite_config.
+   * @returns {Object|null}
+   */
+  getProxyConfig() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getProxyConfig: Getting proxy config from overwrite_config`);
+
+    const overwrite = this.getOverwriteConfig();
+    const proxyConfig = overwrite?.proxy || null;
+
+    if (proxyConfig) {
+      logger.debug(
+        `${className}.getProxyConfig: Found proxy config with keys: ` +
+        `[${Object.keys(proxyConfig).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getProxyConfig: No proxy config in overwrite_config`);
+    }
+
+    return proxyConfig;
+  }
+
+  /**
+   * Get provider-specific client configuration from overwrite_config.
+   * @returns {Object|null}
+   */
+  getClientConfig() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getClientConfig: Getting client config from overwrite_config`);
+
+    const overwrite = this.getOverwriteConfig();
+    const clientConfig = overwrite?.client || null;
+
+    if (clientConfig) {
+      logger.debug(
+        `${className}.getClientConfig: Found client config with keys: ` +
+        `[${Object.keys(clientConfig).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getClientConfig: No client config in overwrite_config`);
+    }
+
+    return clientConfig;
+  }
+
+  /**
+   * Get provider-specific headers configuration from overwrite_config.
+   * @returns {Object|null}
+   */
+  getHeadersConfig() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getHeadersConfig: Getting headers config from overwrite_config`);
+
+    const overwrite = this.getOverwriteConfig();
+    const headersConfig = overwrite?.headers || null;
+
+    if (headersConfig) {
+      logger.debug(
+        `${className}.getHeadersConfig: Found headers config with keys: ` +
+        `[${Object.keys(headersConfig).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getHeadersConfig: No headers config in overwrite_config`);
+    }
+
+    return headersConfig;
+  }
+
+  /**
    * Validate the provider configuration.
    * @returns {Object}
    */

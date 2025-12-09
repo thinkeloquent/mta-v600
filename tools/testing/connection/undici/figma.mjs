@@ -4,9 +4,16 @@
  * Authentication: X-Figma-Token header
  * Base URL: https://api.figma.com/v1
  * Health Endpoint: GET /v1/me
+ *
+ * TLS/SSL Options:
+ *   NODE_TLS_REJECT_UNAUTHORIZED=0  - Ignore all certificate errors
+ *   REQUEST_CA_BUNDLE=/path/to/ca   - Custom CA bundle file
+ *   SSL_CERT_FILE=/path/to/cert     - Custom SSL certificate file
+ *   NODE_EXTRA_CA_CERTS=/path/to/ca - Additional CA certificates
  */
 
 import { request, ProxyAgent, Agent } from 'undici';
+import { readFileSync } from 'node:fs';
 
 // ============================================================================
 // Configuration - Override these values
@@ -23,27 +30,53 @@ const CONFIG = {
   HTTPS_PROXY: process.env.HTTPS_PROXY || '', // e.g., 'http://proxy.example.com:8080'
 
   // Optional: TLS Configuration
-  REJECT_UNAUTHORIZED: true, // Set to false to skip TLS verification (testing only)
+  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to ignore certificate errors
+  REJECT_UNAUTHORIZED: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0',
+
+  // Optional: Custom CA certificates
+  // REQUEST_CA_BUNDLE or SSL_CERT_FILE - path to custom CA bundle
+  // NODE_EXTRA_CA_CERTS - handled automatically by Node.js
+  CA_BUNDLE: process.env.REQUEST_CA_BUNDLE || process.env.SSL_CERT_FILE || '',
 };
+
+// ============================================================================
+// TLS Configuration Helper
+// ============================================================================
+
+function getTlsConnectOptions() {
+  const options = {
+    rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
+  };
+
+  // Load custom CA bundle if specified
+  if (CONFIG.CA_BUNDLE) {
+    try {
+      options.ca = readFileSync(CONFIG.CA_BUNDLE);
+      console.log(`Using custom CA bundle: ${CONFIG.CA_BUNDLE}`);
+    } catch (err) {
+      console.warn(`Warning: Could not read CA bundle: ${err.message}`);
+    }
+  }
+
+  return options;
+}
 
 // ============================================================================
 // Create Dispatcher (with or without proxy)
 // ============================================================================
 
 function createDispatcher() {
+  const tlsOptions = getTlsConnectOptions();
+
   if (CONFIG.HTTPS_PROXY) {
     console.log(`Using proxy: ${CONFIG.HTTPS_PROXY}`);
     return new ProxyAgent({
       uri: CONFIG.HTTPS_PROXY,
-      connect: {
-        rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
-      },
+      connect: tlsOptions,
     });
   }
   return new Agent({
-    connect: {
-      rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
-    },
+    connect: tlsOptions,
   });
 }
 
@@ -216,6 +249,8 @@ async function main() {
   console.log(`Base URL: ${CONFIG.BASE_URL}`);
   console.log(`Proxy: ${CONFIG.HTTPS_PROXY || 'None'}`);
   console.log(`Token: ${CONFIG.FIGMA_TOKEN.slice(0, 10)}...`);
+  console.log(`TLS Verify: ${CONFIG.REJECT_UNAUTHORIZED}`);
+  console.log(`CA Bundle: ${CONFIG.CA_BUNDLE || 'System default'}`);
 
   await healthCheck();
   // await getFile('file_key_here');

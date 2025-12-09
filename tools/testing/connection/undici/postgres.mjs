@@ -7,9 +7,16 @@
  * Authentication: Password
  * Default Port: 5432
  * Health Query: SELECT 1
+ *
+ * TLS/SSL Options:
+ *   NODE_TLS_REJECT_UNAUTHORIZED=0  - Ignore all certificate errors
+ *   REQUEST_CA_BUNDLE=/path/to/ca   - Custom CA bundle file
+ *   SSL_CERT_FILE=/path/to/cert     - Custom SSL certificate file
+ *   NODE_EXTRA_CA_CERTS=/path/to/ca - Additional CA certificates
  */
 
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
 const { Client, Pool } = pg;
 
 // ============================================================================
@@ -32,25 +39,53 @@ const CONFIG = {
   // Options: disable, allow, prefer, require, verify-ca, verify-full
 
   // Optional: TLS Configuration
-  REJECT_UNAUTHORIZED: true, // Set to false to skip TLS verification (testing only)
+  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to ignore certificate errors
+  REJECT_UNAUTHORIZED: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0',
+
+  // Optional: Custom CA certificates
+  // REQUEST_CA_BUNDLE or SSL_CERT_FILE - path to custom CA bundle
+  // NODE_EXTRA_CA_CERTS - handled automatically by Node.js
+  CA_BUNDLE: process.env.REQUEST_CA_BUNDLE || process.env.SSL_CERT_FILE || '',
 };
+
+// ============================================================================
+// TLS Configuration Helper
+// ============================================================================
+
+function getTlsOptions() {
+  const options = {
+    rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
+  };
+
+  // Load custom CA bundle if specified
+  if (CONFIG.CA_BUNDLE) {
+    try {
+      options.ca = readFileSync(CONFIG.CA_BUNDLE).toString();
+      console.log(`Using custom CA bundle: ${CONFIG.CA_BUNDLE}`);
+    } catch (err) {
+      console.warn(`Warning: Could not read CA bundle: ${err.message}`);
+    }
+  }
+
+  return options;
+}
 
 // ============================================================================
 // Create PostgreSQL Client
 // ============================================================================
 
 function createClient() {
+  const tlsOptions = getTlsOptions();
+
   if (CONFIG.DATABASE_URL) {
     console.log(`Using connection URL: ${CONFIG.DATABASE_URL.replace(/:[^:@]+@/, ':***@')}`);
     return new Client({
       connectionString: CONFIG.DATABASE_URL,
-      ssl: CONFIG.DATABASE_URL.includes('sslmode=') ? undefined : {
-        rejectUnauthorized: CONFIG.REJECT_UNAUTHORIZED,
-      },
+      ssl: CONFIG.DATABASE_URL.includes('sslmode=') ? undefined : tlsOptions,
     });
   }
 
-  const sslConfig = getSslConfig();
+  const sslConfig = getSslConfig(tlsOptions);
 
   return new Client({
     host: CONFIG.POSTGRES_HOST,
@@ -62,20 +97,23 @@ function createClient() {
   });
 }
 
-function getSslConfig() {
+function getSslConfig(tlsOptions) {
   switch (CONFIG.POSTGRES_SSLMODE) {
     case 'disable':
       return false;
     case 'require':
+      return {
+        ...tlsOptions,
+        rejectUnauthorized: false,
+      };
     case 'verify-ca':
     case 'verify-full':
-      return {
-        rejectUnauthorized: CONFIG.POSTGRES_SSLMODE !== 'require' && CONFIG.REJECT_UNAUTHORIZED,
-      };
+      return tlsOptions;
     case 'allow':
     case 'prefer':
     default:
       return {
+        ...tlsOptions,
         rejectUnauthorized: false,
       };
   }
@@ -245,6 +283,8 @@ async function main() {
   console.log(`Database: ${CONFIG.POSTGRES_DB}`);
   console.log(`User: ${CONFIG.POSTGRES_USER}`);
   console.log(`SSL Mode: ${CONFIG.POSTGRES_SSLMODE}`);
+  console.log(`TLS Verify: ${CONFIG.REJECT_UNAUTHORIZED}`);
+  console.log(`CA Bundle: ${CONFIG.CA_BUNDLE || 'System default'}`);
 
   await healthCheck();
   // await getVersion();

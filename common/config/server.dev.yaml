@@ -11,6 +11,23 @@ providers:
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
     model: "gemini-2.0-flash"
     env_api_key: "GEMINI_API_KEY"
+    # Provider-specific configuration overrides (optional)
+    # Overrides are deep-merged with global proxy/client settings
+    # overwrite_config:
+    #   proxy:
+    #     # Override proxy for this provider only
+    #     default_environment: "prod"
+    #     proxy_urls:
+    #       prod: "http://gemini-proxy:8080"
+    #     cert_verify: true
+    #     ca_bundle: "/path/to/custom-ca.crt"
+    #   client:
+    #     # Override timeout for this provider only
+    #     timeout_seconds: 120.0
+    #     timeout_ms: 120000
+    #   headers:
+    #     # Additional headers for this provider only
+    #     X-Custom-Header: "value"
   openai:
     base_url: "https://api.openai.com/v1"
     model: "gpt-4"

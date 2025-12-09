@@ -5,13 +5,18 @@ GitHub API - httpx Connection Test
 Authentication: Bearer Token
 Base URL: https://api.github.com
 Health Endpoint: GET /user
+
+TLS/SSL Options:
+  SSL_CERT_VERIFY=0              - Ignore all certificate errors
+  REQUEST_CA_BUNDLE=/path/to/ca  - Custom CA bundle file
+  SSL_CERT_FILE=/path/to/cert    - Custom SSL certificate file
+  REQUESTS_CA_BUNDLE=/path/to/ca - Alternative CA bundle (requests compat)
 """
 
 import asyncio
 import json
 import os
-import ssl
-from typing import Any, Optional
+from typing import Any, Union
 
 import httpx
 
@@ -30,8 +35,26 @@ CONFIG = {
     "HTTPS_PROXY": os.getenv("HTTPS_PROXY", ""),  # e.g., "http://proxy.example.com:8080"
 
     # Optional: TLS Configuration
-    "VERIFY_SSL": True,  # Set to False to skip TLS verification (testing only)
+    # Set SSL_CERT_VERIFY=0 to ignore certificate errors
+    "VERIFY_SSL": os.getenv("SSL_CERT_VERIFY", "1") != "0",
+
+    # Optional: Custom CA certificates
+    # REQUEST_CA_BUNDLE, SSL_CERT_FILE, or REQUESTS_CA_BUNDLE - path to custom CA bundle
+    "CA_BUNDLE": os.getenv("REQUEST_CA_BUNDLE") or os.getenv("SSL_CERT_FILE") or os.getenv("REQUESTS_CA_BUNDLE") or "",
 }
+
+
+# ============================================================================
+# TLS Configuration Helper
+# ============================================================================
+
+def get_ssl_verify() -> Union[bool, str]:
+    """Get SSL verification setting."""
+    if CONFIG["CA_BUNDLE"]:
+        print(f"Using custom CA bundle: {CONFIG['CA_BUNDLE']}")
+        return CONFIG["CA_BUNDLE"]
+    return CONFIG["VERIFY_SSL"]
+
 
 # ============================================================================
 # Create HTTP Client
@@ -49,7 +72,7 @@ def create_client() -> httpx.AsyncClient:
 
     return httpx.AsyncClient(
         proxies=proxies,
-        verify=CONFIG["VERIFY_SSL"],
+        verify=get_ssl_verify(),
         timeout=httpx.Timeout(30.0),
     )
 
@@ -153,6 +176,8 @@ async def main():
     print(f"Base URL: {CONFIG['BASE_URL']}")
     print(f"Proxy: {CONFIG['HTTPS_PROXY'] or 'None'}")
     print(f"Token: {CONFIG['GITHUB_TOKEN'][:10]}...")
+    print(f"SSL Verify: {CONFIG['VERIFY_SSL']}")
+    print(f"CA Bundle: {CONFIG['CA_BUNDLE'] or 'System default'}")
 
     await health_check()
     # await list_repositories()

@@ -10,10 +10,11 @@ This module provides comprehensive logging for debugging client creation
 and configuration issues.
 """
 import logging
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from rich.console import Console
 from ..api_token import get_api_token_class, BaseApiToken
 from ..api_token.base import mask_sensitive
+from ..utils.deep_merge import deep_merge
 
 # Configure logger
 logger = logging.getLogger("provider_api_getters.fetch_client")
@@ -42,7 +43,7 @@ class ProviderClientFactory:
             logger.debug("ProviderClientFactory.config_store: static_config loaded successfully")
         return self._config_store
 
-    def _get_proxy_config(self) -> dict[str, Any]:
+    def _get_proxy_config(self) -> Dict[str, Any]:
         """Get proxy configuration from static config."""
         logger.debug("ProviderClientFactory._get_proxy_config: Getting proxy configuration")
         try:
@@ -56,11 +57,82 @@ class ProviderClientFactory:
             logger.warning(f"ProviderClientFactory._get_proxy_config: Error getting proxy config: {e}")
             return {}
 
-    def _create_httpx_client(self, timeout: float = 30.0, async_client: bool = True) -> Any:
-        """
-        Create an httpx client with proxy configuration from YAML.
+    def _get_client_config(self) -> Dict[str, Any]:
+        """Get client configuration from static config."""
+        logger.debug("ProviderClientFactory._get_client_config: Getting client configuration")
+        try:
+            client_config = self.config_store.get_nested("client") or {}
+            logger.debug(
+                f"ProviderClientFactory._get_client_config: Client config = "
+                f"{{keys={list(client_config.keys())}}}"
+            )
+            return client_config
+        except Exception as e:
+            logger.warning(f"ProviderClientFactory._get_client_config: Error getting client config: {e}")
+            return {}
 
-        Reads proxy config from server.*.yaml:
+    def _get_merged_config_for_provider(self, provider_name: str) -> Dict[str, Any]:
+        """
+        Get merged configuration for a provider, combining global config with provider overrides.
+
+        Resolution priority (deep merge):
+        1. providers.{name}.overwrite_config.* (provider-specific)
+        2. Global settings (proxy.*, client.*)
+
+        Args:
+            provider_name: Provider name
+
+        Returns:
+            Merged configuration with proxy, client, and headers
+        """
+        logger.debug(
+            f"ProviderClientFactory._get_merged_config_for_provider: "
+            f"Getting merged config for '{provider_name}'"
+        )
+
+        api_token = self.get_api_token(provider_name)
+        if not api_token:
+            return {
+                "proxy": self._get_proxy_config(),
+                "client": self._get_client_config(),
+                "headers": {},
+            }
+
+        overwrite = api_token.get_overwrite_config() or {}
+        global_proxy = self._get_proxy_config()
+        global_client = self._get_client_config()
+
+        merged_proxy = deep_merge(global_proxy, overwrite.get("proxy", {}))
+        merged_client = deep_merge(global_client, overwrite.get("client", {}))
+        headers = overwrite.get("headers", {})
+
+        has_overrides = len(overwrite) > 0
+        if has_overrides:
+            logger.info(
+                f"ProviderClientFactory._get_merged_config_for_provider: "
+                f"Provider '{provider_name}' has overwrite_config with keys: {list(overwrite.keys())}"
+            )
+            console.print(
+                f"[bold yellow]Provider '{provider_name}' overwrite_config applied:[/bold yellow]",
+                list(overwrite.keys())
+            )
+
+        return {
+            "proxy": merged_proxy,
+            "client": merged_client,
+            "headers": headers,
+        }
+
+    def _create_httpx_client(
+        self,
+        proxy_config: Optional[Dict[str, Any]] = None,
+        timeout: float = 30.0,
+        async_client: bool = True,
+    ) -> Any:
+        """
+        Create an httpx client with proxy configuration.
+
+        Reads proxy config (merged global + provider overrides):
         - proxy.default_environment: Environment name for proxy selection
         - proxy.proxy_urls: Per-environment proxy URLs
         - proxy.agent_proxy: Agent proxy (http_proxy, https_proxy)
@@ -70,6 +142,11 @@ class ProviderClientFactory:
 
         Falls back to ENV if YAML value is undefined (not present).
         Does nothing if YAML value is explicitly null.
+
+        Args:
+            proxy_config: Merged proxy configuration (global + provider overrides)
+            timeout: Request timeout in seconds
+            async_client: Create async client if True, sync client if False
         """
         logger.debug("ProviderClientFactory._create_httpx_client: Creating httpx client")
 
@@ -89,7 +166,9 @@ class ProviderClientFactory:
             import httpx
             return httpx.AsyncClient() if async_client else httpx.Client()
 
-        proxy_config = self._get_proxy_config()
+        # Use provided config or fall back to global
+        if proxy_config is None:
+            proxy_config = self._get_proxy_config()
 
         # Build ProxyUrlConfig from YAML (empty dict if not configured)
         proxy_urls = None
@@ -175,7 +254,9 @@ class ProviderClientFactory:
         Returns an AsyncFetchClient configured with:
         - Provider's base URL from static config
         - Provider's auth from api_token
-        - Proxy from static config via fetch_proxy_dispatcher
+        - Proxy from merged config (global + provider overrides)
+        - Timeout from merged config
+        - Additional headers from provider overwrite_config
         """
         logger.info(f"ProviderClientFactory.get_client: Creating client for provider '{provider_name}'")
 
@@ -210,8 +291,20 @@ class ProviderClientFactory:
             logger.warning(f"ProviderClientFactory.get_client: Provider '{provider_name}' is a placeholder")
             return None
 
-        logger.debug("ProviderClientFactory.get_client: Creating httpx client")
-        httpx_client = self._create_httpx_client()
+        # Get merged config (global + provider overrides)
+        merged_config = self._get_merged_config_for_provider(provider_name)
+
+        # Get timeout from merged client config
+        timeout = merged_config["client"].get("timeout_seconds", 30.0)
+
+        logger.debug(
+            f"ProviderClientFactory.get_client: Creating httpx client with "
+            f"timeout={timeout}, has_proxy_override={'proxy' in merged_config}"
+        )
+        httpx_client = self._create_httpx_client(
+            proxy_config=merged_config["proxy"],
+            timeout=timeout,
+        )
 
         auth_config = None
         if api_key_result.api_key:
@@ -261,18 +354,31 @@ class ProviderClientFactory:
         else:
             logger.warning(f"ProviderClientFactory.get_client: No API key for '{provider_name}'")
 
+        # Build client options
+        client_kwargs = {
+            "base_url": base_url,
+            "httpx_client": httpx_client,
+            "auth": auth_config,
+        }
+
+        # Apply additional headers from overwrite_config
+        override_headers = merged_config.get("headers", {})
+        if override_headers:
+            client_kwargs["headers"] = override_headers
+            logger.debug(
+                f"ProviderClientFactory.get_client: Applying override headers: "
+                f"{list(override_headers.keys())}"
+            )
+
         logger.info(
             f"ProviderClientFactory.get_client: Creating AsyncFetchClient for '{provider_name}' "
-            f"with base_url={base_url}"
+            f"with base_url={base_url}, has_override_headers={len(override_headers) > 0}"
         )
-        client = create_async_client(
-            base_url=base_url,
-            httpx_client=httpx_client,
-            auth=auth_config,
-        )
+        client = create_async_client(**client_kwargs)
         console.print("[bold cyan]AsyncFetchClient created:[/bold cyan]", {
             "provider": provider_name,
             "base_url": base_url,
+            "has_override_headers": len(override_headers) > 0,
         })
         logger.debug(f"ProviderClientFactory.get_client: Client created successfully for '{provider_name}'")
 
