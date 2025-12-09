@@ -177,15 +177,16 @@ class PostgresApiToken(BaseApiToken):
         Returns:
             ssl.SSLContext for 'require' (no cert verification)
             True for 'verify-ca'/'verify-full' (with cert verification)
-            False for 'disable'
+            False for 'disable' or when not configured (matches Fastify default)
             "prefer" for prefer mode
-            None if not configured
         """
         import ssl
 
         sslmode = os.getenv("POSTGRES_SSLMODE")
         if not sslmode:
-            return None
+            # No SSL mode specified = no SSL (matches Fastify default behavior)
+            logger.debug("PostgresApiToken._get_ssl_context: No POSTGRES_SSLMODE set, defaulting to no SSL")
+            return False
 
         # Normalize common values
         sslmode_lower = sslmode.lower()
@@ -210,7 +211,9 @@ class PostgresApiToken(BaseApiToken):
             logger.debug("PostgresApiToken._get_ssl_context: Using prefer mode")
             return "prefer"
 
-        return None
+        # Unknown value, default to no SSL
+        logger.debug(f"PostgresApiToken._get_ssl_context: Unknown sslmode '{sslmode}', defaulting to no SSL")
+        return False
 
     async def get_async_client(self) -> Optional[Any]:
         """
@@ -250,14 +253,14 @@ class PostgresApiToken(BaseApiToken):
         )
 
         try:
-            # ssl_context can be: SSLContext, True, False, "prefer", or None
-            ssl_param = ssl_context if ssl_context is not None else "prefer"
+            # ssl_context can be: SSLContext, True, False, or "prefer"
+            # False = no SSL (default for non-SSL servers, matches Fastify behavior)
 
             pool = await asyncpg.create_pool(
                 base_url,
                 min_size=1,
                 max_size=1,
-                ssl=ssl_param,
+                ssl=ssl_context,
                 timeout=10,
             )
             logger.debug(

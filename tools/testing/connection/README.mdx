@@ -152,3 +152,6 @@ Custom CA bundle with proxy:
 HTTPS_PROXY=http://proxy.corp.com:8080 \
 REQUEST_CA_BUNDLE=/etc/ssl/certs/corporate-ca.crt \
 node jira.mjs
+
+NODE_TLS_REJECT_UNAUTHORIZED=0
+SSL_CERT_VERIFY=0
