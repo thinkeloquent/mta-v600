@@ -100,18 +100,39 @@ def find_sub_packages(root: Path) -> list[Path]:
     """Find all sub-package directories with pyproject.toml."""
     packages = []
 
+    # Directories to ignore
+    ignore_dirs = {
+        "__STAGE__",
+        "__SPECS__",
+        "__REVIEW__",
+        "__BACKUP__",
+        "__pycache__",
+        ".git",
+        "node_modules",
+        ".venv",
+        "dist",
+        "build",
+    }
+
+    def should_ignore(path: Path) -> bool:
+        """Check if path or any parent should be ignored."""
+        for part in path.parts:
+            if part in ignore_dirs or part.startswith("."):
+                return True
+        return False
+
     # Check packages_py directory
     packages_py = root / "packages_py"
     if packages_py.exists():
         for pkg_dir in packages_py.iterdir():
-            if pkg_dir.is_dir() and (pkg_dir / "pyproject.toml").exists():
+            if pkg_dir.is_dir() and not should_ignore(pkg_dir) and (pkg_dir / "pyproject.toml").exists():
                 packages.append(pkg_dir)
 
     # Check fastapi_apps directory
     fastapi_apps = root / "fastapi_apps"
     if fastapi_apps.exists():
         for app_dir in fastapi_apps.iterdir():
-            if app_dir.is_dir() and (app_dir / "pyproject.toml").exists():
+            if app_dir.is_dir() and not should_ignore(app_dir) and (app_dir / "pyproject.toml").exists():
                 packages.append(app_dir)
 
     return sorted(packages)

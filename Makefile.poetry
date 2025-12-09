@@ -136,7 +136,10 @@ help:
 	@echo "  NO_PROXY=localhost,127.0.0.1         - Proxy bypass list"
 	@echo ""
 	@echo "Local Packages:"
-	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		-exec basename {} \; | sort); do \
 		echo "  - $$pkg"; \
 	done
 	@echo ""
@@ -305,7 +308,10 @@ build-wheel:
 	@if [ -z "$(PKG)" ]; then \
 		echo "Usage: make -f Makefile.poetry build-wheel PKG=<package_name>"; \
 		echo "Available packages:"; \
-		for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort); do \
+		for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+			! -name "__pycache__" ! -name "*.egg-info" \
+			! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+			-exec basename {} \; | sort); do \
 			echo "  - $$pkg"; \
 		done; \
 		exit 1; \

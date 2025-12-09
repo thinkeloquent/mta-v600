@@ -142,7 +142,10 @@ help:
 	@echo "  PIP_TRUSTED_HOST=pypi.example.com           - Trusted host (no SSL verify)"
 	@echo ""
 	@echo "Available Local Packages:"
-	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		-exec basename {} \; | sort); do \
 		echo "  - $$pkg"; \
 	done
 	@echo ""
@@ -293,7 +296,10 @@ build-standalone: $(DIST_DIR)
 # Build all packages as standalone wheels
 build-all-standalone: $(DIST_DIR)
 	@echo "Building all packages as standalone wheels..."
-	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort); do \
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		-exec basename {} \; | sort); do \
 		echo ""; \
 		echo "========== Building $$pkg =========="; \
 		$(MAKE) -f Makefile.pipx build-standalone PKG=$$pkg || true; \
@@ -403,11 +409,17 @@ requirements-all:
 	@echo ""
 	@echo "Adding local packages as editable installs..."
 	@# Add local packages in dependency order (packages with no local deps first)
-	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		-exec basename {} \; | sort); do \
 		echo "-e $(PACKAGES_PY_DIR)/$$pkg" >> requirements-all.txt; \
 	done
 	@# Add fastapi_apps
-	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		-exec basename {} \; | sort); do \
 		if [ -f "fastapi_apps/$$app/pyproject.toml" ]; then \
 			echo "-e fastapi_apps/$$app" >> requirements-all.txt; \
 		fi; \
@@ -515,17 +527,23 @@ pip-install-all-constrained:
 		pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -r requirements.txt; \
 	fi
 	@echo ""
-	@# Install packages_py packages
+	@# Install packages_py packages (excluding __STAGE__, __SPECS__, etc.)
 	@echo "Installing packages_py packages..."
-	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" | sort); do \
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		| sort); do \
 		echo "  Installing $$pkg..."; \
 		pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -e $$pkg 2>/dev/null || \
 			echo "    Warning: Failed to install $$pkg (may have missing dependencies)"; \
 	done
 	@echo ""
-	@# Install fastapi_apps packages
+	@# Install fastapi_apps packages (excluding __STAGE__, __SPECS__, etc.)
 	@echo "Installing fastapi_apps packages..."
-	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" | sort); do \
+	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d \
+		! -name "__pycache__" ! -name "*.egg-info" \
+		! -name "__STAGE__" ! -name "__SPECS__" ! -name "__REVIEW__" ! -name "__BACKUP__" \
+		| sort); do \
 		if [ -f "$$app/pyproject.toml" ]; then \
 			echo "  Installing $$app..."; \
 			pip install $(PIP_SSL_ARGS) -c $(MAKEFILE_DIR)$(CONSTRAINTS_FILE) -e $$app 2>/dev/null || \
