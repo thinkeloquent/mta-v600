@@ -20,10 +20,18 @@ def _mask_sensitive(value: Optional[str], visible_chars: int = 10) -> str:
 
 @dataclass
 class AuthConfig:
-    """Authentication configuration."""
+    """Authentication configuration.
+
+    Auth types:
+    - bearer: "Bearer <api_key>" (standard bearer token)
+    - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+    - x-api-key: api_key in X-API-Key header
+    - custom: raw api_key in custom header (specified by header_name)
+    """
 
     type: AuthType
     api_key: Optional[str] = None
+    username: Optional[str] = None  # Required for bearer_user type
     header_name: Optional[str] = None
     get_api_key_for_request: Optional[Callable[[RequestContext], Optional[str]]] = None
 
@@ -32,6 +40,7 @@ class AuthConfig:
         return (
             f"AuthConfig(type={self.type!r}, "
             f"api_key={_mask_sensitive(self.api_key)!r}, "
+            f"username={self.username!r}, "
             f"header_name={self.header_name!r}, "
             f"has_callback={self.get_api_key_for_request is not None})"
         )
@@ -105,7 +114,7 @@ def validate_config(config: ClientConfig) -> None:
 
 def validate_auth_config(auth: AuthConfig) -> None:
     """Validate auth configuration."""
-    valid_types = {"bearer", "x-api-key", "custom"}
+    valid_types = {"bearer", "bearer_user", "x-api-key", "custom"}
 
     if auth.type not in valid_types:
         raise ValueError(f"Invalid auth type: {auth.type}. Must be one of: {valid_types}")
@@ -113,10 +122,15 @@ def validate_auth_config(auth: AuthConfig) -> None:
     if auth.type == "custom" and not auth.header_name:
         raise ValueError("header_name is required for custom auth type")
 
+    if auth.type == "bearer_user" and not auth.username:
+        raise ValueError("username is required for bearer_user auth type")
+
 
 def get_auth_header_name(auth: AuthConfig) -> str:
     """Get auth header name based on auth type."""
     if auth.type == "bearer":
+        return "Authorization"
+    elif auth.type == "bearer_user":
         return "Authorization"
     elif auth.type == "x-api-key":
         return "x-api-key"
@@ -126,9 +140,19 @@ def get_auth_header_name(auth: AuthConfig) -> str:
 
 
 def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
-    """Format auth header value based on auth type."""
+    """Format auth header value based on auth type.
+
+    For bearer_user type, encodes username:api_key as base64.
+    """
+    import base64
+
     if auth.type == "bearer":
         return f"Bearer {api_key}"
+    elif auth.type == "bearer_user":
+        # Encode username:api_key as base64 for bearer_user
+        credentials = f"{auth.username}:{api_key}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        return f"Bearer {encoded}"
     return api_key
 
 

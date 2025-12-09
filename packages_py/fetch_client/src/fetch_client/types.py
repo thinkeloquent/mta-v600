@@ -16,7 +16,11 @@ from dataclasses import dataclass
 
 
 # Auth types
-AuthType = Literal["bearer", "x-api-key", "custom"]
+# - bearer: "Bearer <api_key>" (standard bearer token)
+# - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+# - x-api-key: api_key in X-API-Key header
+# - custom: raw api_key in custom header (specified by header_name)
+AuthType = Literal["bearer", "bearer_user", "x-api-key", "custom"]
 
 # Stream formats
 StreamFormat = Literal["sse", "ndjson", False]

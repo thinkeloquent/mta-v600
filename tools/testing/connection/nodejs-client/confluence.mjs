@@ -93,8 +93,9 @@ async function listSpaces() {
 
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
+    // bearer_user type: "Bearer <base64(email:token)>"
     auth: {
-      type: 'basic',
+      type: 'bearer_user',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
       username: CONFIG.CONFLUENCE_EMAIL,
     },
@@ -131,7 +132,7 @@ async function getSpace(spaceKey) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'basic',
+      type: 'bearer_user',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
       username: CONFIG.CONFLUENCE_EMAIL,
     },
@@ -160,7 +161,7 @@ async function searchContent(query) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'basic',
+      type: 'bearer_user',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
       username: CONFIG.CONFLUENCE_EMAIL,
     },
@@ -199,7 +200,7 @@ async function getPage(pageId) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'basic',
+      type: 'bearer_user',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
       username: CONFIG.CONFLUENCE_EMAIL,
     },

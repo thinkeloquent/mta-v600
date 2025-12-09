@@ -78,9 +78,14 @@ async def health_check() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        # api_key_result.api_key is already "Basic <base64(email:token)>" encoded
-        auth=AuthConfig(type="custom", api_key=CONFIG["CONFLUENCE_API_TOKEN"], header_name="Authorization"),
-        # auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        # bearer_user type: "Bearer <base64(email:token)>"
+        auth=AuthConfig(
+            type="bearer_user",
+            api_key=api_key_result.raw_api_key,  # Raw API token (not pre-encoded)
+            username=CONFIG["CONFLUENCE_EMAIL"],
+        ),
+        # Alternative: use custom type with pre-encoded token
+        # auth=AuthConfig(type="custom", api_key=CONFIG["CONFLUENCE_API_TOKEN"], header_name="Authorization"),
         default_headers={
             "Accept": "application/json",
         },

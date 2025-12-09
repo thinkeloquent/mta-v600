@@ -5,8 +5,12 @@ import type { Dispatcher } from 'undici';
 
 /**
  * Authentication type options
+ * - bearer: "Bearer <api_key>" (standard bearer token)
+ * - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+ * - x-api-key: api_key in X-API-Key header
+ * - custom: raw api_key in custom header (specified by headerName)
  */
-export type AuthType = 'bearer' | 'x-api-key' | 'custom';
+export type AuthType = 'bearer' | 'bearer_user' | 'x-api-key' | 'custom';
 
 /**
  * Streaming format options
@@ -39,6 +43,7 @@ export interface RequestContext {
 export interface AuthConfig {
   type: AuthType;
   apiKey?: string;
+  username?: string; // Required for bearer_user type
   headerName?: string;
   getApiKeyForRequest?: (context: RequestContext) => string | undefined;
 }

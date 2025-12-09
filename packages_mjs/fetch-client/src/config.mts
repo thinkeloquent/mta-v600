@@ -72,7 +72,7 @@ export function validateConfig(config: ClientConfig): void {
  * Validate auth configuration
  */
 export function validateAuthConfig(auth: AuthConfig): void {
-  const validTypes = ['bearer', 'x-api-key', 'custom'];
+  const validTypes = ['bearer', 'bearer_user', 'x-api-key', 'custom'];
 
   if (!validTypes.includes(auth.type)) {
     throw new Error(`Invalid auth type: ${auth.type}. Must be one of: ${validTypes.join(', ')}`);
@@ -80,6 +80,10 @@ export function validateAuthConfig(auth: AuthConfig): void {
 
   if (auth.type === 'custom' && !auth.headerName) {
     throw new Error('headerName is required for custom auth type');
+  }
+
+  if (auth.type === 'bearer_user' && !auth.username) {
+    throw new Error('username is required for bearer_user auth type');
   }
 }
 
@@ -89,6 +93,7 @@ export function validateAuthConfig(auth: AuthConfig): void {
 export function getAuthHeaderName(auth: AuthConfig): string {
   switch (auth.type) {
     case 'bearer':
+    case 'bearer_user':
       return 'Authorization';
     case 'x-api-key':
       return 'x-api-key';
@@ -101,11 +106,19 @@ export function getAuthHeaderName(auth: AuthConfig): string {
 
 /**
  * Format auth header value based on auth type
+ *
+ * For bearer_user type, encodes username:apiKey as base64.
  */
 export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string {
   switch (auth.type) {
     case 'bearer':
       return `Bearer ${apiKey}`;
+    case 'bearer_user': {
+      // Encode username:apiKey as base64 for bearer_user
+      const credentials = `${auth.username}:${apiKey}`;
+      const encoded = Buffer.from(credentials).toString('base64');
+      return `Bearer ${encoded}`;
+    }
     case 'x-api-key':
     case 'custom':
       return apiKey;
