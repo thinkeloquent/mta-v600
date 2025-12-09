@@ -41,7 +41,7 @@ develop = true
 [package.dependencies]
 pydantic = "^2.0"
 pyyaml = "^6.0"
-rich = "^13.0.0"
+rich = "^14.0.0"
 
 [package.source]
 type = "directory"
@@ -194,7 +194,7 @@ develop = true
 
 [package.dependencies]
 httpx = "^0.28.0"
-rich = "^13.0.0"
+rich = "^14.0.0"
 
 [package.extras]
 fastapi = []
@@ -557,7 +557,7 @@ app_static_config_yaml = {path = "../app_static_config_yaml", develop = true}
 fetch_client = {path = "../fetch_client", develop = true}
 fetch_proxy_dispatcher = {path = "../fetch_proxy_dispatcher", develop = true}
 httpx = "^0.28.0"
-rich = "^13.0.0"
+rich = "^14.0.0"
 
 [package.extras]
 all = ["asyncpg (>=0.30.0,<0.31.0)", "elasticsearch[async] (>=8.0.0,<9.0.0)", "redis (>=5.0.0,<6.0.0)"]
@@ -893,13 +893,13 @@ files = [
 
 [[package]]
 name = "rich"
-version = "13.9.4"
+version = "14.2.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "rich-13.9.4-py3-none-any.whl", hash = "sha256:6049d5e6ec054bf2779ab3358186963bac2ea89175919d699e378b99738c2a90"},
-    {file = "rich-13.9.4.tar.gz", hash = "sha256:439594978a49a09530cff7ebc4b5c7103ef57baf48d5ea3184f21d9a2befa098"},
+    {file = "rich-14.2.0-py3-none-any.whl", hash = "sha256:76bc51fe2e57d2b1be1f96c524b890b816e334ab4c1e45888799bfaab0021edd"},
+    {file = "rich-14.2.0.tar.gz", hash = "sha256:73ff50c7c0c1c77c8243079283f4edb376f0f6442433aecb8ce7e6d0b92d1fe4"},
 ]
 
 [package.dependencies]
@@ -1257,4 +1257,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "b1ce0bce0d7028cffaaa9fdb2d8f570f1ebe86f1e38528d58ad9d42e35e3b90f"
+content-hash = "04c61c5d83f77c75aae323395ad7a00cb2a41152e3ec7056a5299a7e1746afa7"

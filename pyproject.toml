@@ -37,6 +37,7 @@ vault-file = {path = "packages_py/vault_file", develop = true}
 
 # FastAPI apps
 fastapi-main-entry = {path = "fastapi_apps/main_entry", develop = true}
+rich = "^14"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
