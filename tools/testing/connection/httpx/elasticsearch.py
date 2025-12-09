@@ -57,7 +57,20 @@ BASE_URL = f"{PROTOCOL}://{CONFIG['ELASTICSEARCH_HOST']}:{CONFIG['ELASTICSEARCH_
 # ============================================================================
 
 def get_ssl_verify() -> Union[bool, str]:
-    """Get SSL verification setting."""
+    """Get SSL verification setting.
+
+    Priority:
+    1. Environment variables (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)
+    2. Custom CA bundle from CONFIG
+    3. CONFIG["VERIFY_SSL"] setting
+    """
+    # Check environment variables first
+    node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
+    ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
+    if node_tls == "0" or ssl_cert_verify == "0":
+        print("SSL verification disabled via environment variable")
+        return False
+
     if CONFIG["CA_BUNDLE"]:
         print(f"Using custom CA bundle: {CONFIG['CA_BUNDLE']}")
         return CONFIG["CA_BUNDLE"]

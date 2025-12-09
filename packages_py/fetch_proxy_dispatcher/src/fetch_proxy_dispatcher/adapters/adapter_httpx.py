@@ -10,6 +10,7 @@ import httpx
 
 from .base import BaseAdapter
 from ..models import ProxyConfig, DispatcherResult
+from ..config import is_ssl_verify_disabled_by_env
 
 # Configure logger for httpx adapter
 logger = logging.getLogger("fetch_proxy_dispatcher.adapters.httpx")
@@ -74,9 +75,17 @@ class HttpxAdapter(BaseAdapter):
             kwargs["proxy"] = config.proxy_url
             logger.debug(f"_build_kwargs: Added proxy={_mask_proxy_url(config.proxy_url)}")
 
-        # SSL verification - ca_bundle path or False (default)
-        kwargs["verify"] = config.ca_bundle if config.ca_bundle else config.verify_ssl
-        logger.debug(f"_build_kwargs: verify={kwargs['verify']}")
+        # Check environment variables for SSL verification override
+        # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification
+        env_ssl_disabled = is_ssl_verify_disabled_by_env()
+
+        # SSL verification - env vars > ca_bundle path > verify_ssl setting
+        if env_ssl_disabled:
+            kwargs["verify"] = False
+            logger.debug("_build_kwargs: verify=False from env var (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)")
+        else:
+            kwargs["verify"] = config.ca_bundle if config.ca_bundle else config.verify_ssl
+            logger.debug(f"_build_kwargs: verify={kwargs['verify']}")
 
         # Client certificate for proxy authentication
         if config.cert:

@@ -156,6 +156,36 @@ export function isProxyConfigured(): boolean {
   return result;
 }
 
+/**
+ * Check if SSL verification is disabled via environment variables
+ *
+ * Returns true if any of these are set:
+ * - NODE_TLS_REJECT_UNAUTHORIZED=0
+ * - SSL_CERT_VERIFY=0
+ */
+export function isSslVerifyDisabledByEnv(): boolean {
+  const nodeTls = process.env['NODE_TLS_REJECT_UNAUTHORIZED'] ?? '';
+  const sslCertVerify = process.env['SSL_CERT_VERIFY'] ?? '';
+  const disabled = nodeTls === '0' || sslCertVerify === '0';
+  log.debug(
+    `isSslVerifyDisabledByEnv: NODE_TLS_REJECT_UNAUTHORIZED=${nodeTls}, SSL_CERT_VERIFY=${sslCertVerify}, disabled=${disabled}`
+  );
+  return disabled;
+}
+
+/**
+ * Get SSL verification setting from environment variables
+ *
+ * Returns false (disable verification) if:
+ * - NODE_TLS_REJECT_UNAUTHORIZED=0
+ * - SSL_CERT_VERIFY=0
+ *
+ * Returns true (enable verification) otherwise
+ */
+export function getSslVerifyFromEnv(): boolean {
+  return !isSslVerifyDisabledByEnv();
+}
+
 export default {
   Environment,
   ENVIRONMENTS,
@@ -166,4 +196,6 @@ export default {
   getAgentProxyUrl,
   getEffectiveProxyUrl,
   isProxyConfigured,
+  isSslVerifyDisabledByEnv,
+  getSslVerifyFromEnv,
 };

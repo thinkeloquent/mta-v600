@@ -14,7 +14,7 @@ import logging
 import os
 from typing import Optional, Dict, Any, Type
 
-from .config import get_app_env, Environment
+from .config import get_app_env, Environment, is_ssl_verify_disabled_by_env
 
 # Configure logger for factory module
 logger = logging.getLogger("fetch_proxy_dispatcher.factory")
@@ -183,8 +183,12 @@ class ProxyDispatcherFactory:
         env = environment or self._config.default_environment or get_app_env()
         proxy_url = self._resolve_proxy_url(environment)
 
-        # Priority: disable_tls param > cert_verify from config (YAML)
-        if disable_tls is not None:
+        # Priority: env vars > disable_tls param > cert_verify from config (YAML)
+        # Check environment variables first (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)
+        if is_ssl_verify_disabled_by_env():
+            verify_ssl = False
+            logger.debug("get_proxy_dispatcher: verify_ssl=False from env var (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)")
+        elif disable_tls is not None:
             verify_ssl = not disable_tls
             logger.debug(f"get_proxy_dispatcher: verify_ssl from disable_tls param: {verify_ssl}")
         else:
@@ -264,13 +268,22 @@ class ProxyDispatcherFactory:
         """
         proxy_url = self._resolve_proxy_url(environment)
 
+        # Check environment variables for SSL verification override
+        env_ssl_disabled = is_ssl_verify_disabled_by_env()
+
         # Use provided ca_bundle or fall back to factory config
         effective_ca_bundle = ca_bundle or self._config.ca_bundle
+
+        # If env vars disable SSL, always set verify=False regardless of ca_bundle
+        if env_ssl_disabled:
+            verify_value = False
+        else:
+            verify_value = effective_ca_bundle if effective_ca_bundle else False
 
         kwargs: Dict[str, Any] = {
             "timeout": timeout,
             "trust_env": False,
-            "verify": effective_ca_bundle if effective_ca_bundle else False,
+            "verify": verify_value,
         }
         if proxy_url:
             kwargs["proxy"] = proxy_url
@@ -310,17 +323,20 @@ class ProxyDispatcherFactory:
         """
         proxy_url = self._resolve_proxy_url(environment)
 
+        # Check environment variables for SSL verification override
+        env_ssl_disabled = is_ssl_verify_disabled_by_env()
+
         # Use provided cert/ca_bundle or fall back to factory config
         effective_cert = cert or self._config.cert
         effective_ca_bundle = ca_bundle or self._config.ca_bundle
 
         config = ProxyConfig(
             proxy_url=proxy_url,
-            verify_ssl=False,
+            verify_ssl=False,  # default False, env vars handled by adapter
             timeout=timeout,
             trust_env=False,
             cert=effective_cert,
-            ca_bundle=effective_ca_bundle,
+            ca_bundle=effective_ca_bundle if not env_ssl_disabled else None,  # ignore ca_bundle if env disables SSL
         )
 
         return self._adapter.get_proxy_dict(config)

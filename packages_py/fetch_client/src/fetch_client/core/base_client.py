@@ -2,6 +2,7 @@
 Base HTTP client using httpx.
 """
 import logging
+import os
 from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 
 import httpx
@@ -12,6 +13,21 @@ import json
 
 from ..types import FetchResponse, HttpMethod, RequestContext, SSEEvent
 from ..config import ClientConfig, resolve_config, ResolvedConfig
+
+
+def _is_ssl_verify_disabled_by_env() -> bool:
+    """
+    Check if SSL verification is disabled via environment variables.
+
+    Returns True if any of these are set:
+    - NODE_TLS_REJECT_UNAUTHORIZED=0
+    - SSL_CERT_VERIFY=0
+    """
+    node_tls = os.environ.get("NODE_TLS_REJECT_UNAUTHORIZED", "")
+    ssl_cert_verify = os.environ.get("SSL_CERT_VERIFY", "")
+    return node_tls == "0" or ssl_cert_verify == "0"
+
+
 from .request_builder import (
     build_url,
     build_headers,
@@ -63,14 +79,21 @@ class AsyncFetchClient:
         httpx_client: Optional[httpx.AsyncClient] = None,
     ):
         self._config = resolve_config(config)
-        self._client = httpx_client or httpx.AsyncClient(
-            timeout=httpx.Timeout(
-                connect=self._config.timeout.connect,
-                read=self._config.timeout.read,
-                write=self._config.timeout.write,
-                pool=self._config.timeout.connect,
-            ),
-        )
+        if httpx_client is not None:
+            self._client = httpx_client
+        else:
+            # Check environment variables for SSL verification override
+            # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification
+            verify_ssl = not _is_ssl_verify_disabled_by_env()
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(
+                    connect=self._config.timeout.connect,
+                    read=self._config.timeout.read,
+                    write=self._config.timeout.write,
+                    pool=self._config.timeout.connect,
+                ),
+                verify=verify_ssl,
+            )
         self._closed = False
 
     async def request(
@@ -246,14 +269,21 @@ class SyncFetchClient:
         httpx_client: Optional[httpx.Client] = None,
     ):
         self._config = resolve_config(config)
-        self._client = httpx_client or httpx.Client(
-            timeout=httpx.Timeout(
-                connect=self._config.timeout.connect,
-                read=self._config.timeout.read,
-                write=self._config.timeout.write,
-                pool=self._config.timeout.connect,
-            ),
-        )
+        if httpx_client is not None:
+            self._client = httpx_client
+        else:
+            # Check environment variables for SSL verification override
+            # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification
+            verify_ssl = not _is_ssl_verify_disabled_by_env()
+            self._client = httpx.Client(
+                timeout=httpx.Timeout(
+                    connect=self._config.timeout.connect,
+                    read=self._config.timeout.read,
+                    write=self._config.timeout.write,
+                    pool=self._config.timeout.connect,
+                ),
+                verify=verify_ssl,
+            )
         self._closed = False
 
     def request(

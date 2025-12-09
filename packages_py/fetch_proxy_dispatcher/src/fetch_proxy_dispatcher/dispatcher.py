@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any
 
 import httpx
 
-from .config import get_effective_proxy_url, is_dev
+from .config import get_effective_proxy_url, is_dev, is_ssl_verify_disabled_by_env
 
 # Configure logger for dispatcher module
 logger = logging.getLogger("fetch_proxy_dispatcher.dispatcher")
@@ -86,8 +86,12 @@ def get_proxy_dispatcher(
     proxy_url = get_effective_proxy_url()
     logger.debug(f"get_proxy_dispatcher: effective_proxy_url={_mask_proxy_url(proxy_url)}")
 
-    # Priority: disable_tls > cert_verify > is_dev() default
-    if disable_tls is not None:
+    # Priority: env vars > disable_tls > cert_verify > is_dev() default
+    # Check environment variables first (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)
+    if is_ssl_verify_disabled_by_env():
+        verify_ssl = False
+        logger.debug("get_proxy_dispatcher: verify_ssl=False from env var (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)")
+    elif disable_tls is not None:
         verify_ssl = not disable_tls
         logger.debug(f"get_proxy_dispatcher: verify_ssl from disable_tls param: {verify_ssl}")
     elif cert_verify is not None:
@@ -149,13 +153,16 @@ def get_proxy_config(
     """
     proxy_url = get_effective_proxy_url()
 
+    # Check environment variables for SSL verification override
+    env_ssl_disabled = is_ssl_verify_disabled_by_env()
+
     config = ProxyConfig(
         proxy_url=proxy_url,
-        verify_ssl=False,
+        verify_ssl=False if env_ssl_disabled else False,  # env vars or default False
         timeout=timeout,
         trust_env=False,
         cert=cert,
-        ca_bundle=ca_bundle,
+        ca_bundle=ca_bundle if not env_ssl_disabled else None,  # ignore ca_bundle if env disables SSL
     )
 
     return _default_adapter.get_proxy_dict(config)
@@ -249,10 +256,19 @@ def get_request_kwargs(
     """
     proxy_url = get_effective_proxy_url()
 
+    # Check environment variables for SSL verification override
+    env_ssl_disabled = is_ssl_verify_disabled_by_env()
+
+    # If env vars disable SSL, always set verify=False regardless of ca_bundle
+    if env_ssl_disabled:
+        verify_value = False
+    else:
+        verify_value = ca_bundle if ca_bundle else False
+
     kwargs: Dict[str, Any] = {
         "timeout": timeout,
         "trust_env": False,
-        "verify": ca_bundle if ca_bundle else False,
+        "verify": verify_value,
     }
     if proxy_url:
         kwargs["proxy"] = proxy_url

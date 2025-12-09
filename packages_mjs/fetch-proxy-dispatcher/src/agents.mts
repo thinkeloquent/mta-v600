@@ -5,7 +5,7 @@
 
 import process from 'node:process';
 import { Agent, ProxyAgent } from 'undici';
-import { isDev } from './config.mjs';
+import { isDev, isSslVerifyDisabledByEnv } from './config.mjs';
 
 /**
  * Simple logger for agents module
@@ -53,8 +53,14 @@ const devTlsOptions = {
 /**
  * Create a DEV agent with TLS validation disabled
  * Use only in development environments
+ *
+ * Note: TLS is always disabled for dev agent (rejectUnauthorized=false)
+ * This is also triggered when NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 is set
  */
 export function createDevAgent(): Agent {
+  // Check if SSL is disabled via env vars for logging purposes
+  const envSslDisabled = isSslVerifyDisabledByEnv();
+
   const options = {
     connect: devTlsOptions,
     keepAliveTimeout: 60_000,
@@ -62,7 +68,7 @@ export function createDevAgent(): Agent {
     connections: 1,
   };
   log.debug(
-    `createDevAgent: Creating Agent with connect.rejectUnauthorized=false, ` +
+    `createDevAgent: Creating Agent with connect.rejectUnauthorized=false (envSslDisabled=${envSslDisabled}), ` +
       `keepAliveTimeout=${options.keepAliveTimeout}, keepAliveMaxTimeout=${options.keepAliveMaxTimeout}, ` +
       `connections=${options.connections}`
   );
@@ -74,15 +80,20 @@ export function createDevAgent(): Agent {
 /**
  * Create a "stay alive" agent with keep-alive enabled
  * Good for persistent connections and high-throughput scenarios
+ *
+ * Note: TLS is disabled when NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 is set
  */
 export function createStayAliveAgent(): Agent {
+  const envSslDisabled = isSslVerifyDisabledByEnv();
+
   const options = {
     keepAliveTimeout: 30_000,
     keepAliveMaxTimeout: 60_000,
+    ...(envSslDisabled && { connect: devTlsOptions }),
   };
   log.debug(
     `createStayAliveAgent: Creating Agent with keepAliveTimeout=${options.keepAliveTimeout}, ` +
-      `keepAliveMaxTimeout=${options.keepAliveMaxTimeout}`
+      `keepAliveMaxTimeout=${options.keepAliveMaxTimeout}, envSslDisabled=${envSslDisabled}`
   );
   const agent = new Agent(options);
   log.debug('createStayAliveAgent: Agent created successfully');
@@ -93,15 +104,20 @@ export function createStayAliveAgent(): Agent {
  * Create a "do not stay alive" agent
  * Connections close immediately after use
  * Good for one-off requests or debugging
+ *
+ * Note: TLS is disabled when NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 is set
  */
 export function createDoNotStayAliveAgent(): Agent {
+  const envSslDisabled = isSslVerifyDisabledByEnv();
+
   const options = {
     keepAliveTimeout: 0,
     keepAliveMaxTimeout: 0,
     pipelining: 0,
+    ...(envSslDisabled && { connect: devTlsOptions }),
   };
   log.debug(
-    `createDoNotStayAliveAgent: Creating Agent with keepAliveTimeout=0, keepAliveMaxTimeout=0, pipelining=0`
+    `createDoNotStayAliveAgent: Creating Agent with keepAliveTimeout=0, keepAliveMaxTimeout=0, pipelining=0, envSslDisabled=${envSslDisabled}`
   );
   const agent = new Agent(options);
   log.debug('createDoNotStayAliveAgent: Agent created successfully');
@@ -111,14 +127,27 @@ export function createDoNotStayAliveAgent(): Agent {
 /**
  * Create a proxy agent with optional TLS options
  * @param proxyUrl - The proxy server URL
- * @param disableTls - Whether to disable TLS validation (default: based on isDev())
+ * @param disableTls - Whether to disable TLS validation (default: based on env vars or isDev())
+ *
+ * Priority for disabling TLS:
+ * 1. Explicit disableTls parameter
+ * 2. Environment variables (NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0)
+ * 3. isDev() fallback
  */
 export function createProxyAgent(proxyUrl: string, disableTls?: boolean): ProxyAgent {
-  const shouldDisableTls = disableTls ?? isDev();
+  // Priority: explicit param > env vars > isDev()
+  let shouldDisableTls: boolean;
+  if (disableTls !== undefined) {
+    shouldDisableTls = disableTls;
+  } else if (isSslVerifyDisabledByEnv()) {
+    shouldDisableTls = true;
+  } else {
+    shouldDisableTls = isDev();
+  }
 
   log.debug(
     `createProxyAgent: proxyUrl=${maskProxyUrl(proxyUrl)}, disableTls=${disableTls}, ` +
-      `shouldDisableTls=${shouldDisableTls}`
+      `envSslDisabled=${isSslVerifyDisabledByEnv()}, shouldDisableTls=${shouldDisableTls}`
   );
 
   const options: ConstructorParameters<typeof ProxyAgent>[0] = {

@@ -100,3 +100,38 @@ def is_proxy_configured() -> bool:
     result = get_effective_proxy_url() is not None
     logger.debug(f"is_proxy_configured: result={result}")
     return result
+
+
+def is_ssl_verify_disabled_by_env() -> bool:
+    """
+    Check if SSL verification is disabled via environment variables.
+
+    Returns True if any of these are set:
+    - NODE_TLS_REJECT_UNAUTHORIZED=0
+    - SSL_CERT_VERIFY=0
+
+    Returns:
+        True if SSL verification should be disabled, False otherwise.
+    """
+    node_tls = os.environ.get("NODE_TLS_REJECT_UNAUTHORIZED", "")
+    ssl_cert_verify = os.environ.get("SSL_CERT_VERIFY", "")
+
+    disabled = node_tls == "0" or ssl_cert_verify == "0"
+    logger.debug(
+        f"is_ssl_verify_disabled_by_env: NODE_TLS_REJECT_UNAUTHORIZED={node_tls!r}, "
+        f"SSL_CERT_VERIFY={ssl_cert_verify!r}, disabled={disabled}"
+    )
+    return disabled
+
+
+def get_ssl_verify_from_env() -> bool:
+    """
+    Get SSL verification setting from environment variables.
+
+    Returns False (disable verification) if:
+    - NODE_TLS_REJECT_UNAUTHORIZED=0
+    - SSL_CERT_VERIFY=0
+
+    Returns True (enable verification) otherwise.
+    """
+    return not is_ssl_verify_disabled_by_env()
