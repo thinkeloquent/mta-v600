@@ -1,0 +1,27 @@
+{
+  "name": "@tools/connection-test-nodejs-client",
+  "version": "1.0.0",
+  "description": "Provider connection tests using internal Node.js packages",
+  "type": "module",
+  "scripts": {
+    "test:gemini": "node gemini.mjs",
+    "test:github": "node github.mjs",
+    "test:jira": "node jira.mjs",
+    "test:confluence": "node confluence.mjs",
+    "test:figma": "node figma.mjs",
+    "test:postgres": "node postgres.mjs",
+    "test:redis": "node redis.mjs",
+    "test:saucelabs": "node saucelabs.mjs",
+    "test:elasticsearch": "node elasticsearch.mjs",
+    "test:rally": "node rally.mjs",
+    "test:all": "node gemini.mjs && node github.mjs && node jira.mjs && node confluence.mjs && node figma.mjs && node postgres.mjs && node redis.mjs && node saucelabs.mjs && node elasticsearch.mjs && node rally.mjs"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.0",
+    "pg": "^8.13.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "private": true
+}
