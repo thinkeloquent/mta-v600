@@ -16,9 +16,18 @@ export class FigmaApiToken extends BaseApiToken {
     return 'figma';
   }
 
+  get _defaultAuthType() {
+    return 'custom';
+  }
+
+  get _defaultHeaderName() {
+    return 'X-Figma-Token';
+  }
+
   get healthEndpoint() {
-    logger.debug('FigmaApiToken.healthEndpoint: Returning /v1/me');
-    return '/v1/me';
+    // Note: base_url already includes /v1
+    logger.debug('FigmaApiToken.healthEndpoint: Returning /me');
+    return '/me';
   }
 
   getApiKey() {
@@ -33,7 +42,7 @@ export class FigmaApiToken extends BaseApiToken {
       );
       const result = new ApiKeyResult({
         apiKey,
-        authType: 'x-api-key',
+        authType: 'custom',
         headerName: 'X-Figma-Token',
       });
       logger.debug(
@@ -47,7 +56,7 @@ export class FigmaApiToken extends BaseApiToken {
       );
       const result = new ApiKeyResult({
         apiKey: null,
-        authType: 'x-api-key',
+        authType: 'custom',
         headerName: 'X-Figma-Token',
       });
       logger.debug(

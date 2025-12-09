@@ -76,6 +76,8 @@ providers:
     health_query: "SELECT 1"
     api_auth_type: "connection_string"
     token_resolver: "static"
+    ssl:
+      rejectUnauthorized: false  # Accept self-signed certs from managed DBs
   redis:
     env_connection_url: "REDIS_URL"
     api_auth_type: "connection_string"

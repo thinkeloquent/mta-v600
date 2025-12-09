@@ -209,7 +209,7 @@ export class ProviderClientFactory {
       const authType = apiToken.getAuthType();
       const headerName = apiToken.getHeaderName();
 
-      if (authType === 'basic' || authType === 'x-api-key') {
+      if (authType === 'basic' || authType === 'x-api-key' || authType === 'custom') {
         auth = {
           type: 'custom',
           apiKey: apiKeyResult.apiKey,
@@ -229,6 +229,9 @@ export class ProviderClientFactory {
       baseUrl,
       dispatcher,
       auth,
+      headers: {
+        'User-Agent': 'provider-api-getters/1.0',
+      },
     };
 
     // Apply timeout from merged client config
@@ -236,9 +239,9 @@ export class ProviderClientFactory {
       clientOptions.timeout = mergedConfig.client.timeout_ms;
     }
 
-    // Apply additional headers from overwrite_config
+    // Apply additional headers from overwrite_config (merge with defaults)
     if (Object.keys(mergedConfig.headers).length > 0) {
-      clientOptions.headers = mergedConfig.headers;
+      clientOptions.headers = { ...clientOptions.headers, ...mergedConfig.headers };
     }
 
     // For per-request tokens, add dynamic auth handler

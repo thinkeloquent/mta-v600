@@ -27,8 +27,9 @@ export class ConfluenceApiToken extends BaseApiToken {
   }
 
   get healthEndpoint() {
-    logger.debug('ConfluenceApiToken.healthEndpoint: Returning /wiki/rest/api/user/current');
-    return '/wiki/rest/api/user/current';
+    // Note: base_url already includes /wiki path
+    logger.debug('ConfluenceApiToken.healthEndpoint: Returning /rest/api/user/current');
+    return '/rest/api/user/current';
   }
 
   /**

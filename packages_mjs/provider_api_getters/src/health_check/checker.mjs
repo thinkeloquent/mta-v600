@@ -92,35 +92,27 @@ export class ProviderHealthChecker {
     const startTime = performance.now();
 
     try {
-      const pool = await apiToken.getClient();
-      if (!pool) {
+      const sequelize = await apiToken.getClient();
+      if (!sequelize) {
         return new ProviderConnectionResponse({
           provider: 'postgres',
           status: 'error',
-          error: 'Failed to create connection pool. Check pg installation and credentials.',
+          error: 'Failed to create Sequelize instance. Check sequelize/pg installation and credentials.',
         });
       }
 
-      const client = await pool.connect();
-      const result = await client.query('SELECT 1 as result');
+      // Use Sequelize's authenticate() to test connection
+      await sequelize.authenticate();
       const latencyMs = performance.now() - startTime;
 
-      client.release();
-      await pool.end();
-
-      if (result.rows[0]?.result === 1) {
-        return new ProviderConnectionResponse({
-          provider: 'postgres',
-          status: 'connected',
-          latencyMs: Math.round(latencyMs * 100) / 100,
-          message: 'PostgreSQL connection successful',
-        });
-      }
+      // Close the connection
+      await sequelize.close();
 
       return new ProviderConnectionResponse({
         provider: 'postgres',
-        status: 'error',
-        error: 'Unexpected query result',
+        status: 'connected',
+        latencyMs: Math.round(latencyMs * 100) / 100,
+        message: 'PostgreSQL connection successful (Sequelize)',
       });
     } catch (e) {
       const latencyMs = performance.now() - startTime;

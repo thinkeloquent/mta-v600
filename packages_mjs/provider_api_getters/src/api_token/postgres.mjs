@@ -50,14 +50,18 @@ export class PostgresApiToken extends BaseApiToken {
         'PostgresApiToken._buildConnectionUrl: Required components present, building URL'
       );
       let url;
+      // URL-encode user and password to handle special characters
+      const encodedUser = encodeURIComponent(user);
+      // Note: SSL is configured via Sequelize dialectOptions, not URL sslmode parameter
       if (password) {
-        url = `postgresql://${user}:${password}@${host}:${port}/${database}`;
+        const encodedPassword = encodeURIComponent(password);
+        url = `postgresql://${encodedUser}:${encodedPassword}@${host}:${port}/${database}`;
         logger.debug(
           `PostgresApiToken._buildConnectionUrl: Built URL with password ` +
           `(masked=${maskSensitive(url)})`
         );
       } else {
-        url = `postgresql://${user}@${host}:${port}/${database}`;
+        url = `postgresql://${encodedUser}@${host}:${port}/${database}`;
         logger.debug(
           `PostgresApiToken._buildConnectionUrl: Built URL without password ` +
           `(masked=${maskSensitive(url)})`
@@ -123,20 +127,21 @@ export class PostgresApiToken extends BaseApiToken {
   }
 
   /**
-   * Get PostgreSQL client (pg Pool).
+   * Get PostgreSQL client (Sequelize instance).
    * @returns {Promise<any|null>}
    */
   async getClient() {
     logger.debug('PostgresApiToken.getClient: Getting PostgreSQL client');
 
-    let pg;
+    let Sequelize;
     try {
-      pg = await import('pg');
-      logger.debug('PostgresApiToken.getClient: pg module imported successfully');
+      const sequelizeModule = await import('sequelize');
+      Sequelize = sequelizeModule.Sequelize;
+      logger.debug('PostgresApiToken.getClient: Sequelize module imported successfully');
     } catch (error) {
       logger.warn(
-        'PostgresApiToken.getClient: pg not installed. ' +
-        'Install with: npm install pg'
+        'PostgresApiToken.getClient: Sequelize not installed. ' +
+        'Install with: npm install sequelize pg'
       );
       return null;
     }
@@ -148,15 +153,57 @@ export class PostgresApiToken extends BaseApiToken {
       return null;
     }
 
-    logger.debug('PostgresApiToken.getClient: Creating connection pool');
+    logger.debug('PostgresApiToken.getClient: Creating Sequelize instance');
 
     try {
-      const pool = new pg.default.Pool({ connectionString: connectionUrl, max: 1 });
-      logger.debug('PostgresApiToken.getClient: Connection pool created successfully');
-      return pool;
+      // Check SSL config from YAML or env
+      const providerConfig = this._getProviderConfig();
+      const sslConfig = providerConfig?.ssl;
+      const sslMode = process.env.POSTGRES_SSLMODE || 'require';
+
+      // Build dialectOptions for SSL
+      // For Sequelize, SSL config must be inside dialectOptions.ssl
+      const dialectOptions = {};
+
+      if (sslMode === 'disable') {
+        dialectOptions.ssl = false;
+        logger.debug('PostgresApiToken.getClient: SSL disabled via POSTGRES_SSLMODE');
+      } else if (sslConfig) {
+        // Use SSL config from YAML
+        const rejectUnauthorized = sslConfig.rejectUnauthorized === false ? false : true;
+        dialectOptions.ssl = {
+          require: true,
+          rejectUnauthorized,
+        };
+        logger.debug(
+          `PostgresApiToken.getClient: SSL from config, rejectUnauthorized=${rejectUnauthorized}`
+        );
+      } else if (sslMode === 'require' || sslMode === 'prefer') {
+        // Default: accept self-signed certificates from managed database providers
+        dialectOptions.ssl = {
+          require: true,
+          rejectUnauthorized: false,
+        };
+        logger.debug('PostgresApiToken.getClient: SSL enabled with rejectUnauthorized=false (default)');
+      }
+
+      const sequelize = new Sequelize(connectionUrl, {
+        dialect: 'postgres',
+        logging: false,
+        pool: {
+          max: 1,
+          min: 0,
+          acquire: 30000,
+          idle: 10000,
+        },
+        dialectOptions,
+      });
+
+      logger.debug('PostgresApiToken.getClient: Sequelize instance created successfully');
+      return sequelize;
     } catch (error) {
       logger.error(
-        `PostgresApiToken.getClient: Failed to create pool: ${error.name}: ${error.message}`
+        `PostgresApiToken.getClient: Failed to create Sequelize instance: ${error.name}: ${error.message}`
       );
       return null;
     }

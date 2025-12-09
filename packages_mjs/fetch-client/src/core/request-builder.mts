@@ -22,14 +22,25 @@ export function buildUrl(
   path: string,
   query?: Record<string, string | number | boolean>
 ): string {
-  // new URL() replaces the last segment if base doesn't end with /
-  // Ensure base URL ends with / for proper joining with relative paths
-  let effectiveBase = baseUrl;
-  if (!path.startsWith('/') && !baseUrl.pathname.endsWith('/')) {
-    effectiveBase = new URL(baseUrl.pathname + '/', baseUrl.origin);
-  }
+  let url: URL;
 
-  const url = new URL(path, effectiveBase);
+  // Handle absolute paths - preserve base_url path and append the new path
+  if (path.startsWith('/')) {
+    // Combine base path with the new path (avoid double slashes)
+    const basePath = baseUrl.pathname.replace(/\/$/, '');
+    url = new URL(`${basePath}${path}`, baseUrl.origin);
+  } else if (path) {
+    // new URL() replaces the last segment if base doesn't end with /
+    // Ensure base URL ends with / for proper joining with relative paths
+    let effectiveBase = baseUrl;
+    if (!baseUrl.pathname.endsWith('/')) {
+      effectiveBase = new URL(baseUrl.pathname + '/', baseUrl.origin);
+    }
+    url = new URL(path, effectiveBase);
+  } else {
+    // Empty path - use base_url as-is
+    url = new URL(baseUrl.toString());
+  }
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
