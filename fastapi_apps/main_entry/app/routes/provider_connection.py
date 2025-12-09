@@ -26,6 +26,7 @@ class ProviderConnectionResponse(BaseModel):
     message: Optional[str] = None
     error: Optional[str] = None
     timestamp: str
+    config_used: Optional[Dict[str, Any]] = None
 
 
 class ProvidersListResponse(BaseModel):
@@ -34,6 +35,14 @@ class ProvidersListResponse(BaseModel):
     providers: List[str]
     count: int
     timestamp: str
+
+
+class RuntimeOverrideRequest(BaseModel):
+    """Request body for runtime proxy/client override testing."""
+
+    proxy: Optional[Dict[str, Any]] = None
+    client: Optional[Dict[str, Any]] = None
+    headers: Optional[Dict[str, str]] = None
 
 
 router = APIRouter()
@@ -76,7 +85,8 @@ async def check_provider(
             (e.g., 'figma', 'github', 'jira', 'postgres', 'redis')
 
     Returns:
-        Connection status including latency, success message or error details.
+        Connection status including latency, success message or error details,
+        and the effective configuration used for the connection test.
 
     Status values:
         - connected: Successfully connected to the provider
@@ -93,4 +103,53 @@ async def check_provider(
         message=result.message,
         error=result.error,
         timestamp=result.timestamp,
+        config_used=result.config_used,
+    )
+
+
+@router.post("/{provider_name}", response_model=ProviderConnectionResponse)
+async def check_provider_with_override(
+    provider_name: str,
+    override: RuntimeOverrideRequest,
+    static_config=Depends(get_static_config),
+) -> ProviderConnectionResponse:
+    """
+    Check connection to a provider with runtime proxy/client override.
+
+    Useful for testing VPN/proxy configurations without modifying YAML.
+    The override is deep-merged with the static config (global + overwrite_root_config).
+
+    Args:
+        provider_name: The name of the provider to check
+        override: Runtime override for proxy, client, and headers settings
+
+    Example request body:
+    ```json
+    {
+        "proxy": {
+            "default_environment": "prod",
+            "proxy_urls": {"prod": "http://proxy.internal:8080"},
+            "cert_verify": false
+        },
+        "client": {
+            "timeout_seconds": 120.0
+        }
+    }
+    ```
+
+    Returns:
+        Connection status with the effective configuration used.
+    """
+    runtime_override = override.model_dump(exclude_none=True)
+    checker = ProviderHealthChecker(static_config, runtime_override=runtime_override)
+    result = await checker.check(provider_name)
+
+    return ProviderConnectionResponse(
+        provider=result.provider,
+        status=result.status,
+        latency_ms=result.latency_ms,
+        message=result.message,
+        error=result.error,
+        timestamp=result.timestamp,
+        config_used=result.config_used,
     )

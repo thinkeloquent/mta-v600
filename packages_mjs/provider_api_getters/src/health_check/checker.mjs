@@ -15,6 +15,7 @@ export class ProviderConnectionResponse {
     message = null,
     error = null,
     timestamp = null,
+    configUsed = null,
   }) {
     this.provider = provider;
     this.status = status;
@@ -22,6 +23,7 @@ export class ProviderConnectionResponse {
     this.message = message;
     this.error = error;
     this.timestamp = timestamp || new Date().toISOString();
+    this.config_used = configUsed;
   }
 
   toJSON() {
@@ -32,6 +34,7 @@ export class ProviderConnectionResponse {
       message: this.message,
       error: this.error,
       timestamp: this.timestamp,
+      config_used: this.config_used,
     };
   }
 }
@@ -39,9 +42,15 @@ export class ProviderConnectionResponse {
 export class ProviderHealthChecker {
   #configStore = null;
   #clientFactory = null;
+  #runtimeOverride = null;
 
-  constructor(configStore = null) {
+  /**
+   * @param {Object} configStore - Static config store
+   * @param {Object} runtimeOverride - Optional runtime override for proxy/client settings
+   */
+  constructor(configStore = null, runtimeOverride = null) {
     this.#configStore = configStore;
+    this.#runtimeOverride = runtimeOverride;
     this.#clientFactory = new ProviderClientFactory(configStore);
   }
 
@@ -52,6 +61,29 @@ export class ProviderHealthChecker {
   set configStore(value) {
     this.#configStore = value;
     this.#clientFactory.configStore = value;
+  }
+
+  get runtimeOverride() {
+    return this.#runtimeOverride;
+  }
+
+  /**
+   * Build config_used object for response
+   */
+  _buildConfigUsed(providerName, apiToken) {
+    const mergedConfig = this.#clientFactory._getMergedConfigForProvider(
+      providerName,
+      this.#runtimeOverride
+    );
+
+    return {
+      base_url: apiToken?.getBaseUrl?.() || null,
+      proxy: mergedConfig.proxy,
+      client: mergedConfig.client,
+      auth_type: apiToken?.getAuthType?.() || null,
+      has_overwrite_root_config: mergedConfig.has_overwrite_root_config,
+      has_runtime_override: mergedConfig.has_runtime_override,
+    };
   }
 
   async check(providerName) {
@@ -68,27 +100,29 @@ export class ProviderHealthChecker {
 
     const apiToken = new TokenClass(this.#configStore);
     const apiKeyResult = apiToken.getApiKey();
+    const configUsed = this._buildConfigUsed(providerNameLower, apiToken);
 
     if (apiKeyResult.isPlaceholder) {
       return new ProviderConnectionResponse({
         provider: providerName,
         status: 'not_implemented',
         message: apiKeyResult.placeholderMessage,
+        configUsed,
       });
     }
 
     if (providerNameLower === 'postgres') {
-      return this._checkPostgres(apiToken);
+      return this._checkPostgres(apiToken, configUsed);
     } else if (providerNameLower === 'redis') {
-      return this._checkRedis(apiToken);
+      return this._checkRedis(apiToken, configUsed);
     } else if (providerNameLower === 'elasticsearch') {
-      return this._checkElasticsearch(apiToken);
+      return this._checkElasticsearch(apiToken, configUsed);
     } else {
-      return this._checkHttp(providerName, apiToken, apiKeyResult);
+      return this._checkHttp(providerName, apiToken, apiKeyResult, configUsed);
     }
   }
 
-  async _checkPostgres(apiToken) {
+  async _checkPostgres(apiToken, configUsed = null) {
     const startTime = performance.now();
 
     try {
@@ -98,6 +132,7 @@ export class ProviderHealthChecker {
           provider: 'postgres',
           status: 'error',
           error: 'Failed to create Sequelize instance. Check sequelize/pg installation and credentials.',
+          configUsed,
         });
       }
 
@@ -113,6 +148,7 @@ export class ProviderHealthChecker {
         status: 'connected',
         latencyMs: Math.round(latencyMs * 100) / 100,
         message: 'PostgreSQL connection successful (Sequelize)',
+        configUsed,
       });
     } catch (e) {
       const latencyMs = performance.now() - startTime;
@@ -121,11 +157,12 @@ export class ProviderHealthChecker {
         status: 'error',
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
+        configUsed,
       });
     }
   }
 
-  async _checkRedis(apiToken) {
+  async _checkRedis(apiToken, configUsed = null) {
     const startTime = performance.now();
 
     try {
@@ -135,6 +172,7 @@ export class ProviderHealthChecker {
           provider: 'redis',
           status: 'error',
           error: 'Failed to create Redis client. Check ioredis installation and credentials.',
+          configUsed,
         });
       }
 
@@ -148,6 +186,7 @@ export class ProviderHealthChecker {
           status: 'connected',
           latencyMs: Math.round(latencyMs * 100) / 100,
           message: 'Redis connection successful (PONG)',
+          configUsed,
         });
       }
 
@@ -155,6 +194,7 @@ export class ProviderHealthChecker {
         provider: 'redis',
         status: 'error',
         error: 'PING did not return expected response',
+        configUsed,
       });
     } catch (e) {
       const latencyMs = performance.now() - startTime;
@@ -163,11 +203,12 @@ export class ProviderHealthChecker {
         status: 'error',
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
+        configUsed,
       });
     }
   }
 
-  async _checkElasticsearch(apiToken) {
+  async _checkElasticsearch(apiToken, configUsed = null) {
     // Use HTTP directly to support both Elasticsearch and OpenSearch
     // (the official @elastic/elasticsearch client rejects OpenSearch servers)
     // Uses proxy factory with YAML config for fetch dispatcher
@@ -224,6 +265,7 @@ export class ProviderHealthChecker {
             status: 'connected',
             latencyMs: Math.round(latencyMs * 100) / 100,
             message: `Cluster '${result.cluster_name}' is ${status}`,
+            configUsed,
           });
         }
 
@@ -232,6 +274,7 @@ export class ProviderHealthChecker {
           status: 'error',
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: 'Unexpected response from cluster health check',
+          configUsed,
         });
       } else {
         const text = await response.text();
@@ -240,6 +283,7 @@ export class ProviderHealthChecker {
           status: 'error',
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: `HTTP ${response.status}: ${text.substring(0, 200)}`,
+          configUsed,
         });
       }
     } catch (e) {
@@ -249,11 +293,12 @@ export class ProviderHealthChecker {
         status: 'error',
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
+        configUsed,
       });
     }
   }
 
-  async _checkHttp(providerName, apiToken, apiKeyResult) {
+  async _checkHttp(providerName, apiToken, apiKeyResult, configUsed = null) {
     const startTime = performance.now();
 
     if (!apiKeyResult.hasCredentials) {
@@ -261,6 +306,7 @@ export class ProviderHealthChecker {
         provider: providerName,
         status: 'error',
         error: 'No API credentials configured',
+        configUsed,
       });
     }
 
@@ -270,6 +316,7 @@ export class ProviderHealthChecker {
         provider: providerName,
         status: 'error',
         error: 'No base URL configured',
+        configUsed,
       });
     }
 
@@ -279,6 +326,7 @@ export class ProviderHealthChecker {
         provider: providerName,
         status: 'error',
         error: 'Failed to create HTTP client',
+        configUsed,
       });
     }
 
@@ -293,6 +341,7 @@ export class ProviderHealthChecker {
           provider: providerName,
           status: 'connected',
           latencyMs: Math.round(latencyMs * 100) / 100,
+          configUsed,
           message,
         });
       } else {
@@ -301,6 +350,7 @@ export class ProviderHealthChecker {
           status: 'error',
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: `HTTP ${response.status}: ${JSON.stringify(response.data)}`,
+          configUsed,
         });
       }
     } catch (e) {
@@ -310,6 +360,7 @@ export class ProviderHealthChecker {
         status: 'error',
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
+        configUsed,
       });
     } finally {
       try {

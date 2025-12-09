@@ -1,0 +1,205 @@
+# Server Configuration - TEST CASES
+# Example configurations for different network scenarios
+# Use this file as a reference when setting up overwrite_root_config
+
+# =============================================================================
+# Provider Configuration with overwrite_root_config Examples
+# =============================================================================
+
+providers:
+  # TEST CASE 1: Cloud provider with corporate proxy
+  # Use when accessing cloud APIs through corporate proxy
+  gemini_via_proxy:
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+    model: "gemini-2.0-flash"
+    env_api_key: "GEMINI_API_KEY"
+    api_auth_type: "bearer"
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        default_environment: "corp"
+        proxy_urls:
+          corp: "http://corporate-proxy.internal:8080"
+          prod: "http://prod-proxy.internal:8080"
+        cert_verify: true
+        ca_bundle: "/etc/ssl/certs/corporate-ca.crt"
+      client:
+        timeout_seconds: 90.0
+        timeout_ms: 90000
+
+  # TEST CASE 2: On-prem provider via VPN (no proxy, custom timeout)
+  # Use when accessing on-prem services through VPN
+  jira_onprem:
+    base_url: "https://jira.internal.company.com"
+    env_api_key: "JIRA_API_TOKEN"
+    env_email: "JIRA_EMAIL"
+    health_endpoint: "/rest/api/2/myself"
+    api_auth_type: "basic"
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        # No proxy needed - direct VPN access
+        proxy_urls: {}
+        agent_proxy:
+          http_proxy: null
+          https_proxy: null
+        cert_verify: false  # Self-signed cert
+      client:
+        timeout_seconds: 30.0
+        timeout_ms: 30000
+
+  # TEST CASE 3: Provider with HTTP/HTTPS agent proxy
+  # Use with SOCKS or HTTP proxy via agent settings
+  github_enterprise:
+    base_url: "https://github.company.com/api/v3"
+    env_api_key: "GITHUB_TOKEN"
+    api_auth_type: "bearer"
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        agent_proxy:
+          http_proxy: "http://squid.internal:3128"
+          https_proxy: "http://squid.internal:3128"
+        cert_verify: true
+      client:
+        timeout_seconds: 45.0
+        timeout_ms: 45000
+      headers:
+        X-GitHub-Enterprise: "true"
+
+  # TEST CASE 4: Elasticsearch on-prem with SSL and custom CA
+  # Use for on-prem Elasticsearch/OpenSearch with custom certificates
+  elasticsearch_onprem:
+    env_connection_url: "ELASTICSEARCH_URL"
+    api_auth_type: "connection_string"
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        cert_verify: true
+        ca_bundle: "/etc/ssl/certs/elasticsearch-ca.pem"
+        cert: "/etc/ssl/certs/client.pem"
+      client:
+        timeout_seconds: 120.0
+        timeout_ms: 120000
+        max_connections: 5
+
+  # TEST CASE 5: SauceLabs via different proxies per environment
+  # Use when different environments need different proxy routes
+  saucelabs_multi_env:
+    base_url: "https://api.us-west-1.saucelabs.com"
+    env_username: "SAUCE_USERNAME"
+    env_api_key: "SAUCE_ACCESS_KEY"
+    health_endpoint: "/rest/v1/users/:username"
+    api_auth_type: "basic"
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        default_environment: "dev"
+        proxy_urls:
+          dev: "http://dev-proxy:8080"
+          qa: "http://qa-proxy:8080"
+          stage: "http://stage-proxy:8080"
+          prod: null  # No proxy in prod (direct access)
+        cert_verify: false
+
+  # TEST CASE 6: AWS services with IAM role (no proxy)
+  # Use when accessing AWS services directly from within AWS
+  aws_direct:
+    base_url: "https://s3.amazonaws.com"
+    env_api_key: "AWS_ACCESS_KEY_ID"
+    api_auth_type: "custom"  # AWS uses Signature v4
+    token_resolver: "static"
+    overwrite_root_config:
+      proxy:
+        # Direct access within AWS VPC
+        proxy_urls: {}
+        agent_proxy:
+          http_proxy: null
+          https_proxy: null
+        cert_verify: true
+      client:
+        timeout_seconds: 30.0
+        timeout_ms: 30000
+
+  # TEST CASE 7: Provider with slow responses (extended timeout)
+  # Use for providers known to have slow responses
+  slow_api_provider:
+    base_url: "https://slow-api.example.com/v1"
+    env_api_key: "SLOW_API_KEY"
+    api_auth_type: "bearer"
+    token_resolver: "static"
+    overwrite_root_config:
+      client:
+        timeout_seconds: 300.0  # 5 minutes
+        timeout_ms: 300000
+        keep_alive_timeout_seconds: 30.0
+        keep_alive_timeout_ms: 30000
+
+# =============================================================================
+# Global Client Configuration (can be overridden per-provider)
+# =============================================================================
+
+client:
+  timeout_seconds: 60.0
+  timeout_ms: 60000
+  keep_alive_timeout_seconds: 5.0
+  keep_alive_timeout_ms: 5000
+  max_connections: 10
+
+# =============================================================================
+# Global Proxy Configuration (can be overridden per-provider)
+# =============================================================================
+
+proxy:
+  default_environment: "dev"
+  proxy_urls: {}
+  ca_bundle: null
+  cert: null
+  cert_verify: false
+  agent_proxy:
+    http_proxy: null
+    https_proxy: null
+
+# =============================================================================
+# POST /healthz/providers/connection/{provider} - Runtime Override Examples
+# =============================================================================
+#
+# Example 1: Test with corporate proxy
+# curl -X POST http://localhost:52000/healthz/providers/connection/gemini \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "proxy": {
+#       "default_environment": "corp",
+#       "proxy_urls": {"corp": "http://proxy.internal:8080"},
+#       "cert_verify": true
+#     }
+#   }'
+#
+# Example 2: Test without proxy (direct connection)
+# curl -X POST http://localhost:52000/healthz/providers/connection/jira \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "proxy": {
+#       "proxy_urls": {},
+#       "agent_proxy": {"http_proxy": null, "https_proxy": null}
+#     }
+#   }'
+#
+# Example 3: Test with extended timeout
+# curl -X POST http://localhost:52000/healthz/providers/connection/elasticsearch \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "client": {
+#       "timeout_seconds": 120.0,
+#       "timeout_ms": 120000
+#     }
+#   }'
+#
+# Example 4: Test with custom headers
+# curl -X POST http://localhost:52000/healthz/providers/connection/github \
+#   -H "Content-Type: application/json" \
+#   -d '{
+#     "headers": {
+#       "X-Custom-Header": "test-value"
+#     }
+#   }'

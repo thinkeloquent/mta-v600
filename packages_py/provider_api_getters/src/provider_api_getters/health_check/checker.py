@@ -7,9 +7,9 @@ with comprehensive logging for debugging and observability.
 import asyncio
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from ..api_token import get_api_token_class, BaseApiToken, ApiKeyResult
 from ..api_token.postgres import PostgresApiToken
@@ -31,6 +31,7 @@ class ProviderConnectionResponse:
     message: Optional[str] = None
     error: Optional[str] = None
     timestamp: str = ""
+    config_used: Optional[Dict[str, Any]] = field(default=None)
 
     def __post_init__(self):
         if not self.timestamp:
@@ -45,18 +46,32 @@ class ProviderConnectionResponse:
             "message": self.message,
             "error": self.error,
             "timestamp": self.timestamp,
+            "config_used": self.config_used,
         }
 
 
 class ProviderHealthChecker:
     """Health checker for provider connections."""
 
-    def __init__(self, config_store: Optional[Any] = None):
+    def __init__(
+        self,
+        config_store: Optional[Any] = None,
+        runtime_override: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Initialize the health checker.
+
+        Args:
+            config_store: Static config store
+            runtime_override: Optional runtime override for proxy/client settings
+        """
         logger.debug(
             f"ProviderHealthChecker.__init__: Initializing with "
-            f"config_store={'provided' if config_store else 'None (lazy-load)'}"
+            f"config_store={'provided' if config_store else 'None (lazy-load)'}, "
+            f"runtime_override={'provided' if runtime_override else 'None'}"
         )
         self._config_store = config_store
+        self._runtime_override = runtime_override
         self._client_factory = ProviderClientFactory(config_store)
         logger.debug("ProviderHealthChecker.__init__: Client factory created")
 
@@ -69,6 +84,28 @@ class ProviderHealthChecker:
             self._config_store = config
             logger.debug("ProviderHealthChecker.config_store: static_config loaded successfully")
         return self._config_store
+
+    @property
+    def runtime_override(self) -> Optional[Dict[str, Any]]:
+        """Get runtime override."""
+        return self._runtime_override
+
+    def _build_config_used(
+        self, provider_name: str, api_token: Optional[BaseApiToken]
+    ) -> Dict[str, Any]:
+        """Build config_used object for response."""
+        merged_config = self._client_factory._get_merged_config_for_provider(
+            provider_name, self._runtime_override
+        )
+
+        return {
+            "base_url": api_token.get_base_url() if api_token else None,
+            "proxy": merged_config.get("proxy"),
+            "client": merged_config.get("client"),
+            "auth_type": api_token.get_auth_type() if api_token else None,
+            "has_overwrite_root_config": merged_config.get("has_overwrite_root_config", False),
+            "has_runtime_override": merged_config.get("has_runtime_override", False),
+        }
 
     async def check(self, provider_name: str) -> ProviderConnectionResponse:
         """Check connection to a provider."""
@@ -88,6 +125,7 @@ class ProviderHealthChecker:
         logger.debug(f"ProviderHealthChecker.check: Token class found: {token_class.__name__}")
         api_token = token_class(self.config_store)
         api_key_result = api_token.get_api_key()
+        config_used = self._build_config_used(provider_name_lower, api_token)
 
         logger.debug(
             f"ProviderHealthChecker.check: API key result - "
@@ -105,20 +143,21 @@ class ProviderHealthChecker:
                 provider=provider_name,
                 status="not_implemented",
                 message=api_key_result.placeholder_message,
+                config_used=config_used,
             )
 
         if provider_name_lower == "postgres":
             logger.debug("ProviderHealthChecker.check: Routing to PostgreSQL check")
-            return await self._check_postgres(api_token)
+            return await self._check_postgres(api_token, config_used)
         elif provider_name_lower == "redis":
             logger.debug("ProviderHealthChecker.check: Routing to Redis check")
-            return await self._check_redis(api_token)
+            return await self._check_redis(api_token, config_used)
         elif provider_name_lower == "elasticsearch":
             logger.debug("ProviderHealthChecker.check: Routing to Elasticsearch check")
-            return await self._check_elasticsearch(api_token)
+            return await self._check_elasticsearch(api_token, config_used)
         else:
             logger.debug("ProviderHealthChecker.check: Routing to HTTP check")
-            return await self._check_http(provider_name, api_token, api_key_result)
+            return await self._check_http(provider_name, api_token, api_key_result, config_used)
 
     async def _close_pool_with_timeout(self, pool, timeout: float = 2.0) -> None:
         """Close a pool with a timeout to avoid blocking.
@@ -141,7 +180,9 @@ class ProviderHealthChecker:
         except Exception as e:
             logger.debug(f"ProviderHealthChecker._close_pool_with_timeout: Pool close error: {e}")
 
-    async def _check_postgres(self, api_token: PostgresApiToken) -> ProviderConnectionResponse:
+    async def _check_postgres(
+        self, api_token: PostgresApiToken, config_used: Optional[Dict[str, Any]] = None
+    ) -> ProviderConnectionResponse:
         """Check PostgreSQL connection."""
         logger.debug("ProviderHealthChecker._check_postgres: Starting PostgreSQL check")
         start_time = time.perf_counter()
@@ -159,6 +200,7 @@ class ProviderHealthChecker:
                     provider="postgres",
                     status="error",
                     error="Failed to create connection pool. Check asyncpg installation and credentials.",
+                    config_used=config_used,
                 )
 
             logger.debug("ProviderHealthChecker._check_postgres: Pool created, executing SELECT 1")
@@ -176,6 +218,7 @@ class ProviderHealthChecker:
                         status="connected",
                         latency_ms=round(latency_ms, 2),
                         message="PostgreSQL connection successful",
+                        config_used=config_used,
                     )
 
             await self._close_pool_with_timeout(pool)
@@ -184,6 +227,7 @@ class ProviderHealthChecker:
                 provider="postgres",
                 status="error",
                 error="Unexpected query result",
+                config_used=config_used,
             )
 
         except Exception as e:
@@ -199,9 +243,12 @@ class ProviderHealthChecker:
                 status="error",
                 latency_ms=round(latency_ms, 2),
                 error=str(e),
+                config_used=config_used,
             )
 
-    async def _check_redis(self, api_token: RedisApiToken) -> ProviderConnectionResponse:
+    async def _check_redis(
+        self, api_token: RedisApiToken, config_used: Optional[Dict[str, Any]] = None
+    ) -> ProviderConnectionResponse:
         """Check Redis connection."""
         logger.debug("ProviderHealthChecker._check_redis: Starting Redis check")
         start_time = time.perf_counter()
@@ -218,6 +265,7 @@ class ProviderHealthChecker:
                     provider="redis",
                     status="error",
                     error="Failed to create Redis client. Check redis installation and credentials.",
+                    config_used=config_used,
                 )
 
             logger.debug("ProviderHealthChecker._check_redis: Client created, sending PING")
@@ -235,6 +283,7 @@ class ProviderHealthChecker:
                     status="connected",
                     latency_ms=round(latency_ms, 2),
                     message="Redis connection successful (PONG)",
+                    config_used=config_used,
                 )
 
             logger.error("ProviderHealthChecker._check_redis: PING did not return expected response")
@@ -242,6 +291,7 @@ class ProviderHealthChecker:
                 provider="redis",
                 status="error",
                 error="PING did not return expected response",
+                config_used=config_used,
             )
 
         except Exception as e:
@@ -252,9 +302,12 @@ class ProviderHealthChecker:
                 status="error",
                 latency_ms=round(latency_ms, 2),
                 error=str(e),
+                config_used=config_used,
             )
 
-    async def _check_elasticsearch(self, api_token: ElasticsearchApiToken) -> ProviderConnectionResponse:
+    async def _check_elasticsearch(
+        self, api_token: ElasticsearchApiToken, config_used: Optional[Dict[str, Any]] = None
+    ) -> ProviderConnectionResponse:
         """Check Elasticsearch/OpenSearch connection using HTTP directly.
 
         Uses httpx for health check to support both Elasticsearch and OpenSearch
@@ -298,6 +351,7 @@ class ProviderHealthChecker:
                             status="connected",
                             latency_ms=round(latency_ms, 2),
                             message=f"Cluster '{result['cluster_name']}' is {cluster_status}",
+                            config_used=config_used,
                         )
 
                     logger.error("ProviderHealthChecker._check_elasticsearch: Unexpected response format")
@@ -306,6 +360,7 @@ class ProviderHealthChecker:
                         status="error",
                         latency_ms=round(latency_ms, 2),
                         error="Unexpected response from cluster health check",
+                        config_used=config_used,
                     )
                 else:
                     logger.error(
@@ -316,6 +371,7 @@ class ProviderHealthChecker:
                         status="error",
                         latency_ms=round(latency_ms, 2),
                         error=f"HTTP {response.status_code}: {response.text[:200]}",
+                        config_used=config_used,
                     )
 
         except Exception as e:
@@ -326,6 +382,7 @@ class ProviderHealthChecker:
                 status="error",
                 latency_ms=round(latency_ms, 2),
                 error=str(e),
+                config_used=config_used,
             )
 
     async def _check_http(
@@ -333,6 +390,7 @@ class ProviderHealthChecker:
         provider_name: str,
         api_token: BaseApiToken,
         api_key_result: ApiKeyResult,
+        config_used: Optional[Dict[str, Any]] = None,
     ) -> ProviderConnectionResponse:
         """Check HTTP provider connection."""
         logger.debug(f"ProviderHealthChecker._check_http: Starting HTTP check for '{provider_name}'")
@@ -344,6 +402,7 @@ class ProviderHealthChecker:
                 provider=provider_name,
                 status="error",
                 error="No API credentials configured",
+                config_used=config_used,
             )
 
         base_url = api_token.get_base_url()
@@ -354,6 +413,7 @@ class ProviderHealthChecker:
                 provider=provider_name,
                 status="error",
                 error="No base URL configured",
+                config_used=config_used,
             )
 
         logger.debug(f"ProviderHealthChecker._check_http: Creating HTTP client for '{provider_name}'")
@@ -364,6 +424,7 @@ class ProviderHealthChecker:
                 provider=provider_name,
                 status="error",
                 error="Failed to create HTTP client",
+                config_used=config_used,
             )
 
         try:
@@ -403,6 +464,7 @@ class ProviderHealthChecker:
                     status="connected",
                     latency_ms=round(latency_ms, 2),
                     message=message,
+                    config_used=config_used,
                 )
             else:
                 error_msg = f"HTTP {status}: {response_data}"
@@ -414,6 +476,7 @@ class ProviderHealthChecker:
                     status="error",
                     latency_ms=round(latency_ms, 2),
                     error=error_msg,
+                    config_used=config_used,
                 )
 
         except Exception as e:
@@ -426,6 +489,7 @@ class ProviderHealthChecker:
                 status="error",
                 latency_ms=round(latency_ms, 2),
                 error=str(e),
+                config_used=config_used,
             )
         finally:
             try:

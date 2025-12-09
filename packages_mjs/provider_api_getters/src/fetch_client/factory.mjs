@@ -64,35 +64,60 @@ export class ProviderClientFactory {
    * Get merged configuration for a provider, combining global config with provider overrides.
    *
    * Resolution priority (deep merge):
-   * 1. providers.{name}.overwrite_config.* (provider-specific)
-   * 2. Global settings (proxy.*, client.*)
+   * 1. runtime_override (if provided via POST endpoint)
+   * 2. providers.{name}.overwrite_root_config.* (provider-specific)
+   * 3. Global settings (proxy.*, client.*)
    *
    * @param {string} providerName - Provider name
+   * @param {Object} runtimeOverride - Optional runtime override from POST request
    * @returns {Object} Merged configuration with proxy, client, and headers
    */
-  _getMergedConfigForProvider(providerName) {
+  _getMergedConfigForProvider(providerName, runtimeOverride = null) {
     const apiToken = this.getApiToken(providerName);
     if (!apiToken) {
       return {
         proxy: this._getProxyConfig(),
         client: this._getClientConfig(),
         headers: {},
+        has_overwrite_root_config: false,
+        has_runtime_override: false,
       };
     }
 
-    const overwrite = apiToken.getOverwriteConfig() || {};
+    const overwrite = apiToken.getOverwriteRootConfig() || {};
     const globalProxy = this._getProxyConfig();
     const globalClient = this._getClientConfig();
 
-    const mergedProxy = deepMerge(globalProxy, overwrite.proxy || {});
-    const mergedClient = deepMerge(globalClient, overwrite.client || {});
-    const headers = overwrite.headers || {};
+    // Priority: runtime_override > overwrite_root_config > global
+    let mergedProxy = deepMerge(globalProxy, overwrite.proxy || {});
+    let mergedClient = deepMerge(globalClient, overwrite.client || {});
+    let headers = { ...(overwrite.headers || {}) };
+
+    // Apply runtime override if provided
+    if (runtimeOverride) {
+      if (runtimeOverride.proxy) {
+        mergedProxy = deepMerge(mergedProxy, runtimeOverride.proxy);
+      }
+      if (runtimeOverride.client) {
+        mergedClient = deepMerge(mergedClient, runtimeOverride.client);
+      }
+      if (runtimeOverride.headers) {
+        headers = { ...headers, ...runtimeOverride.headers };
+      }
+    }
 
     const hasOverrides = Object.keys(overwrite).length > 0;
     if (hasOverrides) {
       logger.info(
         { providerName, overwriteKeys: Object.keys(overwrite) },
-        'Provider-specific config overrides applied'
+        'Provider-specific overwrite_root_config applied'
+      );
+    }
+
+    if (runtimeOverride && Object.keys(runtimeOverride).length > 0) {
+      logger.info(
+        { providerName, runtimeOverrideKeys: Object.keys(runtimeOverride) },
+        'Runtime override applied'
       );
     }
 
@@ -100,6 +125,8 @@ export class ProviderClientFactory {
       proxy: mergedProxy,
       client: mergedClient,
       headers,
+      has_overwrite_root_config: hasOverrides,
+      has_runtime_override: runtimeOverride && Object.keys(runtimeOverride).length > 0,
     };
   }
 

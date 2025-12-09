@@ -38,6 +38,7 @@ async function providerConnectionRoutesPlugin(fastify, options) {
   /**
    * GET /healthz/providers/connection/:providerName
    * Check connection to a specific provider
+   * Returns config_used with the effective configuration used for the test
    */
   fastify.get(`${prefix}/:providerName`, async (request, reply) => {
     const { providerName } = request.params;
@@ -53,6 +54,48 @@ async function providerConnectionRoutesPlugin(fastify, options) {
       message: result.message,
       error: result.error,
       timestamp: result.timestamp,
+      config_used: result.config_used,
+    };
+  });
+
+  /**
+   * POST /healthz/providers/connection/:providerName
+   * Check connection with runtime proxy/client override
+   *
+   * Useful for testing VPN/proxy configurations without modifying YAML.
+   * The override is deep-merged with the static config (global + overwrite_root_config).
+   *
+   * Request body:
+   * {
+   *   "proxy": {
+   *     "default_environment": "prod",
+   *     "proxy_urls": {"prod": "http://proxy.internal:8080"},
+   *     "cert_verify": false
+   *   },
+   *   "client": {
+   *     "timeout_seconds": 120.0
+   *   },
+   *   "headers": {
+   *     "X-Custom-Header": "value"
+   *   }
+   * }
+   */
+  fastify.post(`${prefix}/:providerName`, async (request, reply) => {
+    const { providerName } = request.params;
+    const staticConfig = getStaticConfig();
+    const runtimeOverride = request.body || {};
+
+    const checker = new ProviderHealthChecker(staticConfig, runtimeOverride);
+    const result = await checker.check(providerName);
+
+    return {
+      provider: result.provider,
+      status: result.status,
+      latency_ms: result.latency_ms,
+      message: result.message,
+      error: result.error,
+      timestamp: result.timestamp,
+      config_used: result.config_used,
     };
   });
 

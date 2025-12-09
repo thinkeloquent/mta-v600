@@ -15,7 +15,7 @@ providers:
     token_resolver: "static"        # static (default), startup, request
     # Provider-specific configuration overrides (optional)
     # Overrides are deep-merged with global proxy/client settings
-    # overwrite_config:
+    # overwrite_root_config:
     #   proxy:
     #     # Override proxy for this provider only
     #     default_environment: "prod"
@@ -101,6 +101,20 @@ providers:
   elasticsearch:
     placeholder: true
     message: "Elasticsearch integration not implemented"
+    # Example: Full overwrite_root_config for on-prem/VPN provider
+    # overwrite_root_config:
+    #   client:
+    #     timeout_seconds: 120.0
+    #     timeout_ms: 120000
+    #   proxy:
+    #     default_environment: "dev"
+    #     proxy_urls: {}
+    #     ca_bundle: null
+    #     cert: null
+    #     cert_verify: false
+    #     agent_proxy:
+    #       http_proxy: null
+    #       https_proxy: null
 
 # Default provider for backward compatibility
 default_provider: "gemini"
