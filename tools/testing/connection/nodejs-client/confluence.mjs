@@ -32,7 +32,7 @@ await loadYamlConfig({ configDir });
 const { getProxyDispatcher } = await import(
   resolve(PROJECT_ROOT, 'packages_mjs', 'fetch-proxy-dispatcher', 'src', 'index.mts')
 );
-const { createClient } = await import(
+const { createClient, createClientWithDispatcher } = await import(
   resolve(PROJECT_ROOT, 'packages_mjs', 'fetch-client', 'src', 'index.mts')
 );
 const { ConfluenceApiToken, ProviderHealthChecker } = await import(
@@ -54,8 +54,15 @@ const CONFIG = {
   // Base URL (from provider or override)
   BASE_URL: provider.getBaseUrl() || process.env.CONFLUENCE_BASE_URL || 'https://your-company.atlassian.net/wiki',
 
-  // Dispatcher (from fetch-proxy-dispatcher)
+  // Dispatcher (from fetch-proxy-dispatcher) - used by createClient
   DISPATCHER: getProxyDispatcher(),
+
+  // Proxy Configuration (set to override YAML/environment config)
+  // Examples: "http://proxy:8080", "http://user:pass@proxy:8080", "socks5://proxy:1080"
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false, // Set to undefined to use YAML config
 
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
@@ -84,9 +91,8 @@ async function healthCheck() {
 async function listSpaces() {
   console.log('\n=== List Spaces ===\n');
 
-  const client = createClient({
+  const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
@@ -95,6 +101,8 @@ async function listSpaces() {
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -120,9 +128,8 @@ async function listSpaces() {
 async function getSpace(spaceKey) {
   console.log(`\n=== Get Space: ${spaceKey} ===\n`);
 
-  const client = createClient({
+  const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
@@ -131,6 +138,8 @@ async function getSpace(spaceKey) {
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -148,9 +157,8 @@ async function getSpace(spaceKey) {
 async function searchContent(query) {
   console.log(`\n=== Search Content: ${query} ===\n`);
 
-  const client = createClient({
+  const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
@@ -159,6 +167,8 @@ async function searchContent(query) {
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -186,9 +196,8 @@ async function searchContent(query) {
 async function getPage(pageId) {
   console.log(`\n=== Get Page: ${pageId} ===\n`);
 
-  const client = createClient({
+  const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
@@ -197,6 +206,8 @@ async function getPage(pageId) {
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -222,6 +233,8 @@ async function main() {
   console.log(`Base URL: ${CONFIG.BASE_URL}`);
   console.log(`Email: ${CONFIG.CONFLUENCE_EMAIL}`);
   console.log(`Auth Type: ${CONFIG.AUTH_TYPE}`);
+  console.log(`SSL Verify: ${CONFIG.SSL_VERIFY}`);
+  console.log(`Proxy: ${CONFIG.PROXY || '(using YAML/env config)'}`);
   console.log(`Debug: ${CONFIG.DEBUG}`);
 
   await healthCheck();

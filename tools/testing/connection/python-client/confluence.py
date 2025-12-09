@@ -47,9 +47,9 @@ api_key_result = provider.get_api_key()
 
 CONFIG = {
     # From provider_api_getters
-    "CONFLUENCE_BEARER_TOKEN": os.getenv("CONFLUENCE_API_TOKEN"), 
+    "CONFLUENCE_BEARER_TOKEN": os.getenv("CONFLUENCE_API_TOKEN"),
     "CONFLUENCE_API_TOKEN": api_key_result.api_key,
-    "CONFLUENCE_EMAIL": api_key_result.username or os.getenv("CONFLUENCE_EMAIL"),   
+    "CONFLUENCE_EMAIL": api_key_result.username or os.getenv("CONFLUENCE_EMAIL"),
     "AUTH_TYPE": "bearer",
 
     # Base URL (from provider or override)
@@ -57,6 +57,10 @@ CONFIG = {
 
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
+
+    # Proxy Configuration (set to override YAML/environment config)
+    # Examples: "http://proxy:8080", "http://user:pass@proxy:8080", "socks5://proxy:1080"
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),  # Set to None to use YAML config
 
     # SSL/TLS Configuration (runtime override, or use YAML config)
     "SSL_VERIFY": False,  # Set to None to use YAML config
@@ -83,6 +87,7 @@ async def health_check() -> dict[str, Any]:
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -117,6 +122,7 @@ async def list_spaces() -> dict[str, Any]:
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -147,6 +153,7 @@ async def get_space(space_key: str) -> dict[str, Any]:
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -171,6 +178,7 @@ async def search_content(query: str) -> dict[str, Any]:
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -204,6 +212,7 @@ async def get_page(page_id: str) -> dict[str, Any]:
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:

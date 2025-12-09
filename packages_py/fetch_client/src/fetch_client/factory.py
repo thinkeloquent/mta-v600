@@ -67,6 +67,7 @@ def _get_proxy_dispatcher_safe(
     verify: Optional[bool] = None,
     cert: Optional[str] = None,
     ca_bundle: Optional[str] = None,
+    proxy: Optional[str] = None,
 ):
     """
     Get proxy dispatcher from fetch_proxy_dispatcher package.
@@ -79,6 +80,7 @@ def _get_proxy_dispatcher_safe(
         verify: Override SSL verification (True/False). None uses YAML config.
         cert: Override client certificate path. None uses YAML config.
         ca_bundle: Override CA bundle path. None uses YAML config.
+        proxy: Override proxy URL (e.g., "http://proxy:8080"). None uses YAML/env config.
     """
     try:
         from fetch_proxy_dispatcher import (
@@ -96,18 +98,26 @@ def _get_proxy_dispatcher_safe(
         effective_cert = cert if cert is not None else yaml_config.get("cert")
         effective_ca_bundle = ca_bundle if ca_bundle is not None else yaml_config.get("ca_bundle")
 
-        if yaml_config or verify is not None or cert is not None or ca_bundle is not None:
+        if yaml_config or verify is not None or cert is not None or ca_bundle is not None or proxy is not None:
             # Build factory config from YAML with overrides
+            # If proxy is explicitly provided, use it as agent_proxy (takes priority)
+            agent_proxy_config = None
+            if proxy:
+                agent_proxy_config = AgentProxyConfig(
+                    http_proxy=proxy,
+                    https_proxy=proxy,
+                )
+            elif yaml_config.get("agent_proxy"):
+                agent_proxy_config = AgentProxyConfig(
+                    http_proxy=yaml_config.get("agent_proxy", {}).get("http_proxy"),
+                    https_proxy=yaml_config.get("agent_proxy", {}).get("https_proxy"),
+                )
+
             factory_config = FactoryConfig(
                 proxy_urls=ProxyUrlConfig(**yaml_config.get("proxy_urls", {}))
                 if yaml_config.get("proxy_urls")
                 else None,
-                agent_proxy=AgentProxyConfig(
-                    http_proxy=yaml_config.get("agent_proxy", {}).get("http_proxy"),
-                    https_proxy=yaml_config.get("agent_proxy", {}).get("https_proxy"),
-                )
-                if yaml_config.get("agent_proxy")
-                else None,
+                agent_proxy=agent_proxy_config,
                 default_environment=yaml_config.get("default_environment"),
                 ca_bundle=effective_ca_bundle,
                 cert=effective_cert,
@@ -198,6 +208,7 @@ def create_client_with_dispatcher(
     verify: Optional[bool] = None,
     cert: Optional[str] = None,
     ca_bundle: Optional[str] = None,
+    proxy: Optional[str] = None,
 ) -> Union[AsyncFetchClient, SyncFetchClient]:
     """
     Create a fetch client with automatic proxy dispatcher configuration.
@@ -229,6 +240,7 @@ def create_client_with_dispatcher(
         verify: Override SSL verification (True/False). None uses YAML config.
         cert: Override client certificate path. None uses YAML config.
         ca_bundle: Override CA bundle path. None uses YAML config.
+        proxy: Override proxy URL (e.g., "http://proxy:8080"). None uses YAML/env config.
 
     Returns:
         AsyncFetchClient or SyncFetchClient with proxy-configured httpx client.
@@ -242,10 +254,11 @@ def create_client_with_dispatcher(
         async with client:
             response = await client.get("/users")
 
-        # Async client with SSL verification disabled (runtime override)
+        # Async client with explicit proxy override
         client = create_client_with_dispatcher(
             base_url="https://api.example.com",
             auth=AuthConfig(type="bearer", api_key="secret"),
+            proxy="http://proxy.company.com:8080",
             verify=False,
         )
 
@@ -267,6 +280,7 @@ def create_client_with_dispatcher(
         verify=verify,
         cert=cert,
         ca_bundle=ca_bundle,
+        proxy=proxy,
     )
 
     return create_client(

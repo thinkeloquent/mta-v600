@@ -85,6 +85,7 @@ export {
   closeClients,
   BaseClient,
   RestAdapter,
+  type ClientConfigWithProxy,
 } from './factory.mjs';
 
 // Auth

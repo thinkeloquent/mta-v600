@@ -73,45 +73,83 @@ async function getProxyConfigFromYaml(): Promise<YamlProxyConfig | null> {
   }
 }
 
+/** Options for getProxyDispatcherSafe */
+interface ProxyDispatcherOptions {
+  /** Override proxy URL (e.g., "http://proxy:8080"). Takes priority over YAML/env config. */
+  proxy?: string;
+  /** Override SSL verification. undefined uses YAML config. */
+  verify?: boolean;
+}
+
 /**
  * Get proxy dispatcher from @internal/fetch-proxy-dispatcher
  * Configures based on YAML config from ConfigStore.
+ * Runtime overrides take precedence over YAML config.
  * Returns undefined if the package is not available or no dispatcher is needed.
  */
-async function getProxyDispatcherSafe(): Promise<Dispatcher | undefined> {
+async function getProxyDispatcherSafe(
+  options: ProxyDispatcherOptions = {}
+): Promise<Dispatcher | undefined> {
   try {
     const { ProxyDispatcherFactory } = await import('@internal/fetch-proxy-dispatcher');
 
     // Load proxy config from YAML (server.*.yaml)
     const yamlConfig = await getProxyConfigFromYaml();
 
-    if (yamlConfig) {
-      // Create factory with YAML configuration
+    // Determine effective cert_verify (runtime override takes precedence)
+    const effectiveCertVerify =
+      options.verify !== undefined ? options.verify : yamlConfig?.cert_verify;
+
+    // Build agent proxy config - explicit proxy parameter takes priority
+    let agentProxyConfig:
+      | { httpProxy?: string; httpsProxy?: string }
+      | undefined;
+
+    if (options.proxy) {
+      // Explicit proxy override takes highest priority
+      agentProxyConfig = {
+        httpProxy: options.proxy,
+        httpsProxy: options.proxy,
+      };
+    } else if (yamlConfig?.agent_proxy) {
+      agentProxyConfig = {
+        httpProxy: yamlConfig.agent_proxy.http_proxy || undefined,
+        httpsProxy: yamlConfig.agent_proxy.https_proxy || undefined,
+      };
+    }
+
+    if (yamlConfig || options.proxy !== undefined || options.verify !== undefined) {
+      // Create factory with YAML configuration + overrides
       // Note: proxyUrls and defaultEnvironment support arbitrary environment names
       // (e.g., "dev", "Live", "STAGING", "Preview") - cast to bypass strict typing
       const factory = new ProxyDispatcherFactory({
-        proxyUrls: yamlConfig.proxy_urls as Record<string, string> | undefined,
-        agentProxy: yamlConfig.agent_proxy
-          ? {
-              httpProxy: yamlConfig.agent_proxy.http_proxy || undefined,
-              httpsProxy: yamlConfig.agent_proxy.https_proxy || undefined,
-            }
-          : undefined,
+        proxyUrls: yamlConfig?.proxy_urls as Record<string, string> | undefined,
+        agentProxy: agentProxyConfig,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        defaultEnvironment: yamlConfig.default_environment as any,
+        defaultEnvironment: yamlConfig?.default_environment as any,
       });
 
       return factory.getProxyDispatcher({
-        disableTls: yamlConfig.cert_verify === false,
+        disableTls: effectiveCertVerify === false,
       });
     }
 
-    // Fallback to simple API if no YAML config
+    // Fallback to simple API if no YAML config and no overrides
     const { getProxyDispatcher } = await import('@internal/fetch-proxy-dispatcher');
     return getProxyDispatcher();
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Extended client configuration with proxy override options.
+ */
+export interface ClientConfigWithProxy extends ClientConfig {
+  /** Override proxy URL (e.g., "http://proxy:8080"). Takes priority over YAML/env config. */
+  proxy?: string;
+  /** Override SSL verification. undefined uses YAML config. */
+  verify?: boolean;
 }
 
 /**
@@ -148,20 +186,30 @@ async function getProxyDispatcherSafe(): Promise<Dispatcher | undefined> {
  * });
  *
  * const response = await client.get('/users');
+ *
+ * // With explicit proxy override
+ * const client2 = await createClientWithDispatcher({
+ *   baseUrl: 'https://api.example.com',
+ *   proxy: 'http://proxy.company.com:8080',
+ *   verify: false,
+ * });
  * ```
  */
 export async function createClientWithDispatcher(
-  config: ClientConfig
+  config: ClientConfigWithProxy
 ): Promise<FetchClient> {
+  // Extract proxy options from config
+  const { proxy, verify, ...clientConfig } = config;
+
   // Only auto-configure dispatcher if not already provided
-  if (!config.dispatcher) {
-    const dispatcher = await getProxyDispatcherSafe();
+  if (!clientConfig.dispatcher) {
+    const dispatcher = await getProxyDispatcherSafe({ proxy, verify });
     if (dispatcher) {
-      config = { ...config, dispatcher };
+      clientConfig.dispatcher = dispatcher;
     }
   }
 
-  return createClient(config);
+  return createClient(clientConfig);
 }
 
 /**
