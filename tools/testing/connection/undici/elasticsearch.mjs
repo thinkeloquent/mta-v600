@@ -34,13 +34,12 @@ const CONFIG = {
   HTTPS_PROXY: process.env.HTTPS_PROXY || '', // e.g., 'http://proxy.example.com:8080'
 
   // Optional: TLS Configuration
-  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 to ignore certificate errors
-  REJECT_UNAUTHORIZED: process.env.NODE_TLS_REJECT_UNAUTHORIZED !== '0',
+  // Set to false to ignore certificate errors (default: false for testing)
+  // NODE_TLS_REJECT_UNAUTHORIZED=0, REQUEST_CA_BUNDLE=null, SSL_CERT_FILE=null, NODE_EXTRA_CA_CERTS=null
+  REJECT_UNAUTHORIZED: false,
 
-  // Optional: Custom CA certificates
-  // REQUEST_CA_BUNDLE or SSL_CERT_FILE - path to custom CA bundle
-  // NODE_EXTRA_CA_CERTS - handled automatically by Node.js
-  CA_BUNDLE: process.env.REQUEST_CA_BUNDLE || process.env.SSL_CERT_FILE || '',
+  // Optional: Custom CA certificates (disabled by default for testing)
+  CA_BUNDLE: null,
 };
 
 // ============================================================================

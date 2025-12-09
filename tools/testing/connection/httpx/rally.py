@@ -39,12 +39,12 @@ CONFIG = {
     "HTTPS_PROXY": os.getenv("HTTPS_PROXY", ""),  # e.g., "http://proxy.example.com:8080"
 
     # Optional: TLS Configuration
-    # Set SSL_CERT_VERIFY=0 to ignore certificate errors
-    "VERIFY_SSL": os.getenv("SSL_CERT_VERIFY", "1") != "0",
+    # Set to False to ignore certificate errors (default: False for testing)
+    # SSL_CERT_VERIFY=0, REQUEST_CA_BUNDLE=null, SSL_CERT_FILE=null, REQUESTS_CA_BUNDLE=null
+    "VERIFY_SSL": False,
 
-    # Optional: Custom CA certificates
-    # REQUEST_CA_BUNDLE, SSL_CERT_FILE, or REQUESTS_CA_BUNDLE - path to custom CA bundle
-    "CA_BUNDLE": os.getenv("REQUEST_CA_BUNDLE") or os.getenv("SSL_CERT_FILE") or os.getenv("REQUESTS_CA_BUNDLE") or "",
+    # Optional: Custom CA certificates (disabled by default for testing)
+    "CA_BUNDLE": None,
 }
 
 
