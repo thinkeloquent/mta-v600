@@ -37,24 +37,30 @@ class TestFigmaApiToken:
 
     # Health endpoint tests
     def test_health_endpoint(self, figma_token, caplog):
-        """Test health_endpoint returns /v1/me."""
+        """Test health_endpoint returns /me.
+
+        Note: base_url already includes /v1, so health_endpoint is just /me
+        """
         with caplog.at_level(logging.DEBUG):
             endpoint = figma_token.health_endpoint
 
-        assert endpoint == "/v1/me"
-        assert "Returning /v1/me" in caplog.text
+        assert endpoint == "/me"
+        assert "Returning /me" in caplog.text
 
     # get_api_key branch tests
 
     def test_get_api_key_with_valid_token(self, figma_token, clean_env, caplog):
-        """Test get_api_key when FIGMA_TOKEN is set."""
+        """Test get_api_key when FIGMA_TOKEN is set.
+
+        Note: Figma uses auth_type='custom' because it uses the non-standard X-Figma-Token header.
+        """
         clean_env(FIGMA_TOKEN="figd_test_token_12345")
 
         with caplog.at_level(logging.DEBUG):
             result = figma_token.get_api_key()
 
         assert result.api_key == "figd_test_token_12345"
-        assert result.auth_type == "x-api-key"
+        assert result.auth_type == "custom"
         assert result.header_name == "X-Figma-Token"
         assert result.has_credentials is True
         assert "Found API key" in caplog.text
@@ -68,7 +74,7 @@ class TestFigmaApiToken:
             result = figma_token.get_api_key()
 
         assert result.api_key is None
-        assert result.auth_type == "x-api-key"
+        assert result.auth_type == "custom"
         assert result.header_name == "X-Figma-Token"
         assert result.has_credentials is False
         assert "No API key found" in caplog.text

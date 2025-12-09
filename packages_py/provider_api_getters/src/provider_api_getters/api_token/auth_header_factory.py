@@ -27,6 +27,15 @@ from urllib.parse import urlparse
 logger = logging.getLogger(__name__)
 
 
+def _mask_user(value: str, visible_chars: int = 3) -> str:
+    """Mask a username/email for logging, preserving only first visible_chars."""
+    if not value:
+        return "<empty>"
+    if len(value) <= visible_chars:
+        return "*" * len(value)
+    return f"{value[:visible_chars]}***"
+
+
 class AuthScheme(Enum):
     """Auth scheme enumeration."""
 
@@ -183,7 +192,7 @@ class AuthHeaderFactory:
         """
         logger.debug(
             f"AuthHeaderFactory.create_basic: Creating Basic auth "
-            f"user='{user}', secret_length={len(secret) if secret else 0}"
+            f"user='{_mask_user(user)}', secret_length={len(secret) if secret else 0}"
         )
 
         if not user or not secret:

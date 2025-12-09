@@ -51,12 +51,15 @@ class TestConfluenceApiToken:
 
     # Health endpoint tests
     def test_health_endpoint(self, confluence_token, caplog):
-        """Test health_endpoint returns correct path."""
+        """Test health_endpoint returns correct path.
+
+        Note: base_url already includes /wiki, so health_endpoint is just /rest/api/user/current
+        """
         with caplog.at_level(logging.DEBUG):
             endpoint = confluence_token.health_endpoint
 
-        assert endpoint == "/wiki/rest/api/user/current"
-        assert "Returning /wiki/rest/api/user/current" in caplog.text
+        assert endpoint == "/rest/api/user/current"
+        assert "Returning /rest/api/user/current" in caplog.text
 
     # Default constants tests
     def test_default_constants(self):
