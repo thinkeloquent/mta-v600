@@ -1,0 +1,213 @@
+# Makefile.poetry
+# Poetry-based Python package management for development
+# This is the default workflow for local development with editable installs
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Use local .venv if it exists, otherwise use system Python
+VENV_DIR := $(MAKEFILE_DIR).venv
+PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
+POETRY := poetry
+
+# Package directories
+PACKAGES_PY_DIR := packages_py
+FASTAPI_APPS_DIR := fastapi_apps
+
+.PHONY: help install install-dev lock update sync shell \
+        list outdated show add remove \
+        build-wheel publish-test publish clean \
+        venv venv-remove
+
+help:
+	@echo "Poetry Package Management Commands"
+	@echo ""
+	@echo "Installation:"
+	@echo "  make -f Makefile.poetry install      - Install all dependencies (editable)"
+	@echo "  make -f Makefile.poetry install-dev  - Install with dev dependencies"
+	@echo "  make -f Makefile.poetry lock         - Update poetry.lock without installing"
+	@echo "  make -f Makefile.poetry update       - Update all dependencies"
+	@echo "  make -f Makefile.poetry sync         - Sync local packages to pyproject.toml"
+	@echo ""
+	@echo "Environment:"
+	@echo "  make -f Makefile.poetry shell        - Spawn shell in virtualenv"
+	@echo "  make -f Makefile.poetry venv         - Create/recreate virtualenv"
+	@echo "  make -f Makefile.poetry venv-remove  - Remove virtualenv"
+	@echo ""
+	@echo "Package Info:"
+	@echo "  make -f Makefile.poetry list         - List installed packages"
+	@echo "  make -f Makefile.poetry outdated     - Show outdated packages"
+	@echo "  make -f Makefile.poetry show PKG=x   - Show package details"
+	@echo ""
+	@echo "Package Management:"
+	@echo "  make -f Makefile.poetry add PKG=x    - Add a dependency"
+	@echo "  make -f Makefile.poetry remove PKG=x - Remove a dependency"
+	@echo ""
+	@echo "Build & Publish:"
+	@echo "  make -f Makefile.poetry build-wheel PKG=x  - Build wheel for package"
+	@echo "  make -f Makefile.poetry publish-test PKG=x - Publish to TestPyPI"
+	@echo "  make -f Makefile.poetry publish PKG=x      - Publish to PyPI"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  make -f Makefile.poetry clean        - Remove build artifacts"
+	@echo ""
+	@echo "Local Packages:"
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		echo "  - $$pkg"; \
+	done
+
+# ============================================================================
+# Installation
+# ============================================================================
+
+# Install all dependencies with editable local packages
+install:
+	@echo "Installing dependencies with Poetry..."
+	$(POETRY) install --no-root
+	@echo "Done! All local packages installed as editable."
+
+# Install with development dependencies
+install-dev:
+	@echo "Installing with dev dependencies..."
+	$(POETRY) install --no-root --with dev
+	@echo "Done!"
+
+# Update lock file without installing
+lock:
+	@echo "Updating poetry.lock..."
+	$(POETRY) lock --no-update
+	@echo "Done!"
+
+# Update all dependencies to latest compatible versions
+update:
+	@echo "Updating all dependencies..."
+	$(POETRY) update
+	@echo "Done!"
+
+# Sync local packages to pyproject.toml (auto-discover new packages)
+sync:
+	@echo "Syncing local packages..."
+	@$(PYTHON) .bin/sync-poetry-local-packages.py
+	@echo "Running poetry lock..."
+	$(POETRY) lock --no-update
+	@echo "Done!"
+
+# ============================================================================
+# Environment
+# ============================================================================
+
+# Spawn a shell in the virtualenv
+shell:
+	$(POETRY) shell
+
+# Create or recreate virtualenv
+venv:
+	@echo "Creating virtualenv..."
+	$(POETRY) env use python3.11.4
+	@echo "Virtualenv ready at $$($(POETRY) env info --path)"
+
+# Remove virtualenv
+venv-remove:
+	@echo "Removing virtualenv..."
+	$(POETRY) env remove --all
+	@echo "Done!"
+
+# ============================================================================
+# Package Info
+# ============================================================================
+
+# List installed packages
+list:
+	$(POETRY) show
+
+# Show outdated packages
+outdated:
+	$(POETRY) show --outdated
+
+# Show package details (usage: make show PKG=httpx)
+show:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry show PKG=<package_name>"; \
+		exit 1; \
+	fi
+	$(POETRY) show $(PKG)
+
+# ============================================================================
+# Package Management
+# ============================================================================
+
+# Add a dependency (usage: make add PKG=requests)
+add:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry add PKG=<package_name>"; \
+		exit 1; \
+	fi
+	$(POETRY) add $(PKG)
+
+# Remove a dependency (usage: make remove PKG=requests)
+remove:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry remove PKG=<package_name>"; \
+		exit 1; \
+	fi
+	$(POETRY) remove $(PKG)
+
+# ============================================================================
+# Build & Publish (per-package)
+# ============================================================================
+
+# Build wheel for a specific package
+# Usage: make -f Makefile.poetry build-wheel PKG=provider_api_getters
+build-wheel:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry build-wheel PKG=<package_name>"; \
+		echo "Available packages:"; \
+		for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort); do \
+			echo "  - $$pkg"; \
+		done; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(PACKAGES_PY_DIR)/$(PKG)" ]; then \
+		echo "Error: Package '$(PKG)' not found in $(PACKAGES_PY_DIR)/"; \
+		exit 1; \
+	fi
+	@echo "Building wheel for $(PKG)..."
+	cd $(PACKAGES_PY_DIR)/$(PKG) && $(POETRY) build
+	@echo "Done! Wheel created in $(PACKAGES_PY_DIR)/$(PKG)/dist/"
+
+# Publish to TestPyPI (for testing)
+# Usage: make -f Makefile.poetry publish-test PKG=provider_api_getters
+publish-test:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry publish-test PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@echo "Publishing $(PKG) to TestPyPI..."
+	cd $(PACKAGES_PY_DIR)/$(PKG) && $(POETRY) publish --repository testpypi
+	@echo "Done! Package published to TestPyPI."
+
+# Publish to PyPI
+# Usage: make -f Makefile.poetry publish PKG=provider_api_getters
+publish:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.poetry publish PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@echo "Publishing $(PKG) to PyPI..."
+	@echo "WARNING: This will publish to the public PyPI registry!"
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ]
+	cd $(PACKAGES_PY_DIR)/$(PKG) && $(POETRY) publish
+	@echo "Done! Package published to PyPI."
+
+# ============================================================================
+# Cleanup
+# ============================================================================
+
+# Remove build artifacts
+clean:
+	@echo "Cleaning Poetry build artifacts..."
+	@find $(PACKAGES_PY_DIR) -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
+	@find $(PACKAGES_PY_DIR) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "Done!"

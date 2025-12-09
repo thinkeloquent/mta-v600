@@ -1,0 +1,10 @@
+# Core HTTP client
+httpx>=0.27.0
+
+# Database clients (for non-HTTP protocols)
+asyncpg>=0.29.0
+psycopg[binary]>=3.1.0
+redis>=5.0.0
+
+# Optional: For JSON pretty printing
+rich>=13.0.0

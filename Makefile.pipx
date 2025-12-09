@@ -1,0 +1,354 @@
+# Makefile.pipx
+# pipx-based Python package management for isolated installs
+# Use this for installing packages as standalone CLI tools or in isolated environments
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Python version for pipx
+PYTHON_VERSION := 3.11.4
+
+# Package directories
+PACKAGES_PY_DIR := packages_py
+DIST_DIR := dist_pipx
+
+# Git remote URL (for git-based installs)
+GIT_REMOTE ?= $(shell git config --get remote.origin.url 2>/dev/null || echo "")
+GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+
+.PHONY: help install install-local install-git install-editable \
+        uninstall reinstall upgrade list \
+        build-standalone build-all-standalone \
+        inject run runpip \
+        clean info \
+        requirements requirements-dev requirements-all \
+        pip-install pip-install-dev pip-install-all
+
+help:
+	@echo "pipx Package Management Commands"
+	@echo ""
+	@echo "Installation (from built wheel):"
+	@echo "  make -f Makefile.pipx install PKG=x         - Install package from dist_pipx/"
+	@echo "  make -f Makefile.pipx install-local PKG=x   - Build and install from local source"
+	@echo "  make -f Makefile.pipx install-git PKG=x     - Install from git repository"
+	@echo "  make -f Makefile.pipx install-editable PKG=x- Install in editable mode (dev)"
+	@echo ""
+	@echo "Management:"
+	@echo "  make -f Makefile.pipx uninstall PKG=x       - Uninstall package"
+	@echo "  make -f Makefile.pipx reinstall PKG=x       - Reinstall package"
+	@echo "  make -f Makefile.pipx upgrade PKG=x         - Upgrade package"
+	@echo "  make -f Makefile.pipx list                  - List installed packages"
+	@echo ""
+	@echo "Build for Distribution:"
+	@echo "  make -f Makefile.pipx build-standalone PKG=x - Build standalone wheel (no path deps)"
+	@echo "  make -f Makefile.pipx build-all-standalone   - Build all packages as standalone"
+	@echo ""
+	@echo "Requirements Export (from pyproject.toml):"
+	@echo "  make -f Makefile.pipx requirements          - Export to requirements.txt"
+	@echo "  make -f Makefile.pipx requirements-dev      - Export with dev dependencies"
+	@echo "  make -f Makefile.pipx requirements-all      - Export all (main + dev + local packages)"
+	@echo ""
+	@echo "pip Install (from pyproject.toml):"
+	@echo "  make -f Makefile.pipx pip-install           - Install PyPI deps only"
+	@echo "  make -f Makefile.pipx pip-install-dev       - Install PyPI deps + dev deps"
+	@echo "  make -f Makefile.pipx pip-install-all       - Install all (PyPI + local editable)"
+	@echo ""
+	@echo "Runtime:"
+	@echo "  make -f Makefile.pipx run PKG=x CMD=y       - Run command in package environment"
+	@echo "  make -f Makefile.pipx runpip PKG=x CMD=y    - Run pip in package environment"
+	@echo "  make -f Makefile.pipx inject PKG=x DEP=y    - Inject dependency into package"
+	@echo ""
+	@echo "Info:"
+	@echo "  make -f Makefile.pipx info                  - Show pipx environment info"
+	@echo "  make -f Makefile.pipx clean                 - Remove build artifacts"
+	@echo ""
+	@echo "Available Local Packages:"
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		echo "  - $$pkg"; \
+	done
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.pipx install-local PKG=provider_api_getters"
+	@echo "  make -f Makefile.pipx install-git PKG=provider_api_getters"
+	@echo "  make -f Makefile.pipx requirements          # Creates requirements.txt"
+	@echo "  pip install -r requirements.txt            # Install without Poetry"
+
+# ============================================================================
+# Installation
+# ============================================================================
+
+# Install from pre-built wheel in dist_pipx/
+# Usage: make -f Makefile.pipx install PKG=provider_api_getters
+install:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx install PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@wheel=$$(ls -1 $(DIST_DIR)/$(PKG)*.whl 2>/dev/null | head -1); \
+	if [ -z "$$wheel" ]; then \
+		echo "Error: No wheel found for $(PKG) in $(DIST_DIR)/"; \
+		echo "Run 'make -f Makefile.pipx build-standalone PKG=$(PKG)' first"; \
+		exit 1; \
+	fi; \
+	echo "Installing $$wheel with pipx..."; \
+	pipx install --python python$(PYTHON_VERSION) "$$wheel"
+
+# Build standalone wheel and install with pipx
+# Usage: make -f Makefile.pipx install-local PKG=provider_api_getters
+install-local:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx install-local PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@$(MAKE) -f Makefile.pipx build-standalone PKG=$(PKG)
+	@$(MAKE) -f Makefile.pipx install PKG=$(PKG)
+
+# Install from git repository
+# Usage: make -f Makefile.pipx install-git PKG=provider_api_getters
+install-git:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx install-git PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@if [ -z "$(GIT_REMOTE)" ]; then \
+		echo "Error: No git remote configured. Set GIT_REMOTE=<url>"; \
+		exit 1; \
+	fi
+	@echo "Installing $(PKG) from git..."
+	@echo "  Remote: $(GIT_REMOTE)"
+	@echo "  Branch: $(GIT_BRANCH)"
+	@echo "  Subdirectory: $(PACKAGES_PY_DIR)/$(PKG)"
+	pipx install --python python$(PYTHON_VERSION) \
+		"git+$(GIT_REMOTE)@$(GIT_BRANCH)#subdirectory=$(PACKAGES_PY_DIR)/$(PKG)"
+
+# Install in editable mode (for development)
+# Usage: make -f Makefile.pipx install-editable PKG=provider_api_getters
+install-editable:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx install-editable PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(PACKAGES_PY_DIR)/$(PKG)" ]; then \
+		echo "Error: Package '$(PKG)' not found in $(PACKAGES_PY_DIR)/"; \
+		exit 1; \
+	fi
+	@echo "Installing $(PKG) in editable mode..."
+	pipx install --python python$(PYTHON_VERSION) --editable "$(PACKAGES_PY_DIR)/$(PKG)"
+
+# ============================================================================
+# Management
+# ============================================================================
+
+# Uninstall package
+uninstall:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx uninstall PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@echo "Uninstalling $(PKG)..."
+	pipx uninstall $(PKG) || echo "Package not installed"
+
+# Reinstall package
+reinstall:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx reinstall PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@$(MAKE) -f Makefile.pipx uninstall PKG=$(PKG)
+	@$(MAKE) -f Makefile.pipx install-local PKG=$(PKG)
+
+# Upgrade package
+upgrade:
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx upgrade PKG=<package_name>"; \
+		exit 1; \
+	fi
+	pipx upgrade $(PKG)
+
+# List installed packages
+list:
+	pipx list
+
+# ============================================================================
+# Build for Distribution
+# ============================================================================
+
+# Ensure dist directory exists
+$(DIST_DIR):
+	@mkdir -p $(DIST_DIR)
+
+# Build standalone wheel with path dependencies converted to PyPI dependencies
+# This creates a wheel that can be installed without the monorepo
+# Usage: make -f Makefile.pipx build-standalone PKG=provider_api_getters
+build-standalone: $(DIST_DIR)
+	@if [ -z "$(PKG)" ]; then \
+		echo "Usage: make -f Makefile.pipx build-standalone PKG=<package_name>"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(PACKAGES_PY_DIR)/$(PKG)" ]; then \
+		echo "Error: Package '$(PKG)' not found in $(PACKAGES_PY_DIR)/"; \
+		exit 1; \
+	fi
+	@echo "Building standalone wheel for $(PKG)..."
+	@echo ""
+	@echo "Step 1: Creating temporary pyproject.toml with PyPI dependencies..."
+	@python3 .bin/build-standalone-wheel.py $(PACKAGES_PY_DIR)/$(PKG)
+	@echo ""
+	@echo "Step 2: Building wheel..."
+	@cd $(PACKAGES_PY_DIR)/$(PKG) && pip wheel --no-deps -w ../../$(DIST_DIR) .
+	@echo ""
+	@echo "Step 3: Restoring original pyproject.toml..."
+	@cd $(PACKAGES_PY_DIR)/$(PKG) && \
+		if [ -f pyproject.toml.bak ]; then \
+			mv pyproject.toml.bak pyproject.toml; \
+		fi
+	@echo ""
+	@echo "Done! Wheel created in $(DIST_DIR)/"
+	@ls -la $(DIST_DIR)/$(PKG)*.whl 2>/dev/null || true
+
+# Build all packages as standalone wheels
+build-all-standalone: $(DIST_DIR)
+	@echo "Building all packages as standalone wheels..."
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort); do \
+		echo ""; \
+		echo "========== Building $$pkg =========="; \
+		$(MAKE) -f Makefile.pipx build-standalone PKG=$$pkg || true; \
+	done
+	@echo ""
+	@echo "All wheels built in $(DIST_DIR)/"
+	@ls -la $(DIST_DIR)/*.whl 2>/dev/null || echo "No wheels found"
+
+# ============================================================================
+# Runtime
+# ============================================================================
+
+# Run command in package's isolated environment
+# Usage: make -f Makefile.pipx run PKG=provider_api_getters CMD="python -c 'print(1)'"
+run:
+	@if [ -z "$(PKG)" ] || [ -z "$(CMD)" ]; then \
+		echo "Usage: make -f Makefile.pipx run PKG=<package> CMD=<command>"; \
+		exit 1; \
+	fi
+	pipx run --spec $(PKG) $(CMD)
+
+# Run pip command in package's isolated environment
+# Usage: make -f Makefile.pipx runpip PKG=provider_api_getters CMD="list"
+runpip:
+	@if [ -z "$(PKG)" ] || [ -z "$(CMD)" ]; then \
+		echo "Usage: make -f Makefile.pipx runpip PKG=<package> CMD=<pip_command>"; \
+		exit 1; \
+	fi
+	pipx runpip $(PKG) $(CMD)
+
+# Inject additional dependency into package's environment
+# Usage: make -f Makefile.pipx inject PKG=provider_api_getters DEP=requests
+inject:
+	@if [ -z "$(PKG)" ] || [ -z "$(DEP)" ]; then \
+		echo "Usage: make -f Makefile.pipx inject PKG=<package> DEP=<dependency>"; \
+		exit 1; \
+	fi
+	pipx inject $(PKG) $(DEP)
+
+# ============================================================================
+# Info & Cleanup
+# ============================================================================
+
+# Show pipx environment info
+info:
+	@echo "pipx Environment Info"
+	@echo "====================="
+	@echo ""
+	pipx environment
+	@echo ""
+	@echo "Python Version: $(PYTHON_VERSION)"
+	@echo "Git Remote: $(GIT_REMOTE)"
+	@echo "Git Branch: $(GIT_BRANCH)"
+
+# Clean build artifacts
+clean:
+	@echo "Cleaning pipx build artifacts..."
+	@rm -rf $(DIST_DIR)
+	@find $(PACKAGES_PY_DIR) -name "pyproject.toml.bak" -delete 2>/dev/null || true
+	@find $(PACKAGES_PY_DIR) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@echo "Done!"
+
+# ============================================================================
+# Requirements Export (from root pyproject.toml)
+# ============================================================================
+
+# Export main dependencies to requirements.txt (PyPI deps only, no local packages)
+# Usage: make -f Makefile.pipx requirements
+requirements:
+	@echo "Exporting PyPI dependencies to requirements.txt..."
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes -o requirements.txt.tmp
+	@# Filter out local file:// dependencies, keep only PyPI packages
+	@grep -v "^-e file://" requirements.txt.tmp | grep -v "^file://" > requirements.txt || true
+	@rm -f requirements.txt.tmp
+	@echo "Done! Created requirements.txt (PyPI dependencies only)"
+	@echo ""
+	@echo "Install with: pip install -r requirements.txt"
+
+# Export main + dev dependencies to requirements-dev.txt (PyPI deps only)
+# Usage: make -f Makefile.pipx requirements-dev
+requirements-dev:
+	@echo "Exporting PyPI dependencies (with dev) to requirements-dev.txt..."
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-dev.txt.tmp
+	@# Filter out local file:// dependencies, keep only PyPI packages
+	@grep -v "^-e file://" requirements-dev.txt.tmp | grep -v "^file://" > requirements-dev.txt || true
+	@rm -f requirements-dev.txt.tmp
+	@echo "Done! Created requirements-dev.txt (PyPI dependencies only)"
+	@echo ""
+	@echo "Install with: pip install -r requirements-dev.txt"
+
+# Export all: PyPI deps + local packages as editable
+# Usage: make -f Makefile.pipx requirements-all
+requirements-all:
+	@echo "Exporting all dependencies to requirements-all.txt..."
+	@cd $(MAKEFILE_DIR) && poetry export -f requirements.txt --without-hashes --with dev -o requirements-all.txt.tmp
+	@# Filter out local file:// dependencies first
+	@grep -v "^-e file://" requirements-all.txt.tmp | grep -v "^file://" > requirements-all.txt || true
+	@rm -f requirements-all.txt.tmp
+	@echo ""
+	@echo "Adding local packages as editable installs..."
+	@# Add local packages in dependency order (packages with no local deps first)
+	@for pkg in $$(find $(PACKAGES_PY_DIR) -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		echo "-e $(PACKAGES_PY_DIR)/$$pkg" >> requirements-all.txt; \
+	done
+	@# Add fastapi_apps
+	@for app in $$(find fastapi_apps -maxdepth 1 -mindepth 1 -type d ! -name "__pycache__" ! -name "*.egg-info" -exec basename {} \; | sort); do \
+		if [ -f "fastapi_apps/$$app/pyproject.toml" ]; then \
+			echo "-e fastapi_apps/$$app" >> requirements-all.txt; \
+		fi; \
+	done
+	@echo "Done! Created requirements-all.txt"
+	@echo ""
+	@echo "Install with: pip install -r requirements-all.txt"
+
+# ============================================================================
+# pip Install (from pyproject.toml via requirements)
+# ============================================================================
+
+# Install main PyPI dependencies with pip (no local packages)
+# Usage: make -f Makefile.pipx pip-install
+pip-install: requirements
+	@echo ""
+	@echo "Installing PyPI dependencies with pip..."
+	pip install -r requirements.txt
+	@echo "Done!"
+
+# Install main + dev PyPI dependencies with pip (no local packages)
+# Usage: make -f Makefile.pipx pip-install-dev
+pip-install-dev: requirements-dev
+	@echo ""
+	@echo "Installing PyPI dependencies (with dev) with pip..."
+	pip install -r requirements-dev.txt
+	@echo "Done!"
+
+# Install everything: PyPI deps + local packages as editable
+# Usage: make -f Makefile.pipx pip-install-all
+pip-install-all: requirements-all
+	@echo ""
+	@echo "Installing all dependencies with pip..."
+	@echo "Note: Installing local packages in editable mode..."
+	pip install -r requirements-all.txt
+	@echo "Done!"

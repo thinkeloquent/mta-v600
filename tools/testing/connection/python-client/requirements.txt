@@ -1,0 +1,11 @@
+# Python Client Integration Tests
+# Uses internal packages from packages_py/ (loaded via sys.path)
+#
+# Core dependencies (already installed via poetry):
+# - httpx (from fetch_client)
+# - asyncpg (for PostgreSQL)
+# - redis (for Redis)
+# - pyyaml (for config loading)
+#
+# Run tests using poetry:
+#   poetry run python gemini.py
