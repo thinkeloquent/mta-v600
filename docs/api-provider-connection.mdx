@@ -1,0 +1,421 @@
+# Provider Connection Health Check API
+
+Test provider connectivity with runtime configuration overrides.
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/healthz/providers/connection` | List available providers |
+| GET | `/healthz/providers/connection/{provider}` | Check provider connection |
+| POST | `/healthz/providers/connection/{provider}` | Check with runtime override |
+
+## Base URLs
+
+- **FastAPI (Python)**: `http://localhost:52000`
+- **Fastify (Node.js)**: `http://localhost:51000`
+
+---
+
+## GET /healthz/providers/connection
+
+List all available providers.
+
+### Response
+
+```json
+{
+  "providers": ["figma", "gemini", "github", "jira", "postgres", "redis"],
+  "count": 6,
+  "timestamp": "2025-12-09T10:30:00.000Z"
+}
+```
+
+### Example
+
+```bash
+curl http://localhost:52000/healthz/providers/connection
+```
+
+---
+
+## GET /healthz/providers/connection/{provider}
+
+Check connection to a provider with optional query parameter overrides.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `provider` | string | Provider name (e.g., `gemini`, `github`, `jira`) |
+
+### Query Parameters (Proxy Overrides)
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `proxy_env` | string | Override default_environment | `prod` |
+| `proxy_url` | string | Proxy URL for current env | `http://proxy:8080` |
+| `cert_verify` | boolean | SSL certificate verification | `false` |
+| `ca_bundle` | string | CA bundle path | `/etc/ssl/ca.crt` |
+| `http_proxy` | string | HTTP agent proxy | `http://squid:3128` |
+| `https_proxy` | string | HTTPS agent proxy | `http://squid:3128` |
+
+### Query Parameters (Client Overrides)
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `timeout_seconds` | float | Request timeout (seconds) | `120.0` |
+| `timeout_ms` | integer | Request timeout (ms) | `120000` |
+
+### Response
+
+```json
+{
+  "provider": "gemini",
+  "status": "connected",
+  "latency_ms": 150.23,
+  "message": "Connected, 5 models available",
+  "error": null,
+  "timestamp": "2025-12-09T10:30:00.000Z",
+  "config_used": {
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "proxy": {
+      "default_environment": "dev",
+      "proxy_urls": {},
+      "cert_verify": false
+    },
+    "client": {
+      "timeout_seconds": 60.0,
+      "timeout_ms": 60000
+    },
+    "auth_type": "bearer",
+    "has_overwrite_root_config": false,
+    "has_runtime_override": false
+  }
+}
+```
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `connected` | Successfully connected to the provider |
+| `error` | Failed to connect (see `error` field) |
+| `not_implemented` | Provider is a placeholder |
+
+### Examples
+
+```bash
+# Basic check (no overrides)
+curl http://localhost:52000/healthz/providers/connection/gemini
+
+# With proxy override
+curl "http://localhost:52000/healthz/providers/connection/gemini?proxy_env=prod&proxy_url=http://proxy:8080"
+
+# Disable SSL verification
+curl "http://localhost:52000/healthz/providers/connection/jira?cert_verify=false"
+
+# With agent proxy
+curl "http://localhost:52000/healthz/providers/connection/github?http_proxy=http://squid:3128&https_proxy=http://squid:3128"
+
+# Extended timeout
+curl "http://localhost:52000/healthz/providers/connection/elasticsearch?timeout_seconds=120"
+
+# Combined overrides
+curl "http://localhost:52000/healthz/providers/connection/gemini?proxy_env=prod&proxy_url=http://proxy:8080&cert_verify=false&timeout_seconds=90"
+```
+
+---
+
+## POST /healthz/providers/connection/{provider}
+
+Check connection with **runtime configuration override**.
+
+Use this to test different proxy/client configurations without modifying YAML files.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `provider` | string | Provider name |
+
+### Request Body
+
+```json
+{
+  "proxy": { ... },
+  "client": { ... },
+  "headers": { ... }
+}
+```
+
+All fields are optional. Values are **deep-merged** with static config in this priority:
+
+1. **Runtime override** (POST body) - highest priority
+2. **Provider's `overwrite_root_config`** (from YAML)
+3. **Global config** (from YAML) - lowest priority
+
+---
+
+## Override Properties Reference
+
+### `proxy` Object
+
+| Property | Type | Description | Example |
+|----------|------|-------------|---------|
+| `default_environment` | string | Active environment key | `"prod"` |
+| `proxy_urls` | object | Environment → proxy URL mapping | `{"prod": "http://proxy:8080"}` |
+| `cert_verify` | boolean | Verify SSL certificates | `false` |
+| `ca_bundle` | string | Path to CA bundle file | `"/etc/ssl/ca.crt"` |
+| `cert` | string | Path to client certificate | `"/etc/ssl/client.pem"` |
+| `agent_proxy.http_proxy` | string | HTTP proxy for agent | `"http://squid:3128"` |
+| `agent_proxy.https_proxy` | string | HTTPS proxy for agent | `"http://squid:3128"` |
+
+### `client` Object
+
+| Property | Type | Description | Example |
+|----------|------|-------------|---------|
+| `timeout_seconds` | float | Request timeout in seconds | `120.0` |
+| `timeout_ms` | integer | Request timeout in milliseconds | `120000` |
+| `keep_alive_timeout_seconds` | float | Keep-alive timeout | `5.0` |
+| `keep_alive_timeout_ms` | integer | Keep-alive timeout (ms) | `5000` |
+| `max_connections` | integer | Max concurrent connections | `10` |
+
+### `headers` Object
+
+Custom headers to add to requests:
+
+```json
+{
+  "headers": {
+    "X-Custom-Header": "value",
+    "Authorization": "Bearer override-token"
+  }
+}
+```
+
+---
+
+## Common Use Cases
+
+### 1. Test with Corporate Proxy
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/gemini \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proxy": {
+      "default_environment": "corp",
+      "proxy_urls": {
+        "corp": "http://corporate-proxy.internal:8080"
+      },
+      "cert_verify": true,
+      "ca_bundle": "/etc/ssl/certs/corporate-ca.crt"
+    }
+  }'
+```
+
+### 2. Test Direct Connection (No Proxy)
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/jira \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proxy": {
+      "proxy_urls": {},
+      "agent_proxy": {
+        "http_proxy": null,
+        "https_proxy": null
+      }
+    }
+  }'
+```
+
+### 3. Test with Extended Timeout
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/elasticsearch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client": {
+      "timeout_seconds": 120.0,
+      "timeout_ms": 120000
+    }
+  }'
+```
+
+### 4. Test with Disabled SSL Verification
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/jira \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proxy": {
+      "cert_verify": false
+    }
+  }'
+```
+
+### 5. Test with SOCKS/HTTP Agent Proxy
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/github \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proxy": {
+      "agent_proxy": {
+        "http_proxy": "http://squid.internal:3128",
+        "https_proxy": "http://squid.internal:3128"
+      }
+    }
+  }'
+```
+
+### 6. Test with Custom Headers
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/github \
+  -H "Content-Type: application/json" \
+  -d '{
+    "headers": {
+      "X-GitHub-Enterprise": "true",
+      "X-Request-Id": "test-123"
+    }
+  }'
+```
+
+### 7. Combined Override (Proxy + Client + Headers)
+
+```bash
+curl -X POST http://localhost:52000/healthz/providers/connection/gemini \
+  -H "Content-Type: application/json" \
+  -d '{
+    "proxy": {
+      "default_environment": "prod",
+      "proxy_urls": {
+        "prod": "http://prod-proxy:8080"
+      },
+      "cert_verify": true
+    },
+    "client": {
+      "timeout_seconds": 90.0,
+      "timeout_ms": 90000
+    },
+    "headers": {
+      "X-Correlation-Id": "test-correlation-123"
+    }
+  }'
+```
+
+---
+
+## YAML Configuration Reference
+
+### Static Config in `server.yaml`
+
+```yaml
+# Global settings (applies to all providers)
+client:
+  timeout_seconds: 60.0
+  timeout_ms: 60000
+
+proxy:
+  default_environment: "dev"
+  proxy_urls: {}
+  cert_verify: false
+
+# Per-provider settings
+providers:
+  gemini:
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+    env_api_key: "GEMINI_API_KEY"
+    api_auth_type: "bearer"
+
+    # Override global settings for this provider only
+    overwrite_root_config:
+      proxy:
+        default_environment: "prod"
+        proxy_urls:
+          prod: "http://gemini-proxy:8080"
+      client:
+        timeout_seconds: 120.0
+```
+
+### Priority Order
+
+```
+Runtime Override (POST body)
+    ↓ deep-merge
+Provider's overwrite_root_config (YAML)
+    ↓ deep-merge
+Global Config (YAML)
+```
+
+---
+
+## Response Fields
+
+### `config_used` Object
+
+Shows the effective configuration after all merges:
+
+```json
+{
+  "config_used": {
+    "base_url": "https://api.example.com",
+    "proxy": { ... },
+    "client": { ... },
+    "auth_type": "bearer",
+    "has_overwrite_root_config": true,
+    "has_runtime_override": true
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `base_url` | Provider's API base URL |
+| `proxy` | Effective proxy configuration |
+| `client` | Effective client configuration |
+| `auth_type` | Authentication type used |
+| `has_overwrite_root_config` | Provider has YAML overrides |
+| `has_runtime_override` | Request included runtime override |
+
+---
+
+## Error Responses
+
+### Provider Not Found
+
+```json
+{
+  "provider": "unknown",
+  "status": "error",
+  "error": "Provider 'unknown' not found in registry",
+  "timestamp": "2025-12-09T10:30:00.000Z"
+}
+```
+
+### Connection Failed
+
+```json
+{
+  "provider": "jira",
+  "status": "error",
+  "latency_ms": 5023.45,
+  "error": "Connection timeout after 5000ms",
+  "timestamp": "2025-12-09T10:30:00.000Z",
+  "config_used": { ... }
+}
+```
+
+### Not Implemented
+
+```json
+{
+  "provider": "elasticsearch",
+  "status": "not_implemented",
+  "message": "Elasticsearch integration not implemented",
+  "timestamp": "2025-12-09T10:30:00.000Z"
+}
+```
