@@ -34,47 +34,48 @@ export class ConfluenceApiToken extends BaseApiToken {
   }
 
   /**
-   * Get the environment variable name for the email.
-   * @returns {string}
-   */
-  _getEmailEnvVarName() {
-    logger.debug('ConfluenceApiToken._getEmailEnvVarName: Getting email env var name');
-
-    const providerConfig = this._getProviderConfig();
-    const envEmail = providerConfig?.env_email || DEFAULT_EMAIL_ENV_VAR;
-
-    logger.debug(
-      `ConfluenceApiToken._getEmailEnvVarName: Using env var '${envEmail}' ` +
-      `(fromConfig=${providerConfig?.env_email !== undefined})`
-    );
-
-    return envEmail;
-  }
-
-  /**
    * Get Confluence email from environment.
-   * Checks CONFLUENCE_EMAIL first, then falls back to JIRA_EMAIL.
+   * Uses base class _lookupEmail() which reads from env_email in YAML config.
+   * Falls back to DEFAULT_EMAIL_ENV_VAR, then FALLBACK_EMAIL_ENV_VAR (JIRA_EMAIL).
    * @returns {string|null}
    */
   _getEmail() {
     logger.debug('ConfluenceApiToken._getEmail: Getting email from environment');
 
-    const envEmailName = this._getEmailEnvVarName();
-    let email = process.env[envEmailName] || null;
+    // Try base class lookup (from env_email in config)
+    let email = this._lookupEmail();
 
     if (email) {
       const maskedEmail = email.length > 3
         ? `${email.substring(0, 3)}***@***`
         : '***@***';
       logger.debug(
-        `ConfluenceApiToken._getEmail: Found email in env var '${envEmailName}': '${maskedEmail}' (masked)`
+        `ConfluenceApiToken._getEmail: Found email via base class lookup: '${maskedEmail}' (masked)`
+      );
+      return email;
+    }
+
+    // Fall back to default env var
+    logger.debug(
+      `ConfluenceApiToken._getEmail: Base class lookup returned null, ` +
+      `trying default env var '${DEFAULT_EMAIL_ENV_VAR}'`
+    );
+    email = process.env[DEFAULT_EMAIL_ENV_VAR] || null;
+
+    if (email) {
+      const maskedEmail = email.length > 3
+        ? `${email.substring(0, 3)}***@***`
+        : '***@***';
+      logger.debug(
+        `ConfluenceApiToken._getEmail: Found email in default env var ` +
+        `'${DEFAULT_EMAIL_ENV_VAR}': '${maskedEmail}' (masked)`
       );
       return email;
     }
 
     // Fallback to JIRA_EMAIL (same Atlassian account)
     logger.debug(
-      `ConfluenceApiToken._getEmail: Env var '${envEmailName}' not set, ` +
+      `ConfluenceApiToken._getEmail: Default env var not set, ` +
       `trying fallback '${FALLBACK_EMAIL_ENV_VAR}'`
     );
     email = process.env[FALLBACK_EMAIL_ENV_VAR] || null;
@@ -89,8 +90,7 @@ export class ConfluenceApiToken extends BaseApiToken {
       );
     } else {
       logger.debug(
-        `ConfluenceApiToken._getEmail: Neither '${envEmailName}' nor ` +
-        `'${FALLBACK_EMAIL_ENV_VAR}' is set`
+        `ConfluenceApiToken._getEmail: Neither default nor fallback env vars are set`
       );
     }
 
@@ -189,6 +189,8 @@ export class ConfluenceApiToken extends BaseApiToken {
           authType: 'basic',
           headerName: 'Authorization',
           username: email,
+          email: email,
+          rawApiKey: apiToken,
         });
         logger.debug(
           `ConfluenceApiToken.getApiKey: Successfully created Basic Auth result for user '${maskedEmail}'`
@@ -200,6 +202,8 @@ export class ConfluenceApiToken extends BaseApiToken {
           authType: 'basic',
           headerName: 'Authorization',
           username: email,
+          email: email,
+          rawApiKey: apiToken,
         });
       }
     } else if (apiToken && !email) {
@@ -212,6 +216,8 @@ export class ConfluenceApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: null,
+        email: null,
+        rawApiKey: apiToken,
       });
     } else if (email && !apiToken) {
       logger.warn(
@@ -223,6 +229,8 @@ export class ConfluenceApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: email,
+        email: email,
+        rawApiKey: null,
       });
     } else {
       logger.warn(
@@ -234,6 +242,8 @@ export class ConfluenceApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: null,
+        email: null,
+        rawApiKey: null,
       });
     }
 

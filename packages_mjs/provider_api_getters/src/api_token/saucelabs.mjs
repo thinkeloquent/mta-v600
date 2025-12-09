@@ -109,6 +109,8 @@ export class SaucelabsApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: username,
+        email: username,
+        rawApiKey: accessKey,
       });
       logger.debug(
         `SaucelabsApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`
@@ -129,6 +131,8 @@ export class SaucelabsApiToken extends BaseApiToken {
         apiKey: null,
         authType: 'basic',
         headerName: 'Authorization',
+        email: username,
+        rawApiKey: accessKey,
       });
       logger.debug(
         `SaucelabsApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

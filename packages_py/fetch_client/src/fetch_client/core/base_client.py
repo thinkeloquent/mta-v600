@@ -259,6 +259,14 @@ class AsyncFetchClient:
         self._closed = True
         await self._client.aclose()
 
+    async def __aenter__(self) -> "AsyncFetchClient":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit async context manager."""
+        await self.close()
+
 
 class SyncFetchClient:
     """Synchronous HTTP client implementation."""
@@ -441,3 +449,11 @@ class SyncFetchClient:
         """Close the client."""
         self._closed = True
         self._client.close()
+
+    def __enter__(self) -> "SyncFetchClient":
+        """Enter sync context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit sync context manager."""
+        self.close()

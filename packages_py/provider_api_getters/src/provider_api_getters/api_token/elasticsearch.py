@@ -284,6 +284,10 @@ class ElasticsearchApiToken(BaseApiToken):
 
         connection_url = self.get_connection_url()
 
+        # Get raw credentials for the result
+        username = os.getenv("ELASTIC_DB_USERNAME")
+        password = os.getenv("ELASTIC_DB_ACCESS_KEY")
+
         if connection_url:
             logger.debug(
                 f"ElasticsearchApiToken.get_api_key: Found connection URL "
@@ -293,6 +297,9 @@ class ElasticsearchApiToken(BaseApiToken):
                 api_key=connection_url,
                 auth_type="connection_string",
                 header_name="",
+                username=username,
+                email=username,
+                raw_api_key=password,
                 client=None,
             )
         else:
@@ -303,6 +310,9 @@ class ElasticsearchApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="connection_string",
                 header_name="",
+                username=username,
+                email=username,
+                raw_api_key=password,
                 client=None,
             )
 

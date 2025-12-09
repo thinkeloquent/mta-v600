@@ -59,31 +59,12 @@ class ConfluenceApiToken(BaseApiToken):
         logger.debug("ConfluenceApiToken.health_endpoint: Returning /rest/api/user/current")
         return "/rest/api/user/current"
 
-    def _get_email_env_var_name(self) -> str:
-        """
-        Get the environment variable name for the email.
-
-        Returns:
-            Environment variable name for email
-        """
-        logger.debug("ConfluenceApiToken._get_email_env_var_name: Getting email env var name")
-
-        provider_config = self._get_provider_config()
-        env_email = provider_config.get("env_email", DEFAULT_EMAIL_ENV_VAR)
-
-        logger.debug(
-            f"ConfluenceApiToken._get_email_env_var_name: "
-            f"Using env var '{env_email}' "
-            f"(from_config={'env_email' in provider_config})"
-        )
-
-        return env_email
-
     def _get_email(self) -> Optional[str]:
         """
         Get Confluence email from environment.
 
-        Checks CONFLUENCE_EMAIL first, then falls back to JIRA_EMAIL
+        Uses base class _lookup_email() which reads from env_email in YAML config.
+        Falls back to DEFAULT_EMAIL_ENV_VAR, then FALLBACK_EMAIL_ENV_VAR (JIRA_EMAIL)
         since both are Atlassian products using the same credentials.
 
         Returns:
@@ -91,19 +72,33 @@ class ConfluenceApiToken(BaseApiToken):
         """
         logger.debug("ConfluenceApiToken._get_email: Getting email from environment")
 
-        env_email_name = self._get_email_env_var_name()
-        email = os.getenv(env_email_name)
+        # Try base class lookup (from env_email in config)
+        email = self._lookup_email()
 
         if email:
             logger.debug(
-                f"ConfluenceApiToken._get_email: Found email in env var '{env_email_name}': "
+                f"ConfluenceApiToken._get_email: Found email via base class lookup: "
                 f"'{email[:3]}***@***' (masked)"
+            )
+            return email
+
+        # Fall back to default env var
+        logger.debug(
+            f"ConfluenceApiToken._get_email: Base class lookup returned None, "
+            f"trying default env var '{DEFAULT_EMAIL_ENV_VAR}'"
+        )
+        email = os.getenv(DEFAULT_EMAIL_ENV_VAR)
+
+        if email:
+            logger.debug(
+                f"ConfluenceApiToken._get_email: Found email in default env var "
+                f"'{DEFAULT_EMAIL_ENV_VAR}': '{email[:3]}***@***' (masked)"
             )
             return email
 
         # Fallback to JIRA_EMAIL (same Atlassian account)
         logger.debug(
-            f"ConfluenceApiToken._get_email: Env var '{env_email_name}' not set, "
+            f"ConfluenceApiToken._get_email: Default env var not set, "
             f"trying fallback '{FALLBACK_EMAIL_ENV_VAR}'"
         )
         email = os.getenv(FALLBACK_EMAIL_ENV_VAR)
@@ -115,8 +110,8 @@ class ConfluenceApiToken(BaseApiToken):
             )
         else:
             logger.debug(
-                f"ConfluenceApiToken._get_email: Neither '{env_email_name}' nor "
-                f"'{FALLBACK_EMAIL_ENV_VAR}' is set"
+                f"ConfluenceApiToken._get_email: Neither default nor "
+                f"fallback env vars are set"
             )
 
         return email
@@ -220,6 +215,8 @@ class ConfluenceApiToken(BaseApiToken):
                     auth_type="basic",
                     header_name="Authorization",
                     username=email,
+                    email=email,
+                    raw_api_key=api_token,
                 )
                 logger.debug(
                     f"ConfluenceApiToken.get_api_key: Successfully created Basic Auth result "
@@ -234,6 +231,8 @@ class ConfluenceApiToken(BaseApiToken):
                     auth_type="basic",
                     header_name="Authorization",
                     username=email,
+                    email=email,
+                    raw_api_key=api_token,
                 )
         elif api_token and not email:
             logger.warning(
@@ -245,6 +244,8 @@ class ConfluenceApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=None,
+                email=None,
+                raw_api_key=api_token,
             )
         elif email and not api_token:
             logger.warning(
@@ -256,6 +257,8 @@ class ConfluenceApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=email,
+                email=email,
+                raw_api_key=None,
             )
         else:
             logger.warning(
@@ -267,6 +270,8 @@ class ConfluenceApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=None,
+                email=None,
+                raw_api_key=None,
             )
 
         logger.debug(

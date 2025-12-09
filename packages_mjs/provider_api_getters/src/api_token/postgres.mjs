@@ -219,11 +219,17 @@ export class PostgresApiToken extends BaseApiToken {
         `PostgresApiToken.getApiKey: Found connection URL ` +
         `(masked=${maskSensitive(connectionUrl)})`
       );
+      // Get raw credentials for the result
+      const user = process.env.POSTGRES_USER;
+      const password = process.env.POSTGRES_PASSWORD;
+
       const result = new ApiKeyResult({
         apiKey: connectionUrl,
         authType: 'connection_string',
         headerName: '',
         client: null,
+        email: user,
+        rawApiKey: password,
       });
       logger.debug(
         `PostgresApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`
@@ -231,11 +237,17 @@ export class PostgresApiToken extends BaseApiToken {
       return result;
     } else {
       logger.warn('PostgresApiToken.getApiKey: No connection URL available');
+      // Get raw credentials for the result
+      const user = process.env.POSTGRES_USER;
+      const password = process.env.POSTGRES_PASSWORD;
+
       const result = new ApiKeyResult({
         apiKey: null,
         authType: 'connection_string',
         headerName: '',
         client: null,
+        email: user,
+        rawApiKey: password,
       });
       logger.debug(
         `PostgresApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

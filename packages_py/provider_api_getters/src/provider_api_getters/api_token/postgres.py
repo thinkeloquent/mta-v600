@@ -286,6 +286,10 @@ class PostgresApiToken(BaseApiToken):
 
         connection_url = self.get_connection_url()
 
+        # Get raw credentials for the result
+        user = os.getenv("POSTGRES_USER")
+        password = os.getenv("POSTGRES_PASSWORD")
+
         if connection_url:
             logger.debug(
                 f"PostgresApiToken.get_api_key: Found connection URL "
@@ -295,6 +299,9 @@ class PostgresApiToken(BaseApiToken):
                 api_key=connection_url,
                 auth_type="connection_string",
                 header_name="",
+                username=user,
+                email=user,
+                raw_api_key=password,
                 client=None,
             )
         else:
@@ -305,6 +312,9 @@ class PostgresApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="connection_string",
                 header_name="",
+                username=user,
+                email=user,
+                raw_api_key=password,
                 client=None,
             )
 

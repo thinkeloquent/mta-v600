@@ -46,6 +46,8 @@ export class FigmaApiToken extends BaseApiToken {
         apiKey,
         authType: 'custom',
         headerName: 'X-Figma-Token',
+        email: null,
+        rawApiKey: apiKey,
       });
       logger.debug(
         `FigmaApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`
@@ -60,6 +62,8 @@ export class FigmaApiToken extends BaseApiToken {
         apiKey: null,
         authType: 'custom',
         headerName: 'X-Figma-Token',
+        email: null,
+        rawApiKey: null,
       });
       logger.debug(
         `FigmaApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

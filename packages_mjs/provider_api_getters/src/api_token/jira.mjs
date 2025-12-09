@@ -28,43 +28,45 @@ export class JiraApiToken extends BaseApiToken {
   }
 
   /**
-   * Get the environment variable name for the email.
-   * @returns {string}
-   */
-  _getEmailEnvVarName() {
-    logger.debug('JiraApiToken._getEmailEnvVarName: Getting email env var name');
-
-    const providerConfig = this._getProviderConfig();
-    const envEmail = providerConfig?.env_email || DEFAULT_EMAIL_ENV_VAR;
-
-    logger.debug(
-      `JiraApiToken._getEmailEnvVarName: Using env var '${envEmail}' ` +
-      `(fromConfig=${providerConfig?.env_email !== undefined})`
-    );
-
-    return envEmail;
-  }
-
-  /**
    * Get Jira email from environment.
+   * Uses base class _lookupEmail() which reads from env_email in YAML config.
+   * Falls back to DEFAULT_EMAIL_ENV_VAR if not in config.
    * @returns {string|null}
    */
   _getEmail() {
     logger.debug('JiraApiToken._getEmail: Getting email from environment');
 
-    const envEmailName = this._getEmailEnvVarName();
-    const email = process.env[envEmailName] || null;
+    // Try base class lookup (from env_email in config)
+    let email = this._lookupEmail();
 
     if (email) {
       const maskedEmail = email.length > 3
         ? `${email.substring(0, 3)}***@***`
         : '***@***';
       logger.debug(
-        `JiraApiToken._getEmail: Found email in env var '${envEmailName}': '${maskedEmail}' (masked)`
+        `JiraApiToken._getEmail: Found email via base class lookup: '${maskedEmail}' (masked)`
+      );
+      return email;
+    }
+
+    // Fall back to default env var if not in config
+    logger.debug(
+      `JiraApiToken._getEmail: Base class lookup returned null, ` +
+      `trying default env var '${DEFAULT_EMAIL_ENV_VAR}'`
+    );
+    email = process.env[DEFAULT_EMAIL_ENV_VAR] || null;
+
+    if (email) {
+      const maskedEmail = email.length > 3
+        ? `${email.substring(0, 3)}***@***`
+        : '***@***';
+      logger.debug(
+        `JiraApiToken._getEmail: Found email in default env var ` +
+        `'${DEFAULT_EMAIL_ENV_VAR}': '${maskedEmail}' (masked)`
       );
     } else {
       logger.debug(
-        `JiraApiToken._getEmail: Env var '${envEmailName}' is not set`
+        `JiraApiToken._getEmail: Default env var '${DEFAULT_EMAIL_ENV_VAR}' is not set`
       );
     }
 
@@ -126,6 +128,8 @@ export class JiraApiToken extends BaseApiToken {
           authType: 'basic',
           headerName: 'Authorization',
           username: email,
+          email: email,
+          rawApiKey: apiToken,
         });
         logger.debug(
           `JiraApiToken.getApiKey: Successfully created Basic Auth result for user '${maskedEmail}'`
@@ -137,6 +141,8 @@ export class JiraApiToken extends BaseApiToken {
           authType: 'basic',
           headerName: 'Authorization',
           username: email,
+          email: email,
+          rawApiKey: apiToken,
         });
       }
     } else if (apiToken && !email) {
@@ -149,6 +155,8 @@ export class JiraApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: null,
+        email: null,
+        rawApiKey: apiToken,
       });
     } else if (email && !apiToken) {
       logger.warn(
@@ -160,6 +168,8 @@ export class JiraApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: email,
+        email: email,
+        rawApiKey: null,
       });
     } else {
       logger.warn(
@@ -171,6 +181,8 @@ export class JiraApiToken extends BaseApiToken {
         authType: 'basic',
         headerName: 'Authorization',
         username: null,
+        email: null,
+        rawApiKey: null,
       });
     }
 

@@ -242,6 +242,10 @@ class RedisApiToken(BaseApiToken):
 
         connection_url = self.get_connection_url()
 
+        # Get raw credentials for the result
+        redis_username = os.getenv("REDIS_USERNAME")
+        redis_password = os.getenv("REDIS_PASSWORD")
+
         if connection_url:
             logger.debug(
                 f"RedisApiToken.get_api_key: Found connection URL "
@@ -251,6 +255,9 @@ class RedisApiToken(BaseApiToken):
                 api_key=connection_url,
                 auth_type="connection_string",
                 header_name="",
+                username=redis_username,
+                email=redis_username,
+                raw_api_key=redis_password,
                 client=None,
             )
         else:
@@ -261,6 +268,9 @@ class RedisApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="connection_string",
                 header_name="",
+                username=redis_username,
+                email=redis_username,
+                raw_api_key=redis_password,
                 client=None,
             )
 

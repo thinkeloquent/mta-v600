@@ -55,6 +55,8 @@ export class RallyApiToken extends BaseApiToken {
       apiKey: null,
       isPlaceholder: true,
       placeholderMessage: message,
+      email: null,
+      rawApiKey: null,
     });
 
     logger.debug(

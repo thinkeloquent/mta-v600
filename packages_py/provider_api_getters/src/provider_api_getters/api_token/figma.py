@@ -75,6 +75,8 @@ class FigmaApiToken(BaseApiToken):
                 api_key=api_key,
                 auth_type="custom",
                 header_name="X-Figma-Token",
+                email=None,
+                raw_api_key=api_key,
             )
         else:
             logger.warning(
@@ -85,6 +87,8 @@ class FigmaApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="custom",
                 header_name="X-Figma-Token",
+                email=None,
+                raw_api_key=None,
             )
 
         logger.debug(

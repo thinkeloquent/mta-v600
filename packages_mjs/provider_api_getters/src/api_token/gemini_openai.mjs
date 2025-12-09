@@ -49,6 +49,8 @@ export class GeminiOpenAIApiToken extends BaseApiToken {
         apiKey,
         authType: 'bearer',
         headerName: 'Authorization',
+        email: null,
+        rawApiKey: apiKey,
       });
       logger.debug(
         `GeminiOpenAIApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`
@@ -63,6 +65,8 @@ export class GeminiOpenAIApiToken extends BaseApiToken {
         apiKey: null,
         authType: 'bearer',
         headerName: 'Authorization',
+        email: null,
+        rawApiKey: null,
       });
       logger.debug(
         `GeminiOpenAIApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

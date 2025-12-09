@@ -100,6 +100,8 @@ export class GithubApiToken extends BaseApiToken {
         apiKey,
         authType: 'bearer',
         headerName: 'Authorization',
+        email: null,
+        rawApiKey: apiKey,
       });
       logger.debug(
         `GithubApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`
@@ -117,6 +119,8 @@ export class GithubApiToken extends BaseApiToken {
         apiKey: null,
         authType: 'bearer',
         headerName: 'Authorization',
+        email: null,
+        rawApiKey: null,
       });
       logger.debug(
         `GithubApiToken.getApiKey: Returning result hasCredentials=${result.hasCredentials}`

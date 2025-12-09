@@ -128,10 +128,12 @@ export class RequestContext {
 
 /**
  * @typedef {Object} ApiKeyResultOptions
- * @property {string|null} [apiKey] - The API key or token
+ * @property {string|null} [apiKey] - The API key or token (may be encoded for basic auth)
  * @property {string} [authType] - Auth type
  * @property {string} [headerName] - Header name for auth
- * @property {string|null} [username] - Username for basic auth
+ * @property {string|null} [username] - Username for basic auth (alias for email)
+ * @property {string|null} [email] - Email address for basic auth scenarios
+ * @property {string|null} [rawApiKey] - The raw/unencoded API key or token
  * @property {any} [client] - Pre-configured client
  * @property {boolean} [isPlaceholder] - Whether this is a placeholder
  * @property {string|null} [placeholderMessage] - Message for placeholder
@@ -146,6 +148,8 @@ export class ApiKeyResult {
     authType = 'bearer',
     headerName = 'Authorization',
     username = null,
+    email = null,
+    rawApiKey = null,
     client = null,
     isPlaceholder = false,
     placeholderMessage = null,
@@ -179,6 +183,8 @@ export class ApiKeyResult {
     }
 
     this.username = username;
+    this.email = email;
+    this.rawApiKey = rawApiKey;
     this.client = client;
     this.isPlaceholder = isPlaceholder;
     this.placeholderMessage = placeholderMessage;
@@ -235,6 +241,8 @@ export class ApiKeyResult {
       headerName: this.headerName,
       hasApiKey: this.apiKey !== null,
       hasUsername: this.username !== null,
+      hasEmail: this.email !== null,
+      hasRawApiKey: this.rawApiKey !== null,
       hasClient: this.client !== null,
       isPlaceholder: this.isPlaceholder,
     };
@@ -243,8 +251,14 @@ export class ApiKeyResult {
       if (this.apiKey) {
         result.apiKeyMasked = maskSensitive(this.apiKey);
       }
+      if (this.rawApiKey) {
+        result.rawApiKeyMasked = maskSensitive(this.rawApiKey);
+      }
       if (this.username) {
         result.username = this.username;
+      }
+      if (this.email) {
+        result.email = this.email;
       }
     }
 
@@ -505,6 +519,66 @@ export class BaseApiToken {
       );
       return null;
     }
+  }
+
+  /**
+   * Get the environment variable name for the email/username.
+   * @returns {string|null}
+   */
+  _getEnvEmailName() {
+    const className = this.constructor.name;
+    logger.debug(`${className}._getEnvEmailName: Getting env email name`);
+
+    const providerConfig = this._getProviderConfig();
+    const envEmailName = providerConfig?.env_email || null;
+
+    if (envEmailName) {
+      logger.debug(`${className}._getEnvEmailName: Found env_email='${envEmailName}'`);
+    } else {
+      logger.debug(`${className}._getEnvEmailName: No env_email configured`);
+    }
+
+    return envEmailName;
+  }
+
+  /**
+   * Lookup email/username from environment variable.
+   * @returns {string|null}
+   */
+  _lookupEmail() {
+    const className = this.constructor.name;
+    logger.debug(`${className}._lookupEmail: Looking up email`);
+
+    const envEmailName = this._getEnvEmailName();
+
+    if (!envEmailName) {
+      logger.debug(`${className}._lookupEmail: No env_email configured, returning null`);
+      return null;
+    }
+
+    const email = process.env[envEmailName];
+
+    if (email) {
+      logger.debug(`${className}._lookupEmail: Found email in env var '${envEmailName}'`);
+    } else {
+      logger.debug(`${className}._lookupEmail: Env var '${envEmailName}' is not set or empty`);
+    }
+
+    return email || null;
+  }
+
+  /**
+   * Lookup raw API key from environment variable.
+   *
+   * This is identical to _lookupEnvApiKey but named for semantic clarity
+   * when used alongside _lookupEmail for basic auth scenarios.
+   *
+   * @returns {string|null}
+   */
+  _lookupRawApiKey() {
+    const className = this.constructor.name;
+    logger.debug(`${className}._lookupRawApiKey: Looking up raw API key`);
+    return this._lookupEnvApiKey();
   }
 
   /**

@@ -69,6 +69,8 @@ class RallyApiToken(BaseApiToken):
                 api_key=None,
                 is_placeholder=True,
                 placeholder_message=message,
+                email=None,
+                raw_api_key=None,
             )
         else:
             # If placeholder is explicitly set to False, treat as not configured
@@ -80,6 +82,8 @@ class RallyApiToken(BaseApiToken):
                 api_key=None,
                 is_placeholder=False,
                 placeholder_message=None,
+                email=None,
+                raw_api_key=None,
             )
 
         logger.debug(

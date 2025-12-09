@@ -2,9 +2,9 @@
 """
 Confluence API - Python Client Integration Test
 
-Authentication: Basic (email:api_token)
+Authentication: Bearer Token
 Base URL: https://{company}.atlassian.net/wiki
-Health Endpoint: GET /rest/api/space
+Health Endpoint: GET /rest/api/user/current
 
 Uses internal packages:
   - fetch_proxy_dispatcher: Environment-aware proxy configuration
@@ -35,8 +35,8 @@ load_yaml_config(config_dir=str(CONFIG_DIR))
 
 # Import internal packages
 from fetch_proxy_dispatcher import get_proxy_dispatcher
-from fetch_client import create_client_with_dispatcher, AuthConfig
-from provider_api_getters import ConfluenceApiToken, ProviderHealthChecker
+from fetch_client import create_client_with_dispatcher, AuthConfig, print_proxy_config
+from provider_api_getters import ConfluenceApiToken
 
 # ============================================================================
 # Configuration - Exposed for debugging
@@ -44,17 +44,24 @@ from provider_api_getters import ConfluenceApiToken, ProviderHealthChecker
 provider = ConfluenceApiToken(static_config)
 api_key_result = provider.get_api_key()
 
+
 CONFIG = {
     # From provider_api_getters
+    "CONFLUENCE_BEARER_TOKEN": os.getenv("CONFLUENCE_API_TOKEN"), 
     "CONFLUENCE_API_TOKEN": api_key_result.api_key,
-    "CONFLUENCE_EMAIL": api_key_result.username,
-    "AUTH_TYPE": api_key_result.auth_type,
+    "CONFLUENCE_EMAIL": api_key_result.username or os.getenv("CONFLUENCE_EMAIL"),   
+    "AUTH_TYPE": "bearer",
 
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or os.getenv("CONFLUENCE_BASE_URL", "https://your-company.atlassian.net/wiki"),
 
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
+
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
 }
 
 
@@ -62,21 +69,36 @@ CONFIG = {
 # Health Check
 # ============================================================================
 async def health_check() -> dict[str, Any]:
-    """Health check using ProviderHealthChecker."""
-    print("\n=== Confluence Health Check (ProviderHealthChecker) ===\n")
+    """Health check using /rest/api/user/current endpoint."""
+    print("\n=== Confluence Health Check ===\n")
 
-    checker = ProviderHealthChecker(static_config)
-    result = await checker.check("confluence")
+    client = create_client_with_dispatcher(
+        base_url=CONFIG["BASE_URL"],
+        # api_key_result.api_key is already "Basic <base64(email:token)>" encoded
+        auth=AuthConfig(type="custom", api_key=CONFIG["CONFLUENCE_API_TOKEN"], header_name="Authorization"),
+        # auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        default_headers={
+            "Accept": "application/json",
+        },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+    )
 
-    print(f"Status: {result.status}")
-    if result.latency_ms:
-        print(f"Latency: {result.latency_ms:.2f}ms")
-    if result.message:
-        print(f"Message: {result.message}")
-    if result.error:
-        print(f"Error: {result.error}")
+    async with client:
+        # response = await client.get("/rest/api/user/current")
+        response = await client.get("/rest/api/space")
 
-    return {"success": result.status == "connected", "result": result}
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            user = response["data"]
+            print(f"User: {user.get('displayName', 'N/A')}")
+            print(f"Username: {user.get('username', 'N/A')}")
+            print(f"Email: {user.get('email', 'N/A')}")
+        else:
+            print(f"Error: {json.dumps(response['data'], indent=2)}")
+
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================
@@ -88,25 +110,28 @@ async def list_spaces() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["CONFLUENCE_API_TOKEN"], username=CONFIG["CONFLUENCE_EMAIL"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
     )
 
     async with client:
         response = await client.get("/rest/api/space")
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            results = response.data.get("results", [])
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            results = response["data"].get("results", [])
             print(f"Found {len(results)} spaces")
             for space in results[:10]:
                 print(f"  - {space['key']}: {space['name']}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_space(space_key: str) -> dict[str, Any]:
@@ -115,19 +140,22 @@ async def get_space(space_key: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["CONFLUENCE_API_TOKEN"], username=CONFIG["CONFLUENCE_EMAIL"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
     )
 
     async with client:
         response = await client.get(f"/rest/api/space/{space_key}")
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def search_content(query: str) -> dict[str, Any]:
@@ -136,10 +164,13 @@ async def search_content(query: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["CONFLUENCE_API_TOKEN"], username=CONFIG["CONFLUENCE_EMAIL"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
     )
 
     async with client:
@@ -148,16 +179,16 @@ async def search_content(query: str) -> dict[str, Any]:
             params={"cql": query, "limit": 10},
         )
 
-        print(f"Status: {response.status}")
-        if response.ok:
-            results = response.data.get("results", [])
+        print(f"Status: {response['status']}")
+        if response["ok"]:
+            results = response["data"].get("results", [])
             print(f"Found {len(results)} results")
             for content in results[:5]:
                 print(f"  - {content['title']}")
         else:
-            print(f"Response: {json.dumps(response.data, indent=2)}")
+            print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 async def get_page(page_id: str) -> dict[str, Any]:
@@ -166,10 +197,13 @@ async def get_page(page_id: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["CONFLUENCE_API_TOKEN"], username=CONFIG["CONFLUENCE_EMAIL"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
     )
 
     async with client:
@@ -178,10 +212,10 @@ async def get_page(page_id: str) -> dict[str, Any]:
             params={"expand": "body.storage,version"},
         )
 
-        print(f"Status: {response.status}")
-        print(f"Response: {json.dumps(response.data, indent=2)}")
+        print(f"Status: {response['status']}")
+        print(f"Response: {json.dumps(response['data'], indent=2)}")
 
-        return {"success": response.ok, "data": response.data}
+        return {"success": response["ok"], "data": response["data"]}
 
 
 # ============================================================================
@@ -192,9 +226,14 @@ async def main():
     print("Confluence API Connection Test (Python Client Integration)")
     print("=" * 58)
     print(f"Base URL: {CONFIG['BASE_URL']}")
-    print(f"Email: {CONFIG['CONFLUENCE_EMAIL']}")
     print(f"Auth Type: {CONFIG['AUTH_TYPE']}")
+    print(f"SSL Verify: {CONFIG['SSL_VERIFY']}")
     print(f"Debug: {CONFIG['DEBUG']}")
+
+    # Print proxy/SSL configuration from YAML for debugging
+    if CONFIG["DEBUG"]:
+        print()
+        print_proxy_config()
 
     await health_check()
 

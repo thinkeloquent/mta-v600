@@ -28,11 +28,57 @@ def _get_proxy_config_from_yaml() -> Optional[dict]:
         return None
 
 
-def _get_proxy_dispatcher_safe(async_client: bool = True):
+def get_proxy_config() -> dict:
+    """
+    Get the current proxy configuration for debugging.
+
+    Returns a dictionary with the proxy configuration from YAML,
+    or an empty dict if not configured.
+
+    Example:
+        from fetch_client import get_proxy_config
+        import json
+        print(json.dumps(get_proxy_config(), indent=2))
+    """
+    config = _get_proxy_config_from_yaml()
+    return config if config else {}
+
+
+def print_proxy_config() -> None:
+    """
+    Print the current proxy configuration for debugging.
+
+    Example:
+        from fetch_client import print_proxy_config
+        print_proxy_config()
+    """
+    import json
+    config = get_proxy_config()
+    print("=== Proxy Configuration (from YAML) ===")
+    if config:
+        print(json.dumps(config, indent=2, default=str))
+    else:
+        print("No proxy configuration found in YAML config.")
+    print("=" * 40)
+
+
+def _get_proxy_dispatcher_safe(
+    async_client: bool = True,
+    verify: Optional[bool] = None,
+    cert: Optional[str] = None,
+    ca_bundle: Optional[str] = None,
+):
     """
     Get proxy dispatcher from fetch_proxy_dispatcher package.
     Configures based on YAML config from ConfigStore.
+    Runtime overrides take precedence over YAML config.
     Returns None if the package is not available.
+
+    Args:
+        async_client: If True, create async client; if False, create sync client.
+        verify: Override SSL verification (True/False). None uses YAML config.
+        cert: Override client certificate path. None uses YAML config.
+        ca_bundle: Override CA bundle path. None uses YAML config.
     """
     try:
         from fetch_proxy_dispatcher import (
@@ -43,10 +89,15 @@ def _get_proxy_dispatcher_safe(async_client: bool = True):
         )
 
         # Load proxy config from YAML (server.*.yaml)
-        yaml_config = _get_proxy_config_from_yaml()
+        yaml_config = _get_proxy_config_from_yaml() or {}
 
-        if yaml_config:
-            # Build factory config from YAML
+        # Apply runtime overrides (override YAML values if provided)
+        effective_cert_verify = verify if verify is not None else yaml_config.get("cert_verify")
+        effective_cert = cert if cert is not None else yaml_config.get("cert")
+        effective_ca_bundle = ca_bundle if ca_bundle is not None else yaml_config.get("ca_bundle")
+
+        if yaml_config or verify is not None or cert is not None or ca_bundle is not None:
+            # Build factory config from YAML with overrides
             factory_config = FactoryConfig(
                 proxy_urls=ProxyUrlConfig(**yaml_config.get("proxy_urls", {}))
                 if yaml_config.get("proxy_urls")
@@ -58,19 +109,19 @@ def _get_proxy_dispatcher_safe(async_client: bool = True):
                 if yaml_config.get("agent_proxy")
                 else None,
                 default_environment=yaml_config.get("default_environment"),
-                ca_bundle=yaml_config.get("ca_bundle"),
-                cert=yaml_config.get("cert"),
-                cert_verify=yaml_config.get("cert_verify"),
+                ca_bundle=effective_ca_bundle,
+                cert=effective_cert,
+                cert_verify=effective_cert_verify,
             )
 
             factory = ProxyDispatcherFactory(config=factory_config)
             result = factory.get_proxy_dispatcher(
-                disable_tls=yaml_config.get("cert_verify") is False,
+                disable_tls=effective_cert_verify is False,
                 async_client=async_client,
             )
             return result.client
 
-        # Fallback to simple API if no YAML config
+        # Fallback to simple API if no YAML config and no overrides
         from fetch_proxy_dispatcher import get_proxy_dispatcher
         result = get_proxy_dispatcher(async_client=async_client)
         return result.client
@@ -144,6 +195,9 @@ def create_client_with_dispatcher(
     content_type: str = "application/json",
     serializer: Optional[Any] = None,
     async_client: bool = True,
+    verify: Optional[bool] = None,
+    cert: Optional[str] = None,
+    ca_bundle: Optional[str] = None,
 ) -> Union[AsyncFetchClient, SyncFetchClient]:
     """
     Create a fetch client with automatic proxy dispatcher configuration.
@@ -172,6 +226,9 @@ def create_client_with_dispatcher(
         content_type: Default content type.
         serializer: Custom JSON serializer/deserializer.
         async_client: If True, create async client; if False, create sync client.
+        verify: Override SSL verification (True/False). None uses YAML config.
+        cert: Override client certificate path. None uses YAML config.
+        ca_bundle: Override CA bundle path. None uses YAML config.
 
     Returns:
         AsyncFetchClient or SyncFetchClient with proxy-configured httpx client.
@@ -185,6 +242,13 @@ def create_client_with_dispatcher(
         async with client:
             response = await client.get("/users")
 
+        # Async client with SSL verification disabled (runtime override)
+        client = create_client_with_dispatcher(
+            base_url="https://api.example.com",
+            auth=AuthConfig(type="bearer", api_key="secret"),
+            verify=False,
+        )
+
         # Sync client with automatic proxy configuration
         client = create_client_with_dispatcher(
             base_url="https://api.example.com",
@@ -192,9 +256,18 @@ def create_client_with_dispatcher(
         )
         with client:
             response = client.get("/users")
+
+        # Debug: Print current proxy config
+        from fetch_client import print_proxy_config
+        print_proxy_config()
     """
-    # Try to get proxy-configured httpx client
-    httpx_client = _get_proxy_dispatcher_safe(async_client=async_client)
+    # Try to get proxy-configured httpx client with optional overrides
+    httpx_client = _get_proxy_dispatcher_safe(
+        async_client=async_client,
+        verify=verify,
+        cert=cert,
+        ca_bundle=ca_bundle,
+    )
 
     return create_client(
         base_url=base_url,

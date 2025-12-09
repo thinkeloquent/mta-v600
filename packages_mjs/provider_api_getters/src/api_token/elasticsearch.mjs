@@ -210,11 +210,17 @@ export class ElasticsearchApiToken extends BaseApiToken {
       `masked=${maskSensitive(connectionUrl)})`
     );
 
+    // Get raw credentials for the result
+    const username = process.env.ELASTIC_DB_USERNAME;
+    const password = process.env.ELASTIC_DB_ACCESS_KEY;
+
     const result = new ApiKeyResult({
       apiKey: connectionUrl,
       authType: 'connection_string',
       headerName: '',
       client: null,
+      email: username,
+      rawApiKey: password,
     });
 
     logger.debug(

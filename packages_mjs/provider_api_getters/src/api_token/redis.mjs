@@ -172,11 +172,17 @@ export class RedisApiToken extends BaseApiToken {
       `masked=${maskSensitive(connectionUrl)})`
     );
 
+    // Get raw credentials for the result
+    const redisUsername = process.env.REDIS_USERNAME;
+    const redisPassword = process.env.REDIS_PASSWORD;
+
     const result = new ApiKeyResult({
       apiKey: connectionUrl,
       authType: 'connection_string',
       headerName: '',
       client: null,
+      email: redisUsername,
+      rawApiKey: redisPassword,
     });
 
     logger.debug(

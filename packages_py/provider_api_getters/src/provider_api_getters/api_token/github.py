@@ -156,6 +156,8 @@ class GithubApiToken(BaseApiToken):
                 api_key=api_key,
                 auth_type="bearer",
                 header_name="Authorization",
+                email=None,
+                raw_api_key=api_key,
             )
         else:
             configured_key = self._get_env_api_key_name()
@@ -169,6 +171,8 @@ class GithubApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="bearer",
                 header_name="Authorization",
+                email=None,
+                raw_api_key=None,
             )
 
         logger.debug(

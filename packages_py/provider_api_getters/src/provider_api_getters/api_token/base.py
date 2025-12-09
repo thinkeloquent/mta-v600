@@ -107,10 +107,12 @@ class ApiKeyResult:
     Result from API key resolution.
 
     Attributes:
-        api_key: The resolved API key or token (may be None if not found)
+        api_key: The resolved API key or token (may be encoded for basic auth)
         auth_type: Authentication type (bearer, x-api-key, basic, custom, connection_string)
         header_name: HTTP header name for the authentication
-        username: Username for basic auth scenarios
+        username: Username for basic auth scenarios (alias for email)
+        email: Email address for basic auth scenarios
+        raw_api_key: The raw/unencoded API key or token
         client: Pre-configured client instance (for DB connections)
         is_placeholder: True if this provider is not yet implemented
         placeholder_message: Human-readable message for placeholder providers
@@ -120,6 +122,8 @@ class ApiKeyResult:
     auth_type: str = "bearer"
     header_name: str = "Authorization"
     username: Optional[str] = None
+    email: Optional[str] = None
+    raw_api_key: Optional[str] = None
     client: Optional[Any] = None
     is_placeholder: bool = False
     placeholder_message: Optional[str] = None
@@ -497,6 +501,77 @@ class BaseApiToken(ABC):
             )
 
         return api_key
+
+    def _get_env_email_name(self) -> Optional[str]:
+        """
+        Get the environment variable name for the email/username.
+
+        Returns:
+            Environment variable name or None if not configured
+        """
+        logger.debug(f"{self.__class__.__name__}._get_env_email_name: Getting env email name")
+
+        provider_config = self._get_provider_config()
+        env_email_name = provider_config.get("env_email")
+
+        if env_email_name:
+            logger.debug(
+                f"{self.__class__.__name__}._get_env_email_name: "
+                f"Found env_email='{env_email_name}'"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}._get_env_email_name: "
+                "No env_email configured"
+            )
+
+        return env_email_name
+
+    def _lookup_email(self) -> Optional[str]:
+        """
+        Lookup email/username from environment variable.
+
+        Returns:
+            Email/username value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_email: Looking up email")
+
+        env_email_name = self._get_env_email_name()
+
+        if not env_email_name:
+            logger.debug(
+                f"{self.__class__.__name__}._lookup_email: "
+                "No env_email configured, returning None"
+            )
+            return None
+
+        email = os.getenv(env_email_name)
+
+        if email:
+            logger.debug(
+                f"{self.__class__.__name__}._lookup_email: "
+                f"Found email in env var '{env_email_name}'"
+            )
+        else:
+            logger.debug(
+                f"{self.__class__.__name__}._lookup_email: "
+                f"Env var '{env_email_name}' is not set or empty"
+            )
+
+        return email
+
+    def _lookup_raw_api_key(self) -> Optional[str]:
+        """
+        Lookup raw API key from environment variable.
+
+        This is identical to _lookup_env_api_key but named for semantic clarity
+        when used alongside _lookup_email for basic auth scenarios.
+
+        Returns:
+            Raw API key value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_raw_api_key: Looking up raw API key")
+        return self._lookup_env_api_key()
 
     @abstractmethod
     def get_api_key(self) -> ApiKeyResult:

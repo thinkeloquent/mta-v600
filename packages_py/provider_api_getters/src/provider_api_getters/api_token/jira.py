@@ -53,46 +53,43 @@ class JiraApiToken(BaseApiToken):
         logger.debug("JiraApiToken.health_endpoint: Returning /rest/api/2/myself")
         return "/rest/api/2/myself"
 
-    def _get_email_env_var_name(self) -> str:
-        """
-        Get the environment variable name for the email.
-
-        Returns:
-            Environment variable name for email
-        """
-        logger.debug("JiraApiToken._get_email_env_var_name: Getting email env var name")
-
-        provider_config = self._get_provider_config()
-        env_email = provider_config.get("env_email", DEFAULT_EMAIL_ENV_VAR)
-
-        logger.debug(
-            f"JiraApiToken._get_email_env_var_name: "
-            f"Using env var '{env_email}' "
-            f"(from_config={'env_email' in provider_config})"
-        )
-
-        return env_email
-
     def _get_email(self) -> Optional[str]:
         """
         Get Jira email from environment.
+
+        Uses base class _lookup_email() which reads from env_email in YAML config.
+        Falls back to DEFAULT_EMAIL_ENV_VAR if not in config.
 
         Returns:
             Email address or None if not found
         """
         logger.debug("JiraApiToken._get_email: Getting email from environment")
 
-        env_email_name = self._get_email_env_var_name()
-        email = os.getenv(env_email_name)
+        # Try base class lookup (from env_email in config)
+        email = self._lookup_email()
 
         if email:
             logger.debug(
-                f"JiraApiToken._get_email: Found email in env var '{env_email_name}': "
+                f"JiraApiToken._get_email: Found email via base class lookup: "
                 f"'{email[:3]}***@***' (masked)"
+            )
+            return email
+
+        # Fall back to default env var if not in config
+        logger.debug(
+            f"JiraApiToken._get_email: Base class lookup returned None, "
+            f"trying default env var '{DEFAULT_EMAIL_ENV_VAR}'"
+        )
+        email = os.getenv(DEFAULT_EMAIL_ENV_VAR)
+
+        if email:
+            logger.debug(
+                f"JiraApiToken._get_email: Found email in default env var "
+                f"'{DEFAULT_EMAIL_ENV_VAR}': '{email[:3]}***@***' (masked)"
             )
         else:
             logger.debug(
-                f"JiraApiToken._get_email: Env var '{env_email_name}' is not set"
+                f"JiraApiToken._get_email: Default env var '{DEFAULT_EMAIL_ENV_VAR}' is not set"
             )
 
         return email
@@ -158,6 +155,8 @@ class JiraApiToken(BaseApiToken):
                     auth_type="basic",
                     header_name="Authorization",
                     username=email,
+                    email=email,
+                    raw_api_key=api_token,
                 )
                 logger.debug(
                     f"JiraApiToken.get_api_key: Successfully created Basic Auth result "
@@ -172,6 +171,8 @@ class JiraApiToken(BaseApiToken):
                     auth_type="basic",
                     header_name="Authorization",
                     username=email,
+                    email=email,
+                    raw_api_key=api_token,
                 )
         elif api_token and not email:
             logger.warning(
@@ -183,6 +184,8 @@ class JiraApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=None,
+                email=None,
+                raw_api_key=api_token,
             )
         elif email and not api_token:
             logger.warning(
@@ -194,6 +197,8 @@ class JiraApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=email,
+                email=email,
+                raw_api_key=None,
             )
         else:
             logger.warning(
@@ -205,6 +210,8 @@ class JiraApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=None,
+                email=None,
+                raw_api_key=None,
             )
 
         logger.debug(

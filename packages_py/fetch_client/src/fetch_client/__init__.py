@@ -42,6 +42,8 @@ from .factory import (
     create_async_client,
     create_sync_client,
     create_rest_adapter,
+    get_proxy_config,
+    print_proxy_config,
 )
 
 __all__ = [
@@ -83,6 +85,9 @@ __all__ = [
     "create_async_client",
     "create_sync_client",
     "create_rest_adapter",
+    # Debug/Config
+    "get_proxy_config",
+    "print_proxy_config",
 ]
 
 __version__ = "0.1.0"

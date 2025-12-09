@@ -148,6 +148,8 @@ class SaucelabsApiToken(BaseApiToken):
                 auth_type="basic",
                 header_name="Authorization",
                 username=username,
+                email=username,
+                raw_api_key=access_key,
             )
         else:
             missing = []
@@ -164,6 +166,9 @@ class SaucelabsApiToken(BaseApiToken):
                 api_key=None,
                 auth_type="basic",
                 header_name="Authorization",
+                username=username,
+                email=username,
+                raw_api_key=access_key,
             )
 
         logger.debug(
