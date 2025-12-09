@@ -42,8 +42,9 @@ class TestGithubApiToken:
     # Fallback env vars tests
     def test_fallback_env_vars_constant(self):
         """Test fallback env vars are defined correctly."""
+        # Note: GITHUB_TOKEN is the PRIMARY env var (env_api_key), not a fallback
+        # Fallbacks are only checked if the primary is not set
         assert GITHUB_FALLBACK_ENV_VARS == (
-            "GITHUB_TOKEN",
             "GH_TOKEN",
             "GITHUB_ACCESS_TOKEN",
             "GITHUB_PAT",
@@ -288,8 +289,9 @@ class TestGithubApiTokenEdgeCases:
             github_token = GithubApiToken(config_store=mock_store)
             github_token.get_api_key()
 
-        # Verify iteration logging
+        # Verify iteration logging - there are 3 fallback vars (GH_TOKEN, GITHUB_ACCESS_TOKEN, GITHUB_PAT)
         assert "[1/" in caplog.text
         assert "[2/" in caplog.text
         assert "[3/" in caplog.text
-        assert "[4/" in caplog.text
+        # Only 3 fallbacks, not 4
+        assert "[4/" not in caplog.text

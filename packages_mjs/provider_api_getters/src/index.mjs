@@ -28,3 +28,11 @@ export {
   ProviderHealthChecker,
   checkProviderConnection,
 } from './health_check/index.mjs';
+
+// Token Resolver (Option A, B, C)
+export {
+  TokenResolverRegistry,
+  tokenRegistry,
+  setAPIToken,
+  clearAPIToken,
+} from './token_resolver/index.mjs';

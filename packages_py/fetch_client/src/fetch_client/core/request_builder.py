@@ -22,10 +22,12 @@ def build_url(
     query: Optional[Dict[str, Union[str, int, bool]]] = None,
 ) -> str:
     """Build full URL from base and path."""
-    # Handle absolute paths
+    # Handle absolute paths - preserve base_url path and append the new path
     if path.startswith("/"):
         parsed = urlparse(base_url)
-        url = f"{parsed.scheme}://{parsed.netloc}{path}"
+        # Combine base path with the new path (avoid double slashes)
+        base_path = parsed.path.rstrip("/")
+        url = f"{parsed.scheme}://{parsed.netloc}{base_path}{path}"
     elif path:
         # urljoin replaces the last segment if base doesn't end with /
         # Ensure base_url ends with / for proper joining with relative paths

@@ -247,13 +247,13 @@ class ProviderClientFactory:
         logger.debug(f"ProviderClientFactory.get_api_token: Token class = {token_class.__name__}")
         return token_class(self.config_store)
 
-    def get_client(self, provider_name: str) -> Optional[Any]:
+    async def get_client(self, provider_name: str) -> Optional[Any]:
         """
         Get a pre-configured HTTP client for a provider.
 
         Returns an AsyncFetchClient configured with:
         - Provider's base URL from static config
-        - Provider's auth from api_token
+        - Provider's auth from api_token (with registry integration)
         - Proxy from merged config (global + provider overrides)
         - Timeout from merged config
         - Additional headers from provider overwrite_config
@@ -278,7 +278,8 @@ class ProviderClientFactory:
             logger.error(f"ProviderClientFactory.get_client: No base URL for '{provider_name}'")
             return None
 
-        api_key_result = api_token.get_api_key()
+        # Use async method to support dynamic token resolution
+        api_key_result = await api_token.get_api_key_async()
         logger.debug(
             f"ProviderClientFactory.get_client: API key result - "
             f"has_credentials={api_key_result.has_credentials}, "
@@ -294,6 +295,9 @@ class ProviderClientFactory:
         # Get merged config (global + provider overrides)
         merged_config = self._get_merged_config_for_provider(provider_name)
 
+        # Check token resolver type for per-request tokens
+        token_resolver_type = api_token.get_token_resolver_type()
+
         # Get timeout from merged client config
         timeout = merged_config["client"].get("timeout_seconds", 30.0)
 
@@ -308,35 +312,24 @@ class ProviderClientFactory:
 
         auth_config = None
         if api_key_result.api_key:
+            # Use get_auth_type() and get_header_name() from api_token for consistent auth type
+            auth_type = api_token.get_auth_type()
+            header_name = api_token.get_header_name()
             api_key_masked = mask_sensitive(api_key_result.api_key)
-            if api_key_result.auth_type == "basic":
+
+            if auth_type in ("basic", "x-api-key", "custom"):
                 logger.debug(
-                    f"ProviderClientFactory.get_client: Using Basic auth with "
-                    f"header={api_key_result.header_name}, key={api_key_masked}"
+                    f"ProviderClientFactory.get_client: Using {auth_type} auth with "
+                    f"header={header_name}, key={api_key_masked}"
                 )
                 auth_config = AuthConfig(
                     type="custom",
                     api_key=api_key_result.api_key,
-                    header_name=api_key_result.header_name,
+                    header_name=header_name,
                 )
-                console.print("[bold green]AuthConfig (Basic):[/bold green]", {
+                console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
                     "type": "custom",
-                    "header_name": api_key_result.header_name,
-                    "api_key": api_key_masked,
-                })
-            elif api_key_result.auth_type == "x-api-key":
-                logger.debug(
-                    f"ProviderClientFactory.get_client: Using X-API-Key auth with "
-                    f"header={api_key_result.header_name}, key={api_key_masked}"
-                )
-                auth_config = AuthConfig(
-                    type="custom",
-                    api_key=api_key_result.api_key,
-                    header_name=api_key_result.header_name,
-                )
-                console.print("[bold green]AuthConfig (X-API-Key):[/bold green]", {
-                    "type": "custom",
-                    "header_name": api_key_result.header_name,
+                    "header_name": header_name,
                     "api_key": api_key_masked,
                 })
             else:
@@ -351,6 +344,10 @@ class ProviderClientFactory:
                     "type": "bearer",
                     "api_key": api_key_masked,
                 })
+            logger.info(
+                f"ProviderClientFactory.get_client: Auth config created "
+                f"provider={provider_name}, auth_type={auth_type}, header_name={header_name}"
+            )
         else:
             logger.warning(f"ProviderClientFactory.get_client: No API key for '{provider_name}'")
 
@@ -370,15 +367,28 @@ class ProviderClientFactory:
                 f"{list(override_headers.keys())}"
             )
 
+        # For per-request tokens, add dynamic auth handler
+        if token_resolver_type == "request":
+            async def get_api_key_for_request(context):
+                result = await api_token.get_api_key_for_request_async(context)
+                return result.api_key
+            client_kwargs["get_api_key_for_request"] = get_api_key_for_request
+            logger.info(
+                f"ProviderClientFactory.get_client: Dynamic auth enabled for per-request tokens "
+                f"provider={provider_name}"
+            )
+
         logger.info(
             f"ProviderClientFactory.get_client: Creating AsyncFetchClient for '{provider_name}' "
-            f"with base_url={base_url}, has_override_headers={len(override_headers) > 0}"
+            f"with base_url={base_url}, has_override_headers={len(override_headers) > 0}, "
+            f"token_resolver_type={token_resolver_type}"
         )
         client = create_async_client(**client_kwargs)
         console.print("[bold cyan]AsyncFetchClient created:[/bold cyan]", {
             "provider": provider_name,
             "base_url": base_url,
             "has_override_headers": len(override_headers) > 0,
+            "token_resolver_type": token_resolver_type,
         })
         logger.debug(f"ProviderClientFactory.get_client: Client created successfully for '{provider_name}'")
 

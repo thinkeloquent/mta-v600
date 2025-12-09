@@ -129,13 +129,23 @@ describe('RallyApiToken', () => {
 
 describe('ElasticsearchApiToken', () => {
   let consoleSpy;
+  let originalEnv;
 
   beforeEach(() => {
     consoleSpy = setupConsoleSpy();
+    originalEnv = { ...process.env };
+    // Clear all Elasticsearch-related env vars
+    delete process.env.ELASTIC_DB_URL;
+    delete process.env.ELASTIC_DB_HOST;
+    delete process.env.ELASTIC_DB_PORT;
+    delete process.env.ELASTIC_DB_USERNAME;
+    delete process.env.ELASTIC_DB_ACCESS_KEY;
+    delete process.env.ELASTIC_DB_TLS;
   });
 
   afterEach(() => {
     restoreConsoleSpy(consoleSpy);
+    process.env = originalEnv;
   });
 
   describe('Provider Properties', () => {
@@ -153,62 +163,74 @@ describe('ElasticsearchApiToken', () => {
     });
   });
 
-  describe('getApiKey - Placeholder Behavior', () => {
-    it('should return placeholder result with default message', () => {
+  describe('getApiKey - Connection URL Behavior', () => {
+    // NOTE: Elasticsearch is NOT a placeholder - it's a connection-based provider
+    it('should return connection URL when ELASTIC_DB_URL is set', () => {
+      process.env.ELASTIC_DB_URL = 'https://user:pass@es.example.com:9243';
       const token = new ElasticsearchApiToken();
 
       const result = token.getApiKey();
 
-      expect(result.apiKey).toBeNull();
-      expect(result.isPlaceholder).toBe(true);
-      expect(result.placeholderMessage).toBe('Elasticsearch integration not implemented');
-      expect(result.hasCredentials).toBe(false);
+      expect(result.apiKey).toBe('https://user:pass@es.example.com:9243');
+      expect(result.authType).toBe('connection_string');
+      expect(result.hasCredentials).toBe(true);
+      expect(result.isPlaceholder).toBe(false);
     });
 
-    it('should use custom message from config', () => {
-      const mockStore = createMockStore({ elasticsearch: { message: 'Custom ES message' } });
-      const token = new ElasticsearchApiToken(mockStore);
+    it('should build URL from components when env var not set', () => {
+      process.env.ELASTIC_DB_HOST = 'localhost';
+      process.env.ELASTIC_DB_PORT = '9200';
+      const token = new ElasticsearchApiToken();
 
       const result = token.getApiKey();
 
-      expect(result.placeholderMessage).toBe('Custom ES message');
+      expect(result.apiKey).toBe('http://localhost:9200');
+      expect(result.authType).toBe('connection_string');
+      expect(result.hasCredentials).toBe(true);
     });
 
-    it('should use default message when config has no message', () => {
-      const mockStore = createMockStore({ elasticsearch: {} });
-      const token = new ElasticsearchApiToken(mockStore);
+    it('should use default URL when no env vars set', () => {
+      const token = new ElasticsearchApiToken();
 
       const result = token.getApiKey();
 
-      expect(result.placeholderMessage).toBe('Elasticsearch integration not implemented');
+      // Default is http://localhost:9200
+      expect(result.apiKey).toBe('http://localhost:9200');
+      expect(result.hasCredentials).toBe(true);
+    });
+
+    it('should include auth in URL when username and password set', () => {
+      process.env.ELASTIC_DB_HOST = 'es.example.com';
+      process.env.ELASTIC_DB_PORT = '9243';
+      process.env.ELASTIC_DB_USERNAME = 'elastic';
+      process.env.ELASTIC_DB_ACCESS_KEY = 'secretkey';
+      const token = new ElasticsearchApiToken();
+
+      const result = token.getApiKey();
+
+      // Port 9243 is TLS by default
+      expect(result.apiKey).toContain('https://');
+      expect(result.apiKey).toContain('elastic:secretkey@');
+      expect(result.hasCredentials).toBe(true);
     });
   });
 
   describe('Log Verification', () => {
-    it('should log start of API key resolution as placeholder', () => {
+    it('should log start of connection URL resolution', () => {
       const token = new ElasticsearchApiToken();
       token.getApiKey();
 
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Starting API key resolution (placeholder)')
+        expect.stringContaining('Starting')
       );
     });
 
-    it('should log warning with placeholder message', () => {
-      const token = new ElasticsearchApiToken();
-      token.getApiKey();
-
-      expect(consoleSpy.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Returning placeholder result')
-      );
-    });
-
-    it('should log checking for custom message in config', () => {
+    it('should log building URL from components', () => {
       const token = new ElasticsearchApiToken();
       token.getApiKey();
 
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Checking for custom placeholder message in config')
+        expect.stringContaining('Building URL from components')
       );
     });
   });

@@ -52,11 +52,12 @@ class ConfluenceApiToken(BaseApiToken):
         """
         Return the health check endpoint for Confluence.
 
-        The /wiki/rest/api/user/current endpoint returns the current user's
+        The /rest/api/user/current endpoint returns the current user's
         information and is a reliable way to verify token validity.
+        Note: base_url already includes /wiki path.
         """
-        logger.debug("ConfluenceApiToken.health_endpoint: Returning /wiki/rest/api/user/current")
-        return "/wiki/rest/api/user/current"
+        logger.debug("ConfluenceApiToken.health_endpoint: Returning /rest/api/user/current")
+        return "/rest/api/user/current"
 
     def _get_email_env_var_name(self) -> str:
         """

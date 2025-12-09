@@ -34,15 +34,26 @@ class FigmaApiToken(BaseApiToken):
         return "figma"
 
     @property
+    def _default_auth_type(self) -> str:
+        """Figma uses custom auth type for X-Figma-Token header."""
+        return "custom"
+
+    @property
+    def _default_header_name(self) -> str:
+        """Figma requires X-Figma-Token header."""
+        return "X-Figma-Token"
+
+    @property
     def health_endpoint(self) -> str:
         """
         Return the health check endpoint for Figma.
 
-        The /v1/me endpoint returns the current user's information
+        The /me endpoint returns the current user's information
         and is a reliable way to verify token validity.
+        Note: base_url already includes /v1
         """
-        logger.debug("FigmaApiToken.health_endpoint: Returning /v1/me")
-        return "/v1/me"
+        logger.debug("FigmaApiToken.health_endpoint: Returning /me")
+        return "/me"
 
     def get_api_key(self) -> ApiKeyResult:
         """
@@ -62,7 +73,7 @@ class FigmaApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=api_key,
-                auth_type="x-api-key",
+                auth_type="custom",
                 header_name="X-Figma-Token",
             )
         else:
@@ -72,7 +83,7 @@ class FigmaApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="x-api-key",
+                auth_type="custom",
                 header_name="X-Figma-Token",
             )
 

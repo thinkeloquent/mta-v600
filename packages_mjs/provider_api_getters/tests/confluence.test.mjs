@@ -42,9 +42,13 @@ describe('ConfluenceApiToken', () => {
   beforeEach(() => {
     consoleSpy = setupConsoleSpy();
     originalEnv = { ...process.env };
+    // Clear all Confluence and Jira-related env vars (Jira is fallback for Confluence)
     delete process.env.CONFLUENCE_EMAIL;
     delete process.env.CONFLUENCE_API_TOKEN;
     delete process.env.CONFLUENCE_BASE_URL;
+    delete process.env.JIRA_EMAIL;
+    delete process.env.JIRA_API_TOKEN;
+    delete process.env.JIRA_BASE_URL;
   });
 
   afterEach(() => {

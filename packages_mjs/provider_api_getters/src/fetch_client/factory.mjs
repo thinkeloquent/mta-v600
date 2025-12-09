@@ -190,22 +190,30 @@ export class ProviderClientFactory {
     const baseUrl = apiToken.getBaseUrl();
     if (!baseUrl) return null;
 
-    const apiKeyResult = apiToken.getApiKey();
+    // Use async method to support dynamic token resolution
+    const apiKeyResult = await apiToken.getApiKeyAsync();
     if (apiKeyResult.isPlaceholder) return null;
 
     // Get merged config (global + provider overrides)
     const mergedConfig = this._getMergedConfigForProvider(providerName);
+
+    // Check token resolver type for per-request tokens
+    const tokenResolverType = apiToken.getTokenResolverType();
 
     // Create dispatcher with merged proxy config
     const dispatcher = await this._createDispatcher(mergedConfig.proxy);
 
     let auth;
     if (apiKeyResult.apiKey) {
-      if (apiKeyResult.authType === 'basic' || apiKeyResult.authType === 'x-api-key') {
+      // Use getAuthType() and getHeaderName() from apiToken for consistent auth type
+      const authType = apiToken.getAuthType();
+      const headerName = apiToken.getHeaderName();
+
+      if (authType === 'basic' || authType === 'x-api-key') {
         auth = {
           type: 'custom',
           apiKey: apiKeyResult.apiKey,
-          headerName: apiKeyResult.headerName,
+          headerName: headerName,
         };
       } else {
         auth = {
@@ -213,6 +221,7 @@ export class ProviderClientFactory {
           apiKey: apiKeyResult.apiKey,
         };
       }
+      logger.info({ providerName, authType, headerName }, 'Auth config created');
     }
 
     // Build client options with merged config
@@ -232,8 +241,17 @@ export class ProviderClientFactory {
       clientOptions.headers = mergedConfig.headers;
     }
 
+    // For per-request tokens, add dynamic auth handler
+    if (tokenResolverType === 'request') {
+      clientOptions.getApiKeyForRequest = async (context) => {
+        const result = await apiToken.getApiKeyForRequestAsync(context);
+        return result.apiKey;
+      };
+      logger.info({ providerName, tokenResolverType }, 'Dynamic auth enabled for per-request tokens');
+    }
+
     const client = createClient(clientOptions);
-    logger.info({ providerName, baseUrl, hasOverrideHeaders: Object.keys(mergedConfig.headers).length > 0 }, 'FetchClient created');
+    logger.info({ providerName, baseUrl, hasOverrideHeaders: Object.keys(mergedConfig.headers).length > 0, tokenResolverType }, 'FetchClient created');
 
     return client;
   }

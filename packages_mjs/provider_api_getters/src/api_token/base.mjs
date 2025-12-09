@@ -6,6 +6,9 @@
  * at every control flow point.
  */
 
+// Import token registry for dynamic token resolution
+import { tokenRegistry } from '../token_resolver/index.mjs';
+
 // Simple console logger for defensive programming
 const logger = {
   debug: (msg) => console.debug(`[DEBUG] provider_api_getters: ${msg}`),
@@ -514,11 +517,287 @@ export class BaseApiToken {
   }
 
   /**
+   * Async API key resolution with registry integration.
+   *
+   * Resolution priority:
+   * 1. Token registry (Option A: setAPIToken, Option C: registerResolver)
+   * 2. Subclass getApiKey() implementation (env var lookup)
+   *
+   * @returns {Promise<ApiKeyResult>}
+   */
+  async getApiKeyAsync() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getApiKeyAsync: Starting async API key resolution`);
+
+    const providerConfig = this._getProviderConfig();
+
+    // 1. Check token registry (Option A/B/C)
+    try {
+      const registryToken = await tokenRegistry.getToken(
+        this.providerName,
+        null,
+        providerConfig
+      );
+
+      if (registryToken) {
+        logger.debug(
+          `${className}.getApiKeyAsync: Found token from registry ` +
+            `(length=${registryToken.length})`
+        );
+        return new ApiKeyResult({
+          apiKey: registryToken,
+          authType: this.getAuthType(),
+          headerName: this.getHeaderName(),
+        });
+      }
+    } catch (error) {
+      logger.error(
+        `${className}.getApiKeyAsync: Registry lookup failed: ${error.message}`
+      );
+    }
+
+    // 2. Fall back to subclass implementation (env var lookup)
+    logger.debug(
+      `${className}.getApiKeyAsync: No registry token, ` +
+        `falling back to getApiKey()`
+    );
+    return this.getApiKey();
+  }
+
+  /**
+   * Async API key resolution for request context.
+   *
+   * Used for per-request token resolution (token_resolver: "request").
+   *
+   * @param {RequestContext} context - Request context
+   * @returns {Promise<ApiKeyResult>}
+   */
+  async getApiKeyForRequestAsync(context) {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getApiKeyForRequestAsync: Starting async request API key resolution`
+    );
+
+    if (context?.tenantId) {
+      logger.debug(
+        `${className}.getApiKeyForRequestAsync: tenantId=${context.tenantId}`
+      );
+    }
+
+    if (context?.userId) {
+      logger.debug(
+        `${className}.getApiKeyForRequestAsync: userId=${context.userId}`
+      );
+    }
+
+    const providerConfig = this._getProviderConfig();
+
+    // 1. Check token registry with context (for per-request tokens)
+    try {
+      const registryToken = await tokenRegistry.getToken(
+        this.providerName,
+        context,
+        providerConfig
+      );
+
+      if (registryToken) {
+        logger.debug(
+          `${className}.getApiKeyForRequestAsync: Found token from registry ` +
+            `(length=${registryToken.length})`
+        );
+        return new ApiKeyResult({
+          apiKey: registryToken,
+          authType: this.getAuthType(),
+          headerName: this.getHeaderName(),
+        });
+      }
+    } catch (error) {
+      logger.error(
+        `${className}.getApiKeyForRequestAsync: Registry lookup failed: ${error.message}`
+      );
+    }
+
+    // 2. Fall back to subclass implementation
+    logger.debug(
+      `${className}.getApiKeyForRequestAsync: No registry token, ` +
+        `falling back to getApiKeyForRequest()`
+    );
+    return this.getApiKeyForRequest(context);
+  }
+
+  /**
    * Get the base URL for this provider.
    * @returns {string|null}
    */
   getBaseUrl() {
     return this._getBaseUrl();
+  }
+
+  /**
+   * Default auth type for this provider.
+   * Subclasses can override to set provider-specific defaults.
+   * @returns {string}
+   */
+  get _defaultAuthType() {
+    return 'bearer';
+  }
+
+  /**
+   * Default header name for auth.
+   * Subclasses can override for custom headers.
+   * @returns {string}
+   */
+  get _defaultHeaderName() {
+    return 'Authorization';
+  }
+
+  /**
+   * Get the auth type for this provider.
+   *
+   * Resolution priority:
+   * 1. YAML config: providers.{name}.api_auth_type
+   * 2. Subclass default: _defaultAuthType property
+   *
+   * @returns {string} Auth type (bearer, basic, x-api-key, custom, connection_string)
+   */
+  getAuthType() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getAuthType: Getting auth type`);
+
+    // 1. Check YAML config
+    const providerConfig = this._getProviderConfig();
+    const configAuthType = providerConfig?.api_auth_type;
+
+    if (configAuthType) {
+      // Validate auth type
+      if (!VALID_AUTH_TYPES.has(configAuthType)) {
+        logger.warn(
+          `${className}.getAuthType: Invalid api_auth_type '${configAuthType}' in config, ` +
+          `expected one of [${[...VALID_AUTH_TYPES].join(', ')}], ` +
+          `falling back to default '${this._defaultAuthType}'`
+        );
+        return this._defaultAuthType;
+      }
+
+      logger.debug(
+        `${className}.getAuthType: Using api_auth_type from config: '${configAuthType}'`
+      );
+      return configAuthType;
+    }
+
+    // 2. Fall back to provider default
+    logger.debug(
+      `${className}.getAuthType: No api_auth_type in config, ` +
+      `using provider default: '${this._defaultAuthType}'`
+    );
+    return this._defaultAuthType;
+  }
+
+  /**
+   * Get the header name for auth.
+   *
+   * Resolution based on auth type:
+   * - bearer: Authorization
+   * - x-api-key: X-Api-Key
+   * - basic: Authorization
+   * - custom: Subclass default
+   *
+   * @returns {string} Header name
+   */
+  getHeaderName() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getHeaderName: Getting header name`);
+
+    const authType = this.getAuthType();
+
+    let headerName;
+    switch (authType) {
+      case 'bearer':
+      case 'basic':
+        headerName = 'Authorization';
+        break;
+      case 'x-api-key':
+        headerName = 'X-Api-Key';
+        break;
+      case 'custom':
+      case 'connection_string':
+      default:
+        headerName = this._defaultHeaderName;
+    }
+
+    logger.debug(
+      `${className}.getHeaderName: authType='${authType}' -> headerName='${headerName}'`
+    );
+    return headerName;
+  }
+
+  /**
+   * Get the token resolver type for this provider.
+   *
+   * @returns {string} Token resolver type (static, startup, request)
+   */
+  getTokenResolverType() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getTokenResolverType: Getting token resolver type`);
+
+    const providerConfig = this._getProviderConfig();
+    const resolverType = providerConfig?.token_resolver || 'static';
+
+    // Validate resolver type
+    const validTypes = new Set(['static', 'startup', 'request']);
+    if (!validTypes.has(resolverType)) {
+      logger.warn(
+        `${className}.getTokenResolverType: Invalid token_resolver '${resolverType}' in config, ` +
+        `expected one of [${[...validTypes].join(', ')}], defaulting to 'static'`
+      );
+      return 'static';
+    }
+
+    logger.debug(
+      `${className}.getTokenResolverType: Resolved token_resolver='${resolverType}'`
+    );
+    return resolverType;
+  }
+
+  /**
+   * Get the runtime_import configuration for this provider.
+   *
+   * Supports two formats:
+   * - Object: { fastify: "path.mjs", fastapi: "module.path" }
+   * - String: "path.mjs" (single platform)
+   *
+   * @param {string} platform - Platform key ('fastify' or 'fastapi')
+   * @returns {string|null} Import path for the platform or null
+   */
+  getRuntimeImport(platform = 'fastify') {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getRuntimeImport: Getting runtime_import for platform='${platform}'`
+    );
+
+    const providerConfig = this._getProviderConfig();
+    const runtimeImport = providerConfig?.runtime_import;
+
+    if (!runtimeImport) {
+      logger.debug(`${className}.getRuntimeImport: No runtime_import configured`);
+      return null;
+    }
+
+    let importPath = null;
+
+    if (typeof runtimeImport === 'object' && runtimeImport[platform]) {
+      importPath = runtimeImport[platform];
+      logger.debug(
+        `${className}.getRuntimeImport: Found platform-specific import: '${importPath}'`
+      );
+    } else if (typeof runtimeImport === 'string') {
+      importPath = runtimeImport;
+      logger.debug(
+        `${className}.getRuntimeImport: Found string import (single platform): '${importPath}'`
+      );
+    }
+
+    return importPath;
   }
 
   /**

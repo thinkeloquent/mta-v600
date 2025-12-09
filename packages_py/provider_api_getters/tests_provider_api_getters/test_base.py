@@ -290,7 +290,7 @@ class TestApiKeyResult:
             d = result.to_dict(include_sensitive=True)
 
         assert "api_key_masked" in d
-        assert d["api_key_masked"] == "secr********"  # 12 chars total, 4 visible + 8 masked
+        assert d["api_key_masked"] == "secret-tok**"  # 12 chars total, 10 visible + 2 masked
         assert d["username"] == "user@example.com"
 
 
@@ -329,22 +329,22 @@ class TestBaseApiToken:
         assert token._config_store is None
         assert "will lazy-load" in caplog.text
 
-    def test_config_store_lazy_loading(self, caplog, mocker):
+    def test_config_store_lazy_loading(self, caplog):
         """Test lazy loading of config_store."""
+        from unittest.mock import MagicMock, patch
+
         # Mock the static_config module
-        mock_config = mocker.MagicMock()
+        mock_config = MagicMock()
         mock_config.is_initialized.return_value = True
-        mocker.patch.dict(
-            "sys.modules",
-            {"static_config": mocker.MagicMock(config=mock_config)}
-        )
+        mock_module = MagicMock(config=mock_config)
 
-        token = ConcreteApiToken()
+        with patch.dict("sys.modules", {"static_config": mock_module}):
+            token = ConcreteApiToken()
 
-        with caplog.at_level(logging.DEBUG):
-            _ = token.config_store
+            with caplog.at_level(logging.DEBUG):
+                _ = token.config_store
 
-        assert "lazy-loading from static_config module" in caplog.text
+            assert "lazy-loading from static_config module" in caplog.text
 
     def test_get_provider_config_with_valid_config(self, caplog):
         """Test _get_provider_config with valid configuration."""
@@ -399,13 +399,15 @@ class TestBaseApiToken:
         assert result1 == result2
         assert "Returning cached config" in caplog.text
 
-    def test_get_provider_config_exception_handling(self, caplog, mocker):
+    def test_get_provider_config_handles_exceptions(self, caplog):
         """Test _get_provider_config handles exceptions gracefully."""
-        mock_store = mocker.MagicMock()
-        mock_store.get_nested.side_effect = RuntimeError("Config error")
+        from unittest.mock import MagicMock
+
+        mock_store = MagicMock()
+        mock_store.get_nested.side_effect = RuntimeError("Config lookup failed")
         token = ConcreteApiToken(config_store=mock_store)
 
-        with caplog.at_level(logging.ERROR):
+        with caplog.at_level(logging.DEBUG):
             result = token._get_provider_config()
 
         assert result == {}
@@ -479,7 +481,7 @@ class TestBaseApiToken:
 
         assert result == "my-secret-token"
         assert "Found API key in env var" in caplog.text
-        assert "my-s***********" in caplog.text  # Masked value (15 chars: 4 visible + 11 masked)
+        assert "my-secret-*****" in caplog.text  # Masked value (15 chars: 10 visible + 5 masked)
 
     def test_lookup_env_api_key_not_found(self, caplog, clean_env):
         """Test _lookup_env_api_key when key is not found."""

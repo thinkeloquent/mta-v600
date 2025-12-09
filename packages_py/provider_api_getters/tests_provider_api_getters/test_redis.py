@@ -212,10 +212,8 @@ class TestRedisApiToken:
 
     # get_sync_client tests
 
-    def test_get_sync_client_no_redis(self, redis_token, clean_env, caplog, mocker):
+    def test_get_sync_client_no_redis(self, redis_token, clean_env, caplog):
         """Test get_sync_client when redis not installed."""
-        mocker.patch.dict("sys.modules", {"redis": None})
-
         # Need to reimport to trigger the ImportError
         with patch.dict("sys.modules", {"redis": None}):
             # The import will succeed but we can test the behavior

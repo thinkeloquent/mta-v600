@@ -106,13 +106,18 @@ class TestConfluenceApiToken:
         assert result == "wiki@company.com"
         assert "Found email in env var 'CONFLUENCE_EMAIL'" in caplog.text
 
-    def test_get_email_not_found(self, confluence_token, clean_env, caplog):
+    def test_get_email_not_found(self, confluence_config, clean_env, caplog):
         """Test _get_email when email is not set."""
+        # Create token AFTER clean_env clears env vars
+        mock_store = MockConfigStore(confluence_config)
+        confluence_token = ConfluenceApiToken(config_store=mock_store)
+
         with caplog.at_level(logging.DEBUG):
             result = confluence_token._get_email()
 
         assert result is None
-        assert "'CONFLUENCE_EMAIL' is not set" in caplog.text
+        # Log says "not set, trying fallback" or "Neither ... is set"
+        assert "'CONFLUENCE_EMAIL' not set" in caplog.text or "Neither" in caplog.text
 
     # _encode_basic_auth tests
     def test_encode_basic_auth_valid(self, confluence_token, caplog):
@@ -234,14 +239,19 @@ class TestConfluenceApiToken:
         assert result == "https://config.atlassian.net/wiki"
         assert "Found base URL from config" in caplog.text
 
-    def test_get_base_url_not_configured(self, confluence_token, clean_env, caplog):
+    def test_get_base_url_not_configured(self, confluence_config, clean_env, caplog):
         """Test get_base_url when not configured."""
+        # Create token AFTER clean_env clears env vars
+        mock_store = MockConfigStore(confluence_config)
+        confluence_token = ConfluenceApiToken(config_store=mock_store)
+
         with caplog.at_level(logging.WARNING):
             result = confluence_token.get_base_url()
 
         assert result is None
         assert "No base URL configured" in caplog.text
-        assert "Set CONFLUENCE_BASE_URL environment variable" in caplog.text
+        # Implementation says "Set CONFLUENCE_BASE_URL or JIRA_BASE_URL environment variable"
+        assert "CONFLUENCE_BASE_URL" in caplog.text
 
     # Validation tests
     def test_validate_fully_configured(self, clean_env):

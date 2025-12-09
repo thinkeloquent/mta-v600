@@ -357,7 +357,7 @@ class ProviderHealthChecker:
             )
 
         logger.debug(f"ProviderHealthChecker._check_http: Creating HTTP client for '{provider_name}'")
-        client = self._client_factory.get_client(api_token.provider_name)
+        client = await self._client_factory.get_client(api_token.provider_name)
         if client is None:
             logger.error(f"ProviderHealthChecker._check_http: Failed to create HTTP client for '{provider_name}'")
             return ProviderConnectionResponse(

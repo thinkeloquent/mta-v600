@@ -11,6 +11,8 @@ providers:
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
     model: "gemini-2.0-flash"
     env_api_key: "GEMINI_API_KEY"
+    api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
+    token_resolver: "static"        # static (default), startup, request
     # Provider-specific configuration overrides (optional)
     # Overrides are deep-merged with global proxy/client settings
     # overwrite_config:
@@ -32,13 +34,19 @@ providers:
     base_url: "https://api.openai.com/v1"
     model: "gpt-4"
     env_api_key: "OPENAI_API_KEY"
+    api_auth_type: "bearer"
+    token_resolver: "static"
   anthropic:
     base_url: "https://api.anthropic.com/v1"
     model: "claude-3-sonnet"
     env_api_key: "ANTHROPIC_API_KEY"
+    api_auth_type: "x-api-key"       # Anthropic uses x-api-key header
+    token_resolver: "static"
   figma:
     base_url: "https://api.figma.com/v1"
     env_api_key: "FIGMA_TOKEN"
+    api_auth_type: "custom"             # Figma uses custom X-Figma-Token header
+    token_resolver: "static"
   github:
     base_url: "https://api.github.com"
     env_api_key: "GITHUB_TOKEN"
@@ -46,22 +54,32 @@ providers:
       - "GH_TOKEN"
       - "GITHUB_ACCESS_TOKEN"
       - "GITHUB_PAT"
+    api_auth_type: "bearer"
+    token_resolver: "static"
   jira:
     base_url: null  # Set per-tenant or via JIRA_BASE_URL
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
     health_endpoint: "/rest/api/2/myself"
+    api_auth_type: "basic"           # Jira uses Basic auth with email:token
+    token_resolver: "static"
   confluence:
-    base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL
+    base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL (includes /wiki)
     env_api_key: "CONFLUENCE_API_TOKEN"
     env_email: "CONFLUENCE_EMAIL"
-    health_endpoint: "/wiki/rest/api/user/current"
+    health_endpoint: "/rest/api/user/current"  # base_url already has /wiki
+    api_auth_type: "basic"           # Confluence uses Basic auth with email:token
+    token_resolver: "static"
   # Database providers
   postgres:
     env_connection_url: "DATABASE_URL"
     health_query: "SELECT 1"
+    api_auth_type: "connection_string"
+    token_resolver: "static"
   redis:
     env_connection_url: "REDIS_URL"
+    api_auth_type: "connection_string"
+    token_resolver: "static"
   # SauceLabs
   saucelabs:
     base_url: "https://api.us-west-1.saucelabs.com"
@@ -72,6 +90,8 @@ providers:
     env_api_key_fallbacks:
       - "SAUCELABS_ACCESS_KEY"
     health_endpoint: "/rest/v1/users/:username"
+    api_auth_type: "basic"           # SauceLabs uses Basic auth with username:access_key
+    token_resolver: "static"
   # Placeholder providers (not implemented)
   rally:
     placeholder: true

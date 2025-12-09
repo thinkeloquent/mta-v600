@@ -169,6 +169,7 @@ def clean_env(monkeypatch):
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
         "POSTGRES_DB",
+        "POSTGRES_SSLMODE",
         "REDIS_URL",
         "REDIS_HOST",
         "REDIS_PORT",

@@ -13,6 +13,14 @@ from .base import BaseApiToken, ApiKeyResult, _mask_sensitive
 
 logger = logging.getLogger(__name__)
 
+# Default fallback environment variable names for GitHub tokens
+# These are used when no fallbacks are configured in YAML
+GITHUB_FALLBACK_ENV_VARS: Tuple[str, ...] = (
+    "GH_TOKEN",
+    "GITHUB_ACCESS_TOKEN",
+    "GITHUB_PAT",
+)
+
 
 class GithubApiToken(BaseApiToken):
     """
@@ -53,10 +61,13 @@ class GithubApiToken(BaseApiToken):
         Get the list of fallback environment variable names from config.
 
         Returns:
-            Tuple of environment variable names to check
+            Tuple of environment variable names to check (from config or default)
         """
         fallbacks = self._get_env_api_key_fallbacks()
-        return tuple(fallbacks)
+        if fallbacks:
+            return tuple(fallbacks)
+        # Use default fallbacks when not configured
+        return GITHUB_FALLBACK_ENV_VARS
 
     def _lookup_with_fallbacks(self) -> Tuple[Optional[str], Optional[str]]:
         """

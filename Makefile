@@ -62,6 +62,7 @@ setup:
 	@python .bin/sync-poetry-local-packages.py || true
 	@bash .bin/ts-apply-noImplicitAny.sh || true
 	@echo "Installing dependencies..."
+	rm -rf ./logs && mkdir ./logs
 	pnpm install
 	poetry lock --no-update
 	poetry install --no-root

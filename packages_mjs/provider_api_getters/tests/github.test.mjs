@@ -7,7 +7,11 @@
  * - Log verification: Console spy checks
  */
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { GithubApiToken, GITHUB_FALLBACK_ENV_VARS } from '../src/api_token/github.mjs';
+import { GithubApiToken } from '../src/api_token/github.mjs';
+
+// Default fallback env vars to clear in tests
+// Note: MJS implementation reads fallbacks from config, not a constant
+const GITHUB_ENV_VARS_TO_CLEAR = ['GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'];
 
 function setupConsoleSpy() {
   return {
@@ -42,7 +46,7 @@ describe('GithubApiToken', () => {
     consoleSpy = setupConsoleSpy();
     originalEnv = { ...process.env };
     // Clear all GitHub-related env vars
-    GITHUB_FALLBACK_ENV_VARS.forEach((v) => delete process.env[v]);
+    GITHUB_ENV_VARS_TO_CLEAR.forEach((v) => delete process.env[v]);
   });
 
   afterEach(() => {
@@ -66,13 +70,18 @@ describe('GithubApiToken', () => {
   });
 
   describe('Fallback Env Vars', () => {
-    it('should export correct fallback env vars', () => {
-      expect(GITHUB_FALLBACK_ENV_VARS).toEqual([
-        'GITHUB_TOKEN',
-        'GH_TOKEN',
-        'GITHUB_ACCESS_TOKEN',
-        'GITHUB_PAT',
-      ]);
+    it('should use fallbacks from config when configured', () => {
+      // MJS implementation reads fallbacks from config store
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
+      const fallbacks = token._getFallbackEnvVars();
+
+      expect(fallbacks).toEqual(['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT']);
     });
   });
 
@@ -91,8 +100,13 @@ describe('GithubApiToken', () => {
       );
     });
 
-    it('should fall back to GITHUB_TOKEN when configured not set', () => {
-      const mockStore = createMockStore({ github: { env_api_key: 'MY_GITHUB_KEY' } });
+    it('should fall back to first fallback when configured env var not set', () => {
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'MY_GITHUB_KEY',
+          env_api_key_fallbacks: ['GITHUB_TOKEN', 'GH_TOKEN'],
+        },
+      });
       const token = new GithubApiToken(mockStore);
       delete process.env.MY_GITHUB_KEY;
       process.env.GITHUB_TOKEN = 'github-token-value';
@@ -103,7 +117,13 @@ describe('GithubApiToken', () => {
     });
 
     it('should fall back to GH_TOKEN when GITHUB_TOKEN not set', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       process.env.GH_TOKEN = 'gh-token-value';
 
       const result = token.getApiKey();
@@ -112,7 +132,13 @@ describe('GithubApiToken', () => {
     });
 
     it('should fall back to GITHUB_ACCESS_TOKEN when prior vars not set', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       process.env.GITHUB_ACCESS_TOKEN = 'access-token-value';
 
       const result = token.getApiKey();
@@ -121,7 +147,13 @@ describe('GithubApiToken', () => {
     });
 
     it('should fall back to GITHUB_PAT when all prior vars not set', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       process.env.GITHUB_PAT = 'pat-value';
 
       const result = token.getApiKey();
@@ -156,7 +188,13 @@ describe('GithubApiToken', () => {
 
   describe('Log Verification', () => {
     it('should log fallback iteration', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       token.getApiKey();
 
       // Should log checking each fallback
@@ -166,20 +204,34 @@ describe('GithubApiToken', () => {
     });
 
     it('should log number of fallback vars being checked', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN', 'GITHUB_ACCESS_TOKEN', 'GITHUB_PAT'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       token.getApiKey();
 
+      // Implementation logs "Checking N fallback env vars"
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('4 fallback env vars')
+        expect.stringContaining('3 fallback env vars')
       );
     });
 
     it('should log when env var is not set', () => {
-      const token = new GithubApiToken();
+      const mockStore = createMockStore({
+        github: {
+          env_api_key: 'GITHUB_TOKEN',
+          env_api_key_fallbacks: ['GH_TOKEN'],
+        },
+      });
+      const token = new GithubApiToken(mockStore);
       token.getApiKey();
 
+      // Implementation logs "env var 'X' is not set"
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('is not set')
+        expect.stringContaining("'GITHUB_TOKEN' is not set")
       );
     });
   });

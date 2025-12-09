@@ -11,6 +11,9 @@ from typing import Any, Dict, Optional, Union
 import logging
 import os
 
+# Import token registry for dynamic token resolution
+from ..token_resolver import token_registry
+
 logger = logging.getLogger(__name__)
 
 
@@ -518,6 +521,119 @@ class BaseApiToken(ABC):
         )
         return result
 
+    async def get_api_key_async(self) -> ApiKeyResult:
+        """
+        Async API key resolution with registry integration.
+
+        Resolution priority:
+        1. Token registry (Option A: set_api_token, Option C: register_resolver)
+        2. Subclass get_api_key() implementation (env var lookup)
+
+        Returns:
+            ApiKeyResult with resolved credentials
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_api_key_async: "
+            "Starting async API key resolution"
+        )
+
+        provider_config = self._get_provider_config()
+
+        # 1. Check token registry (Option A/B/C)
+        try:
+            registry_token = await token_registry.get_token(
+                self.provider_name,
+                None,
+                provider_config
+            )
+
+            if registry_token:
+                logger.debug(
+                    f"{self.__class__.__name__}.get_api_key_async: "
+                    f"Found token from registry (length={len(registry_token)})"
+                )
+                return ApiKeyResult(
+                    api_key=registry_token,
+                    auth_type=self.get_auth_type(),
+                    header_name=self.get_header_name(),
+                )
+        except Exception as e:
+            logger.error(
+                f"{self.__class__.__name__}.get_api_key_async: "
+                f"Registry lookup failed: {e}"
+            )
+
+        # 2. Fall back to subclass implementation (env var lookup)
+        logger.debug(
+            f"{self.__class__.__name__}.get_api_key_async: "
+            "No registry token, falling back to get_api_key()"
+        )
+        return self.get_api_key()
+
+    async def get_api_key_for_request_async(
+        self, context: RequestContext
+    ) -> ApiKeyResult:
+        """
+        Async API key resolution for request context.
+
+        Used for per-request token resolution (token_resolver: "request").
+
+        Args:
+            context: Request context with optional tenant/user info
+
+        Returns:
+            ApiKeyResult with resolved credentials
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_api_key_for_request_async: "
+            "Starting async request API key resolution"
+        )
+
+        if context and context.tenant_id:
+            logger.debug(
+                f"{self.__class__.__name__}.get_api_key_for_request_async: "
+                f"tenant_id={context.tenant_id}"
+            )
+
+        if context and context.user_id:
+            logger.debug(
+                f"{self.__class__.__name__}.get_api_key_for_request_async: "
+                f"user_id={context.user_id}"
+            )
+
+        provider_config = self._get_provider_config()
+
+        # 1. Check token registry with context (for per-request tokens)
+        try:
+            registry_token = await token_registry.get_token(
+                self.provider_name,
+                context,
+                provider_config
+            )
+
+            if registry_token:
+                logger.debug(
+                    f"{self.__class__.__name__}.get_api_key_for_request_async: "
+                    f"Found token from registry (length={len(registry_token)})"
+                )
+                return ApiKeyResult(
+                    api_key=registry_token,
+                    auth_type=self.get_auth_type(),
+                    header_name=self.get_header_name(),
+                )
+        except Exception as e:
+            logger.error(
+                f"{self.__class__.__name__}.get_api_key_for_request_async: "
+                f"Registry lookup failed: {e}"
+            )
+
+        # 2. Fall back to subclass implementation
+        logger.debug(
+            f"{self.__class__.__name__}.get_api_key_for_request_async: "
+            "No registry token, falling back to get_api_key_for_request()"
+        )
+        return self.get_api_key_for_request(context)
+
     def get_base_url(self) -> Optional[str]:
         """
         Get the base URL for this provider.
@@ -532,6 +648,173 @@ class BaseApiToken(ABC):
             f"Returning base_url={'<set>' if result else 'None'}"
         )
         return result
+
+    @property
+    def _default_auth_type(self) -> str:
+        """
+        Default auth type for this provider.
+        Subclasses can override to set provider-specific defaults.
+
+        Returns:
+            Default auth type string (e.g., 'bearer', 'basic')
+        """
+        return "bearer"
+
+    @property
+    def _default_header_name(self) -> str:
+        """
+        Default header name for auth.
+        Subclasses can override for custom headers.
+
+        Returns:
+            Default header name string
+        """
+        return "Authorization"
+
+    def get_auth_type(self) -> str:
+        """
+        Get the auth type for this provider.
+
+        Resolution priority:
+        1. YAML config: providers.{name}.api_auth_type
+        2. Subclass default: _default_auth_type property
+
+        Returns:
+            Auth type (bearer, basic, x-api-key, custom, connection_string)
+        """
+        logger.debug(f"{self.__class__.__name__}.get_auth_type: Getting auth type")
+
+        # 1. Check YAML config
+        provider_config = self._get_provider_config()
+        config_auth_type = provider_config.get("api_auth_type")
+
+        if config_auth_type:
+            # Validate auth type
+            if config_auth_type not in VALID_AUTH_TYPES:
+                logger.warning(
+                    f"{self.__class__.__name__}.get_auth_type: Invalid api_auth_type "
+                    f"'{config_auth_type}' in config, expected one of {VALID_AUTH_TYPES}, "
+                    f"falling back to default '{self._default_auth_type}'"
+                )
+                return self._default_auth_type
+
+            logger.debug(
+                f"{self.__class__.__name__}.get_auth_type: Using api_auth_type from config: "
+                f"'{config_auth_type}'"
+            )
+            return config_auth_type
+
+        # 2. Fall back to provider default
+        logger.debug(
+            f"{self.__class__.__name__}.get_auth_type: No api_auth_type in config, "
+            f"using provider default: '{self._default_auth_type}'"
+        )
+        return self._default_auth_type
+
+    def get_header_name(self) -> str:
+        """
+        Get the header name for auth.
+
+        Resolution based on auth type:
+        - bearer: Authorization
+        - x-api-key: X-Api-Key
+        - basic: Authorization
+        - custom: Subclass default
+
+        Returns:
+            Header name string
+        """
+        logger.debug(f"{self.__class__.__name__}.get_header_name: Getting header name")
+
+        auth_type = self.get_auth_type()
+
+        if auth_type in ("bearer", "basic"):
+            header_name = "Authorization"
+        elif auth_type == "x-api-key":
+            header_name = "X-Api-Key"
+        else:  # custom, connection_string, etc.
+            header_name = self._default_header_name
+
+        logger.debug(
+            f"{self.__class__.__name__}.get_header_name: auth_type='{auth_type}' -> "
+            f"header_name='{header_name}'"
+        )
+        return header_name
+
+    def get_token_resolver_type(self) -> str:
+        """
+        Get the token resolver type for this provider.
+
+        Returns:
+            Token resolver type (static, startup, request)
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_token_resolver_type: Getting token resolver type"
+        )
+
+        provider_config = self._get_provider_config()
+        resolver_type = provider_config.get("token_resolver", "static")
+
+        # Validate resolver type
+        valid_types = {"static", "startup", "request"}
+        if resolver_type not in valid_types:
+            logger.warning(
+                f"{self.__class__.__name__}.get_token_resolver_type: Invalid token_resolver "
+                f"'{resolver_type}' in config, expected one of {valid_types}, "
+                f"defaulting to 'static'"
+            )
+            return "static"
+
+        logger.debug(
+            f"{self.__class__.__name__}.get_token_resolver_type: Resolved "
+            f"token_resolver='{resolver_type}'"
+        )
+        return resolver_type
+
+    def get_runtime_import(self, platform: str = "fastapi") -> Optional[str]:
+        """
+        Get the runtime_import configuration for this provider.
+
+        Supports two formats:
+        - Object: { fastify: "path.mjs", fastapi: "module.path" }
+        - String: "module.path" (single platform)
+
+        Args:
+            platform: Platform key ('fastify' or 'fastapi')
+
+        Returns:
+            Import path for the platform or None
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_runtime_import: Getting runtime_import "
+            f"for platform='{platform}'"
+        )
+
+        provider_config = self._get_provider_config()
+        runtime_import = provider_config.get("runtime_import")
+
+        if not runtime_import:
+            logger.debug(
+                f"{self.__class__.__name__}.get_runtime_import: No runtime_import configured"
+            )
+            return None
+
+        import_path = None
+
+        if isinstance(runtime_import, dict) and runtime_import.get(platform):
+            import_path = runtime_import[platform]
+            logger.debug(
+                f"{self.__class__.__name__}.get_runtime_import: Found platform-specific "
+                f"import: '{import_path}'"
+            )
+        elif isinstance(runtime_import, str):
+            import_path = runtime_import
+            logger.debug(
+                f"{self.__class__.__name__}.get_runtime_import: Found string import "
+                f"(single platform): '{import_path}'"
+            )
+
+        return import_path
 
     def get_overwrite_config(self) -> Optional[Dict[str, Any]]:
         """
