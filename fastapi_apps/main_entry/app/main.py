@@ -43,7 +43,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import hello, vault, loaded_config, provider_connection
+from app.routes import hello, vault, loaded_config, provider_connection, health_status
 
 # ============================================================
 # Vault service dependency for routes
@@ -164,9 +164,10 @@ async def startup_event():
 ║    GET  /healthz/admin/loaded-config       - Config status 
 ║    GET  /healthz/admin/loaded-config/data  - Full config   
 ║                                                            
-║  Provider Health Endpoints:                                
+║  Provider Health Endpoints:
 ║    GET  /healthz/providers/connection      - Providers list
 ║    GET  /healthz/providers/connection/:p   - Check provider
+║    GET  /health/status                     - Full health status
 ║                                                            
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
@@ -189,6 +190,7 @@ app.include_router(hello.router, prefix="/api/fastapi", tags=["hello"])
 app.include_router(vault.router, prefix="/healthz/admin/vault", tags=["vault"])
 app.include_router(loaded_config.router, prefix="/healthz/admin/loaded-config", tags=["loaded-config"])
 app.include_router(provider_connection.router, prefix="/healthz/providers/connection", tags=["provider-connection"])
+app.include_router(health_status.router, prefix="/health/status", tags=["health-status"])
 
 
 # Mount static files if frontend is built (must be after API routes)

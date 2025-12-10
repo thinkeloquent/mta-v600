@@ -70,6 +70,7 @@ import mainEntryPlugin from "./index.mjs";
 import vaultRoutesPlugin from "./routes/vault.mjs";
 import loadedConfigRoutesPlugin from "./routes/loaded_config.mjs";
 import providerConnectionRoutesPlugin from "./routes/provider_connection.mjs";
+import healthStatusRoutesPlugin from "./routes/health_status.mjs";
 
 // Build parameters (set by CI/CD or Makefile)
 const BUILD_ID = process.env.BUILD_ID || "local";
@@ -128,6 +129,11 @@ await fastify.register(loadedConfigRoutesPlugin, {
 // Register provider connection health check routes
 await fastify.register(providerConnectionRoutesPlugin, {
   prefix: "/healthz/providers/connection",
+});
+
+// Register health status routes
+await fastify.register(healthStatusRoutesPlugin, {
+  prefix: "/health/status",
 });
 
 // Register main_entry plugin with shared frontend
@@ -192,6 +198,7 @@ try {
 ║  Provider Health Endpoints:                                ║
 ║    GET  /healthz/providers/connection      - Providers list║
 ║    GET  /healthz/providers/connection/:p   - Check provider║
+║    GET  /health/status                     - Full health   ║
 ║                                                            ║
 ║  Frontend: Served from frontend_apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║
