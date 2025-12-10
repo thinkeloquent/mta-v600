@@ -1,0 +1,44 @@
+{
+  "name": "@internal/project-generator",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "PolyNx Project Generator CLI for scaffolding projects in polyglot monorepos",
+  "bin": {
+    "polynx": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src",
+    "format": "biome format --write src"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "commander": "^12.1.0",
+    "execa": "^9.5.2",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.0.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "cli",
+    "generator",
+    "scaffolding",
+    "nx",
+    "monorepo",
+    "polyglot"
+  ]
+}
