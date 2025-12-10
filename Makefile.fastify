@@ -203,23 +203,33 @@ stop:
 # ============================================================================
 # Note: Python integration tests are in Makefile.fastapi
 
-# Test directory
+# Test directory and log file
 INTEGRATION_TEST_DIR := $(MAKEFILE_DIR)tools/testing/connection/nodejs-client
+HEALTH_TEST_LOG := $(LOG_DIR)/health-test-fastify.log
 
 # Run all Node.js integration tests (*.integration.mjs and *.mjs)
 health:
+	@mkdir -p $(LOG_DIR)
 	@echo "Running Node.js integration tests..."
 	@echo "Test directory: $(INTEGRATION_TEST_DIR)"
+	@echo "Log file: $(HEALTH_TEST_LOG)"
+	@echo "=== Health Test Results - $$(date) ===" > $(HEALTH_TEST_LOG)
+	@echo "Test directory: $(INTEGRATION_TEST_DIR)" >> $(HEALTH_TEST_LOG)
+	@echo "" >> $(HEALTH_TEST_LOG)
 	@find $(INTEGRATION_TEST_DIR) -maxdepth 1 -type f \( -name "*.integration.mjs" -o -name "*.mjs" \) 2>/dev/null | sort | while read f; do \
 		echo ""; \
 		echo "=== Running $$(basename $$f) ==="; \
-		node "$$f" 2>&1 || echo "FAILED: $$f"; \
+		echo "=== $$(basename $$f) ===" >> $(HEALTH_TEST_LOG); \
+		node "$$f" 2>&1 | tee -a $(HEALTH_TEST_LOG) || echo "FAILED: $$f" | tee -a $(HEALTH_TEST_LOG); \
+		echo "" >> $(HEALTH_TEST_LOG); \
 	done
 	@echo ""
-	@echo "Node.js integration tests complete!"
+	@echo "=== Completed at $$(date) ===" >> $(HEALTH_TEST_LOG)
+	@echo "Node.js integration tests complete! Log: $(HEALTH_TEST_LOG)"
 
 # Run a single Node.js integration test (usage: make health-test PROVIDER=github)
 health-test:
+	@mkdir -p $(LOG_DIR)
 	@if [ -z "$(PROVIDER)" ]; then \
 		echo "Usage: make -f Makefile.fastify health-test PROVIDER=<provider>"; \
 		echo "Available providers:"; \
@@ -229,7 +239,10 @@ health-test:
 	@test_file=$$(find $(INTEGRATION_TEST_DIR) -maxdepth 1 -type f \( -name "$(PROVIDER).integration.mjs" -o -name "$(PROVIDER).mjs" \) 2>/dev/null | head -1); \
 	if [ -n "$$test_file" ]; then \
 		echo "Running $(PROVIDER) Node.js integration test..."; \
-		node "$$test_file"; \
+		echo "=== $(PROVIDER) Health Test - $$(date) ===" > $(HEALTH_TEST_LOG); \
+		node "$$test_file" 2>&1 | tee -a $(HEALTH_TEST_LOG); \
+		echo "=== Completed at $$(date) ===" >> $(HEALTH_TEST_LOG); \
+		echo "Log: $(HEALTH_TEST_LOG)"; \
 	else \
 		echo "Error: Test file not found for provider '$(PROVIDER)'"; \
 		exit 1; \
