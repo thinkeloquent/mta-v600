@@ -92,7 +92,7 @@ function createGithubClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'bearer',
-      apiKey: CONFIG.GITHUB_TOKEN,
+      rawApiKey: CONFIG.GITHUB_TOKEN,
     },
     headers: {
       Accept: 'application/vnd.github+json',

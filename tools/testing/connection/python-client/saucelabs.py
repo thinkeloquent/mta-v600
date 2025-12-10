@@ -96,7 +96,7 @@ def create_saucelabs_client():
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="basic",
-            api_key=CONFIG["SAUCELABS_ACCESS_KEY"],
+            raw_api_key=CONFIG["SAUCELABS_ACCESS_KEY"],
             username=CONFIG["SAUCELABS_USERNAME"],
         ),
         default_headers={

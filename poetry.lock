@@ -216,7 +216,7 @@ files = []
 develop = true
 
 [package.dependencies]
-httpx = "^0.28.0"
+httpx = "*"
 
 [package.extras]
 fastapi = []

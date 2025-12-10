@@ -118,7 +118,8 @@ def create_akamai_client():
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="custom",  # EdgeGrid requires custom signing per request
-            api_key="",  # Not used directly, signing handled separately
+            raw_api_key="",  # Not used directly, signing handled separately
+            header_name="Authorization",
         ),
         default_headers={"Accept": "application/json"},
         verify=CONFIG["SSL_VERIFY"],

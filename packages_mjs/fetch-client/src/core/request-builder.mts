@@ -99,9 +99,9 @@ export function resolveAuthHeader(
     apiKey = auth.getApiKeyForRequest(context);
   }
 
-  // Fall back to static key
+  // Fall back to static key (use raw value, formatAuthHeaderValue will compute the final value)
   if (!apiKey) {
-    apiKey = auth.apiKey;
+    apiKey = auth.rawApiKey;
   }
 
   if (!apiKey) {

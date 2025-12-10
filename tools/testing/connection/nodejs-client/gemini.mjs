@@ -92,7 +92,7 @@ function createGeminiClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'bearer',
-      apiKey: CONFIG.GEMINI_API_KEY,
+      rawApiKey: CONFIG.GEMINI_API_KEY,
     },
     proxy: CONFIG.PROXY,
     verify: CONFIG.SSL_VERIFY,

@@ -45,21 +45,37 @@ class AuthConfig:
 
     HMAC auth (stub for future implementation):
     - hmac: AWS Signature, GCP HMAC, HTTP Signatures, Webhooks
+
+    Properties:
+    - raw_api_key: Original token/key value (input field)
+    - api_key: Computed auth header value based on type (e.g., "Basic <base64>")
     """
 
     type: AuthType
-    api_key: Optional[str] = None       # Token/key for bearer/api-key types
+    raw_api_key: Optional[str] = None   # Original token/key value
     username: Optional[str] = None      # For basic/bearer_username_* types
     email: Optional[str] = None         # For *_email* types
     password: Optional[str] = None      # For *_password types
     header_name: Optional[str] = None   # For custom/custom_header types
     get_api_key_for_request: Optional[Callable[[RequestContext], Optional[str]]] = None
 
+    @property
+    def api_key(self) -> Optional[str]:
+        """Return the computed auth header value based on type.
+
+        For basic auth: Returns "Basic <base64(identifier:secret)>"
+        For bearer auth: Returns "Bearer <token>" or "Bearer <base64(...)>"
+        For x-api-key/custom: Returns the raw value
+        """
+        if self.raw_api_key is None:
+            return None
+        return format_auth_header_value(self, self.raw_api_key)
+
     def __repr__(self) -> str:
         """Safe repr that masks sensitive values."""
         return (
             f"AuthConfig(type={self.type!r}, "
-            f"api_key={_mask_sensitive(self.api_key)!r}, "
+            f"raw_api_key={_mask_sensitive(self.raw_api_key)!r}, "
             f"username={self.username!r}, "
             f"email={self.email!r}, "
             f"password={_mask_sensitive(self.password)!r}, "
@@ -154,23 +170,23 @@ def validate_auth_config(auth: AuthConfig) -> None:
 
     # Validation rules per type
     if auth.type == "basic":
-        # Auto-compute: need (username OR email) AND (password OR api_key)
+        # Auto-compute: need (username OR email) AND (password OR raw_api_key)
         has_identifier = auth.username or auth.email
-        has_secret = auth.password or auth.api_key
+        has_secret = auth.password or auth.raw_api_key
         if not has_identifier or not has_secret:
-            raise ValueError("basic auth requires (username OR email) AND (password OR api_key)")
+            raise ValueError("basic auth requires (username OR email) AND (password OR raw_api_key)")
 
     elif auth.type == "basic_email_token":
         if not auth.email:
             raise ValueError("email is required for basic_email_token auth type")
-        if not auth.api_key:
-            raise ValueError("api_key is required for basic_email_token auth type")
+        if not auth.raw_api_key:
+            raise ValueError("raw_api_key is required for basic_email_token auth type")
 
     elif auth.type == "basic_token":
         if not auth.username:
             raise ValueError("username is required for basic_token auth type")
-        if not auth.api_key:
-            raise ValueError("api_key is required for basic_token auth type")
+        if not auth.raw_api_key:
+            raise ValueError("raw_api_key is required for basic_token auth type")
 
     elif auth.type == "basic_email":
         if not auth.email:
@@ -179,22 +195,22 @@ def validate_auth_config(auth: AuthConfig) -> None:
             raise ValueError("password is required for basic_email auth type")
 
     elif auth.type == "bearer":
-        # Auto-compute: need api_key OR ((username OR email) AND (password OR api_key))
+        # Auto-compute: need raw_api_key OR ((username OR email) AND (password OR raw_api_key))
         has_identifier = auth.username or auth.email
-        has_secret = auth.password or auth.api_key
+        has_secret = auth.password or auth.raw_api_key
         has_credentials = has_identifier and has_secret
-        if not auth.api_key and not has_credentials:
-            raise ValueError("bearer auth requires api_key OR ((username OR email) AND (password OR api_key))")
+        if not auth.raw_api_key and not has_credentials:
+            raise ValueError("bearer auth requires raw_api_key OR ((username OR email) AND (password OR raw_api_key))")
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
-        if not auth.api_key:
-            raise ValueError(f"api_key is required for {auth.type} auth type")
+        if not auth.raw_api_key:
+            raise ValueError(f"raw_api_key is required for {auth.type} auth type")
 
     elif auth.type == "bearer_username_token":
         if not auth.username:
             raise ValueError("username is required for bearer_username_token auth type")
-        if not auth.api_key:
-            raise ValueError("api_key is required for bearer_username_token auth type")
+        if not auth.raw_api_key:
+            raise ValueError("raw_api_key is required for bearer_username_token auth type")
 
     elif auth.type == "bearer_username_password":
         if not auth.username:
@@ -205,8 +221,8 @@ def validate_auth_config(auth: AuthConfig) -> None:
     elif auth.type == "bearer_email_token":
         if not auth.email:
             raise ValueError("email is required for bearer_email_token auth type")
-        if not auth.api_key:
-            raise ValueError("api_key is required for bearer_email_token auth type")
+        if not auth.raw_api_key:
+            raise ValueError("raw_api_key is required for bearer_email_token auth type")
 
     elif auth.type == "bearer_email_password":
         if not auth.email:
@@ -215,14 +231,14 @@ def validate_auth_config(auth: AuthConfig) -> None:
             raise ValueError("password is required for bearer_email_password auth type")
 
     elif auth.type == "x-api-key":
-        if not auth.api_key:
-            raise ValueError("api_key is required for x-api-key auth type")
+        if not auth.raw_api_key:
+            raise ValueError("raw_api_key is required for x-api-key auth type")
 
     elif auth.type in ("custom", "custom_header"):
         if not auth.header_name:
             raise ValueError(f"header_name is required for {auth.type} auth type")
-        if not auth.api_key:
-            raise ValueError(f"api_key is required for {auth.type} auth type")
+        if not auth.raw_api_key:
+            raise ValueError(f"raw_api_key is required for {auth.type} auth type")
 
     elif auth.type == "hmac":
         # HMAC validation is a stub - will be expanded with AuthConfigHMAC

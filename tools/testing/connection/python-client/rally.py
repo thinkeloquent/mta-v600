@@ -96,7 +96,7 @@ def create_rally_client():
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="custom_header",
-            api_key=CONFIG["RALLY_API_KEY"],
+            raw_api_key=CONFIG["RALLY_API_KEY"],
             header_name=CONFIG["HEADER_NAME"],
         ),
         default_headers={

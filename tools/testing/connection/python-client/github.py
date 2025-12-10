@@ -93,7 +93,7 @@ def create_github_client():
     """Create GitHub client with standard config."""
     return create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GITHUB_TOKEN"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["GITHUB_TOKEN"]),
         default_headers={
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",

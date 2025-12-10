@@ -77,10 +77,14 @@ export interface RequestContext {
 
 /**
  * Auth configuration
+ *
+ * Note: Use `rawApiKey` to provide the original token/key value.
+ * Use `getComputedApiKey(auth)` from config.mts to get the formatted
+ * auth header value based on the `type`.
  */
 export interface AuthConfig {
   type: AuthType;
-  apiKey?: string; // Token/key for bearer/api-key types
+  rawApiKey?: string; // Original token/key value (use getComputedApiKey() for formatted value)
   username?: string; // For basic/bearer_username_* types
   email?: string; // For *_email* types
   password?: string; // For *_password types

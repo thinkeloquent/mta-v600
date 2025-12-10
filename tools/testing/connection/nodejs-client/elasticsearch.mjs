@@ -90,8 +90,8 @@ async function healthCheck() {
 function createEsClient(headers = { Accept: 'application/json' }) {
   const authConfig =
     CONFIG.AUTH_TYPE === 'bearer'
-      ? { type: 'bearer', apiKey: CONFIG.ES_API_KEY }
-      : { type: 'basic', apiKey: CONFIG.ES_API_KEY, username: CONFIG.ES_USERNAME };
+      ? { type: 'bearer', rawApiKey: CONFIG.ES_API_KEY }
+      : { type: 'basic', rawApiKey: CONFIG.ES_API_KEY, username: CONFIG.ES_USERNAME };
 
   return createClient({
     baseUrl: CONFIG.BASE_URL,

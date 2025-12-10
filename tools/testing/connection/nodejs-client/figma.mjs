@@ -93,7 +93,7 @@ function createFigmaClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'custom_header',
-      apiKey: CONFIG.FIGMA_TOKEN,
+      rawApiKey: CONFIG.FIGMA_TOKEN,
       headerName: CONFIG.HEADER_NAME,
     },
     proxy: CONFIG.PROXY,

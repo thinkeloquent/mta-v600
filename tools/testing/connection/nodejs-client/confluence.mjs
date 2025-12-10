@@ -96,7 +96,7 @@ async function listSpaces() {
     // basic_email_token type: "Basic <base64(email:token)>" - Atlassian APIs
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.CONFLUENCE_API_TOKEN,
+      rawApiKey: CONFIG.CONFLUENCE_API_TOKEN,
       email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
@@ -133,7 +133,7 @@ async function getSpace(spaceKey) {
     baseUrl: CONFIG.BASE_URL,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.CONFLUENCE_API_TOKEN,
+      rawApiKey: CONFIG.CONFLUENCE_API_TOKEN,
       email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
@@ -162,7 +162,7 @@ async function searchContent(query) {
     baseUrl: CONFIG.BASE_URL,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.CONFLUENCE_API_TOKEN,
+      rawApiKey: CONFIG.CONFLUENCE_API_TOKEN,
       email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
@@ -201,7 +201,7 @@ async function getPage(pageId) {
     baseUrl: CONFIG.BASE_URL,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.CONFLUENCE_API_TOKEN,
+      rawApiKey: CONFIG.CONFLUENCE_API_TOKEN,
       email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {

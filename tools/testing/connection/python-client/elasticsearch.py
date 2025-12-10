@@ -93,9 +93,9 @@ async def health_check() -> dict[str, Any]:
 def get_auth_config() -> AuthConfig:
     """Get auth config based on auth type."""
     if CONFIG["AUTH_TYPE"] == "bearer":
-        return AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
+        return AuthConfig(type="bearer", raw_api_key=CONFIG["ES_API_KEY"])
     else:
-        return AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
+        return AuthConfig(type="basic", raw_api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
 
 
 def create_es_client(headers: dict[str, str] | None = None):

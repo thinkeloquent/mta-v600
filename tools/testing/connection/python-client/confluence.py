@@ -73,7 +73,7 @@ async def health_check() -> dict[str, Any]:
         # basic_email_token type: "Basic <base64(email:token)>" - Atlassian APIs
         auth=AuthConfig(
             type="basic_email_token",
-            api_key=api_key_result.raw_api_key,  # Raw API token (not pre-encoded)
+            raw_api_key=api_key_result.raw_api_key,  # Raw API token (not pre-encoded)
             email=CONFIG["CONFLUENCE_EMAIL"],
         ),
         # Alternative: use custom type with pre-encoded token
@@ -112,7 +112,7 @@ async def list_spaces() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -143,7 +143,7 @@ async def get_space(space_key: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -168,7 +168,7 @@ async def search_content(query: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -202,7 +202,7 @@ async def get_page(page_id: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },

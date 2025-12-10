@@ -91,25 +91,25 @@ export function validateAuthConfig(auth: AuthConfig): void {
 
   // Validation rules per type
   if (auth.type === 'basic') {
-    // Auto-compute: need (username OR email) AND (password OR apiKey)
+    // Auto-compute: need (username OR email) AND (password OR rawApiKey)
     const hasIdentifier = auth.username || auth.email;
-    const hasSecret = auth.password || auth.apiKey;
+    const hasSecret = auth.password || auth.rawApiKey;
     if (!hasIdentifier || !hasSecret) {
-      throw new Error('basic auth requires (username OR email) AND (password OR apiKey)');
+      throw new Error('basic auth requires (username OR email) AND (password OR rawApiKey)');
     }
   } else if (auth.type === 'basic_email_token') {
     if (!auth.email) {
       throw new Error('email is required for basic_email_token auth type');
     }
-    if (!auth.apiKey) {
-      throw new Error('apiKey is required for basic_email_token auth type');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for basic_email_token auth type');
     }
   } else if (auth.type === 'basic_token') {
     if (!auth.username) {
       throw new Error('username is required for basic_token auth type');
     }
-    if (!auth.apiKey) {
-      throw new Error('apiKey is required for basic_token auth type');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for basic_token auth type');
     }
   } else if (auth.type === 'basic_email') {
     if (!auth.email) {
@@ -119,23 +119,23 @@ export function validateAuthConfig(auth: AuthConfig): void {
       throw new Error('password is required for basic_email auth type');
     }
   } else if (auth.type === 'bearer') {
-    // Auto-compute: need apiKey OR ((username OR email) AND (password OR apiKey))
+    // Auto-compute: need rawApiKey OR ((username OR email) AND (password OR rawApiKey))
     const hasIdentifier = auth.username || auth.email;
-    const hasSecret = auth.password || auth.apiKey;
+    const hasSecret = auth.password || auth.rawApiKey;
     const hasCredentials = hasIdentifier && hasSecret;
-    if (!auth.apiKey && !hasCredentials) {
-      throw new Error('bearer auth requires apiKey OR ((username OR email) AND (password OR apiKey))');
+    if (!auth.rawApiKey && !hasCredentials) {
+      throw new Error('bearer auth requires rawApiKey OR ((username OR email) AND (password OR rawApiKey))');
     }
   } else if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
-    if (!auth.apiKey) {
-      throw new Error(`apiKey is required for ${auth.type} auth type`);
+    if (!auth.rawApiKey) {
+      throw new Error(`rawApiKey is required for ${auth.type} auth type`);
     }
   } else if (auth.type === 'bearer_username_token') {
     if (!auth.username) {
       throw new Error('username is required for bearer_username_token auth type');
     }
-    if (!auth.apiKey) {
-      throw new Error('apiKey is required for bearer_username_token auth type');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for bearer_username_token auth type');
     }
   } else if (auth.type === 'bearer_username_password') {
     if (!auth.username) {
@@ -148,8 +148,8 @@ export function validateAuthConfig(auth: AuthConfig): void {
     if (!auth.email) {
       throw new Error('email is required for bearer_email_token auth type');
     }
-    if (!auth.apiKey) {
-      throw new Error('apiKey is required for bearer_email_token auth type');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for bearer_email_token auth type');
     }
   } else if (auth.type === 'bearer_email_password') {
     if (!auth.email) {
@@ -159,15 +159,15 @@ export function validateAuthConfig(auth: AuthConfig): void {
       throw new Error('password is required for bearer_email_password auth type');
     }
   } else if (auth.type === 'x-api-key') {
-    if (!auth.apiKey) {
-      throw new Error('apiKey is required for x-api-key auth type');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for x-api-key auth type');
     }
   } else if (auth.type === 'custom' || auth.type === 'custom_header') {
     if (!auth.headerName) {
       throw new Error(`headerName is required for ${auth.type} auth type`);
     }
-    if (!auth.apiKey) {
-      throw new Error(`apiKey is required for ${auth.type} auth type`);
+    if (!auth.rawApiKey) {
+      throw new Error(`rawApiKey is required for ${auth.type} auth type`);
     }
   } else if (auth.type === 'hmac') {
     // HMAC validation is a stub - will be expanded with AuthConfigHMAC
@@ -212,11 +212,27 @@ export function getAuthHeaderName(auth: AuthConfig): string {
 }
 
 /**
+ * Get the computed/formatted API key value based on auth type.
+ *
+ * This function returns the formatted auth header value (e.g., "Basic <base64>" or "Bearer <token>")
+ * based on the auth configuration. Use this when you need the final value to send in headers.
+ *
+ * @param auth - The auth configuration with rawApiKey
+ * @returns The computed auth header value, or undefined if rawApiKey is not set
+ */
+export function getComputedApiKey(auth: AuthConfig): string | undefined {
+  if (auth.rawApiKey === undefined) {
+    return undefined;
+  }
+  return formatAuthHeaderValue(auth, auth.rawApiKey);
+}
+
+/**
  * Format auth header value based on auth type
  *
  * Auto-compute defaults:
- * - basic: Detects identifier (email OR username) and secret (password OR apiKey)
- * - bearer: If has identifier+secret, encodes as base64; otherwise uses apiKey as-is
+ * - basic: Detects identifier (email OR username) and secret (password OR rawApiKey)
+ * - bearer: If has identifier+secret, encodes as base64; otherwise uses rawApiKey as-is
  */
 export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string {
   /**

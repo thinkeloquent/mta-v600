@@ -96,15 +96,16 @@ class CustomAuthHandler(AuthHandler):
 
 def create_auth_handler(config: AuthConfig) -> AuthHandler:
     """Create auth handler from config."""
+    # Use raw_api_key (not computed api_key property) as handlers format their own headers
     if config.type == "bearer":
-        return BearerAuthHandler(config.api_key, config.get_api_key_for_request)
+        return BearerAuthHandler(config.raw_api_key, config.get_api_key_for_request)
     elif config.type == "x-api-key":
-        return XApiKeyAuthHandler(config.api_key, config.get_api_key_for_request)
+        return XApiKeyAuthHandler(config.raw_api_key, config.get_api_key_for_request)
     elif config.type == "custom":
         return CustomAuthHandler(
             config.header_name or "Authorization",
-            config.api_key,
+            config.raw_api_key,
             config.get_api_key_for_request,
         )
     else:
-        return BearerAuthHandler(config.api_key, config.get_api_key_for_request)
+        return BearerAuthHandler(config.raw_api_key, config.get_api_key_for_request)

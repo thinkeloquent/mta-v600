@@ -79,7 +79,7 @@ function createSonarClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'bearer',
-      apiKey: CONFIG.SONAR_TOKEN,
+      rawApiKey: CONFIG.SONAR_TOKEN,
     },
     headers: {
       Accept: 'application/json',

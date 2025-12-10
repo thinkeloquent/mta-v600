@@ -93,7 +93,7 @@ function createSaucelabsClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic',
-      apiKey: CONFIG.SAUCELABS_ACCESS_KEY,
+      rawApiKey: CONFIG.SAUCELABS_ACCESS_KEY,
       username: CONFIG.SAUCELABS_USERNAME,
     },
     headers: {

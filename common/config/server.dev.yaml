@@ -167,6 +167,7 @@ display:
 # Proxy Configuration
 # =============================================================================
 
+# shoudld be renamed to network
 proxy:
   # Default environment name for ProxyDispatcherFactory
   # Used to select which proxy URL from proxy_urls to use

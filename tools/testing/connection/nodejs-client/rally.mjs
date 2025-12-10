@@ -93,7 +93,7 @@ function createRallyClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'custom_header',
-      apiKey: CONFIG.RALLY_API_KEY,
+      rawApiKey: CONFIG.RALLY_API_KEY,
       headerName: CONFIG.HEADER_NAME,
     },
     headers: {

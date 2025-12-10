@@ -73,7 +73,7 @@ def create_sonar_client():
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="bearer",
-            api_key=CONFIG["SONAR_TOKEN"],
+            raw_api_key=CONFIG["SONAR_TOKEN"],
         ),
         default_headers={"Accept": "application/json"},
         verify=CONFIG["SSL_VERIFY"],

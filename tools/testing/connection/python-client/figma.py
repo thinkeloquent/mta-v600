@@ -96,7 +96,7 @@ def create_figma_client():
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="custom_header",
-            api_key=CONFIG["FIGMA_TOKEN"],
+            raw_api_key=CONFIG["FIGMA_TOKEN"],
             header_name=CONFIG["HEADER_NAME"],
         ),
         verify=CONFIG["SSL_VERIFY"],

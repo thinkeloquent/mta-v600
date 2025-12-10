@@ -70,7 +70,7 @@ def build_headers(
     # Apply auth header
     logger.debug(f"build_headers: checking auth - config.auth={config.auth is not None}, context={context is not None}")
     if config.auth and context:
-        logger.debug(f"build_headers: calling resolve_auth_header with auth.type={config.auth.type}, auth.api_key={bool(config.auth.api_key)}")
+        logger.debug(f"build_headers: calling resolve_auth_header with auth.type={config.auth.type}, auth.raw_api_key={bool(config.auth.raw_api_key)}")
         auth_header = resolve_auth_header(config.auth, context)
         logger.debug(f"build_headers: resolve_auth_header returned={auth_header}")
         if auth_header:
@@ -95,9 +95,9 @@ def resolve_auth_header(
         api_key = auth.get_api_key_for_request(context)
         logger.debug(f"resolve_auth_header: got key from callback: {bool(api_key)}")
 
-    # Fall back to static key
+    # Fall back to static key (use raw_api_key, not computed api_key property)
     if not api_key:
-        api_key = auth.api_key
+        api_key = auth.raw_api_key
         logger.debug(f"resolve_auth_header: using static key: {bool(api_key)}")
 
     if not api_key:

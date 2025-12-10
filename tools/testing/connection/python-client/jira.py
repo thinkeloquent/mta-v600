@@ -106,7 +106,7 @@ async def get_myself() -> dict[str, Any]:
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="basic_email_token",
-            api_key=CONFIG["JIRA_API_TOKEN"],
+            raw_api_key=CONFIG["JIRA_API_TOKEN"],
             email=CONFIG["JIRA_EMAIL"],
         ),
         default_headers={
@@ -136,7 +136,7 @@ async def list_projects() -> dict[str, Any]:
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="basic_email_token",
-            api_key=CONFIG["JIRA_API_TOKEN"],
+            raw_api_key=CONFIG["JIRA_API_TOKEN"],
             email=CONFIG["JIRA_EMAIL"],
         ),
         default_headers={
@@ -170,7 +170,7 @@ async def search_issues(jql: str) -> dict[str, Any]:
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="basic_email_token",
-            api_key=CONFIG["JIRA_API_TOKEN"],
+            raw_api_key=CONFIG["JIRA_API_TOKEN"],
             email=CONFIG["JIRA_EMAIL"],
         ),
         default_headers={
@@ -207,7 +207,7 @@ async def get_issue(issue_key: str) -> dict[str, Any]:
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(
             type="basic_email_token",
-            api_key=CONFIG["JIRA_API_TOKEN"],
+            raw_api_key=CONFIG["JIRA_API_TOKEN"],
             email=CONFIG["JIRA_EMAIL"],
         ),
         default_headers={

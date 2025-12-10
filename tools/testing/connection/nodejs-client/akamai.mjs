@@ -125,7 +125,7 @@ function createAkamaiClient() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'custom',  // EdgeGrid requires custom signing per request
-      apiKey: '',  // Not used directly, signing handled separately
+      rawApiKey: '',  // Not used directly, signing handled separately
     },
     headers: {
       Accept: 'application/json',

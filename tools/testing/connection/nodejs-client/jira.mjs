@@ -95,7 +95,7 @@ async function getMyself() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.JIRA_API_TOKEN,
+      rawApiKey: CONFIG.JIRA_API_TOKEN,
       email: CONFIG.JIRA_EMAIL,
     },
     headers: {
@@ -126,7 +126,7 @@ async function listProjects() {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.JIRA_API_TOKEN,
+      rawApiKey: CONFIG.JIRA_API_TOKEN,
       email: CONFIG.JIRA_EMAIL,
     },
     headers: {
@@ -163,7 +163,7 @@ async function searchIssues(jql) {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.JIRA_API_TOKEN,
+      rawApiKey: CONFIG.JIRA_API_TOKEN,
       email: CONFIG.JIRA_EMAIL,
     },
     headers: {
@@ -202,7 +202,7 @@ async function getIssue(issueKey) {
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'basic_email_token',
-      apiKey: CONFIG.JIRA_API_TOKEN,
+      rawApiKey: CONFIG.JIRA_API_TOKEN,
       email: CONFIG.JIRA_EMAIL,
     },
     headers: {

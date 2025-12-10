@@ -93,7 +93,7 @@ def create_gemini_client():
     """Create Gemini client with standard config."""
     return create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GEMINI_API_KEY"]),
+        auth=AuthConfig(type="bearer", raw_api_key=CONFIG["GEMINI_API_KEY"]),
         verify=CONFIG["SSL_VERIFY"],
         cert=CONFIG["CERT"],
         ca_bundle=CONFIG["CA_BUNDLE"],

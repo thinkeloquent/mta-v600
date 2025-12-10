@@ -21,7 +21,7 @@
  *   dispatcher,
  *   auth: {
  *     type: 'bearer',
- *     apiKey: process.env.API_KEY,
+ *     rawApiKey: process.env.API_KEY,
  *   },
  * });
  *
@@ -64,6 +64,7 @@ export {
   validateAuthConfig,
   getAuthHeaderName,
   formatAuthHeaderValue,
+  getComputedApiKey,
   resolveConfig,
   type ResolvedConfig,
 } from './config.mjs';
