@@ -65,11 +65,20 @@ providers:
     token_resolver: "static"
   confluence:
     base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL (includes /wiki)
+    env_base_url: "CONFLUENCE_BASE_URL"  # Environment variable for base URL
     env_api_key: "CONFLUENCE_API_TOKEN"
     env_email: "CONFLUENCE_EMAIL"
     health_endpoint: "/rest/api/user/current"  # base_url already has /wiki
     api_auth_type: "basic"           # Confluence uses Basic auth with email:token
     token_resolver: "static"
+    # Provider-specific network/proxy configuration (overrides global proxy settings)
+    proxy_url: null       # Proxy URL for Confluence requests (e.g., "http://proxy:8080")
+    ca_bundle: null       # CA bundle path for SSL verification
+    cert: null            # Client certificate path
+    cert_verify: false    # SSL certificate verification (false = disable)
+    agent_proxy:          # Agent proxy settings
+      http_proxy: null
+      https_proxy: null
   # Database providers
   postgres:
     env_connection_url: "DATABASE_URL"

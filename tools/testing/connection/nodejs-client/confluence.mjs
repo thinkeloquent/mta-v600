@@ -44,6 +44,7 @@ const { ConfluenceApiToken, ProviderHealthChecker } = await import(
 // ============================================================================
 const provider = new ConfluenceApiToken(staticConfig);
 const apiKeyResult = provider.getApiKey();
+const networkConfig = provider.getNetworkConfig();
 
 const CONFIG = {
   // From provider_api_getters
@@ -57,12 +58,13 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher) - used by createClient
   DISPATCHER: getProxyDispatcher(),
 
-  // Proxy Configuration (set to override YAML/environment config)
-  // Examples: "http://proxy:8080", "http://user:pass@proxy:8080", "socks5://proxy:1080"
-  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+  // Network/Proxy Configuration (from YAML config, with env var fallbacks)
+  PROXY: networkConfig.proxyUrl || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
 
-  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
-  SSL_VERIFY: false, // Set to undefined to use YAML config
+  // SSL/TLS Configuration (from YAML config, with env var fallbacks)
+  SSL_VERIFY: networkConfig.certVerify, // From YAML config
+  CERT: networkConfig.cert || process.env.CERT || undefined,
+  CA_BUNDLE: networkConfig.caBundle || process.env.CA_BUNDLE || undefined,
 
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),

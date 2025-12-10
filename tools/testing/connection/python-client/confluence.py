@@ -43,6 +43,7 @@ from provider_api_getters import ConfluenceApiToken
 # ============================================================================
 provider = ConfluenceApiToken(static_config)
 api_key_result = provider.get_api_key()
+network_config = provider.get_network_config()
 
 
 CONFIG = {
@@ -53,11 +54,12 @@ CONFIG = {
     "AUTH_TYPE": "bearer",
     "BASE_URL": provider.get_base_url() or os.getenv("CONFLUENCE_BASE_URL", "https://your-company.atlassian.net/wiki"),
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
-    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
-    # SSL/TLS Configuration (runtime override, or use YAML config)
-    "SSL_VERIFY": False,  # Set to None to use YAML config
-    "CERT": os.getenv("CERT"),  # Client certificate path
-    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+    # Network/Proxy Configuration (from YAML config, with env var fallbacks)
+    "PROXY": network_config["proxy_url"] or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
+    # SSL/TLS Configuration (from YAML config, with env var fallbacks)
+    "SSL_VERIFY": network_config["cert_verify"],  # From YAML config
+    "CERT": network_config["cert"] or os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": network_config["ca_bundle"] or os.getenv("CA_BUNDLE"),  # CA bundle path
 }
 
 

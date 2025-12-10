@@ -297,4 +297,48 @@ export class ConfluenceApiToken extends BaseApiToken {
 
     return null;
   }
+
+  /**
+   * Get provider-specific network/proxy configuration.
+   *
+   * Reads from YAML config fields:
+   * - proxy_url: Proxy URL for requests
+   * - ca_bundle: CA bundle path for SSL verification
+   * - cert: Client certificate path
+   * - cert_verify: SSL certificate verification flag
+   * - agent_proxy.http_proxy: HTTP proxy for agent
+   * - agent_proxy.https_proxy: HTTPS proxy for agent
+   *
+   * @returns {Object} Network configuration values
+   */
+  getNetworkConfig() {
+    logger.debug('ConfluenceApiToken.getNetworkConfig: Getting network configuration');
+
+    const providerConfig = this._getProviderConfig();
+
+    // Get agent_proxy nested config
+    const agentProxy = providerConfig.agent_proxy || {};
+
+    const config = {
+      proxyUrl: providerConfig.proxy_url || null,
+      caBundle: providerConfig.ca_bundle || null,
+      cert: providerConfig.cert || null,
+      certVerify: providerConfig.cert_verify ?? false,
+      agentProxy: {
+        httpProxy: agentProxy.http_proxy || null,
+        httpsProxy: agentProxy.https_proxy || null,
+      },
+    };
+
+    logger.debug(
+      `ConfluenceApiToken.getNetworkConfig: Resolved config - ` +
+      `proxyUrl=${config.proxyUrl}, ` +
+      `caBundle=${config.caBundle}, ` +
+      `cert=${config.cert}, ` +
+      `certVerify=${config.certVerify}, ` +
+      `agentProxy=${JSON.stringify(config.agentProxy)}`
+    );
+
+    return config;
+  }
 }
