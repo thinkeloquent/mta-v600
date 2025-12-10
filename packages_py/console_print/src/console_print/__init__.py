@@ -36,6 +36,8 @@ from console_print.printer import (
     print_json,
     print_rule,
     print_panel,
+    print_syntax,
+    print_syntax_panel,
 )
 
 __all__ = [
@@ -52,6 +54,8 @@ __all__ = [
     "print_json",
     "print_rule",
     "print_panel",
+    "print_syntax",
+    "print_syntax_panel",
 ]
 
 __version__ = "1.0.0"

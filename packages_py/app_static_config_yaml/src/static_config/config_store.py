@@ -11,18 +11,34 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
-from rich.console import Console
-from rich.panel import Panel
-from rich.syntax import Syntax
 import json
 
-# Rich console for pretty printing
-console = Console()
+from console_print import print_syntax_panel
 
 
 def _format_yaml_content(data: dict) -> str:
     """Format dict as YAML for pretty printing."""
     return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+
+def _print_config_info(load_info: dict, yaml_content: str = None) -> None:
+    """Print config info using console_print (handles rich fallback)."""
+    load_info_str = json.dumps(load_info, indent=2)
+    print_syntax_panel(
+        load_info_str,
+        lexer="json",
+        title="[bold magenta]YAML Config Loaded[/bold magenta]",
+        theme="monokai",
+        expand=False
+    )
+    if yaml_content:
+        print_syntax_panel(
+            yaml_content,
+            lexer="yaml",
+            title="[bold cyan]Config Content[/bold cyan]",
+            theme="monokai",
+            expand=False
+        )
 
 from .types import ServerConfig
 
@@ -159,21 +175,8 @@ class ConfigStore:
             "app_env": result.app_env,
             "files_loaded": result.files_loaded,
         }
-        load_info_str = json.dumps(load_info, indent=2)
-        console.print(Panel(
-            Syntax(load_info_str, "json", theme="monokai"),
-            title="[bold magenta]YAML Config Loaded[/bold magenta]",
-            expand=False
-        ))
-
-        # Pretty print the full config content
-        if self._data:
-            yaml_content = _format_yaml_content(self._data)
-            console.print(Panel(
-                Syntax(yaml_content, "yaml", theme="monokai"),
-                title="[bold cyan]Config Content[/bold cyan]",
-                expand=False
-            ))
+        yaml_content = _format_yaml_content(self._data) if self._data else None
+        _print_config_info(load_info, yaml_content)
 
         return result
 

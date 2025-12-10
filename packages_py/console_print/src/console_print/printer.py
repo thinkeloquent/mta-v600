@@ -22,6 +22,7 @@ try:
     from rich.style import Style as RichStyle
     from rich.logging import RichHandler
     from rich.json import JSON as RichJSON
+    from rich.syntax import Syntax as RichSyntax
     from rich.traceback import install as install_rich_traceback
 
     HAS_RICH = True
@@ -34,6 +35,7 @@ except ImportError:
     RichStyle = None
     RichHandler = None
     RichJSON = None
+    RichSyntax = None
     install_rich_traceback = None
 
 
@@ -320,6 +322,76 @@ def print_json(data: Union[Dict, List, str], **kwargs) -> None:
         console.print(RichJSON(json_str), **kwargs)
     else:
         print(json_str)
+
+
+def print_syntax(
+    code: str,
+    lexer: str = "python",
+    *,
+    theme: str = "monokai",
+    line_numbers: bool = False,
+    **kwargs,
+) -> None:
+    """
+    Print code with syntax highlighting.
+
+    Args:
+        code: The code/text to display
+        lexer: Language for syntax highlighting (e.g., 'python', 'json', 'yaml', 'javascript')
+        theme: Color theme (only with Rich)
+        line_numbers: Show line numbers (only with Rich)
+    """
+    if HAS_RICH:
+        syntax = RichSyntax(code, lexer, theme=theme, line_numbers=line_numbers)
+        console.print(syntax, **kwargs)
+    else:
+        # Fallback: print plain code
+        print(code)
+
+
+def print_syntax_panel(
+    code: str,
+    lexer: str = "python",
+    *,
+    title: Optional[str] = None,
+    theme: str = "monokai",
+    border_style: str = "blue",
+    expand: bool = False,
+    **kwargs,
+) -> None:
+    """
+    Print code with syntax highlighting inside a panel.
+
+    Args:
+        code: The code/text to display
+        lexer: Language for syntax highlighting (e.g., 'python', 'json', 'yaml', 'javascript')
+        title: Optional panel title
+        theme: Color theme (only with Rich)
+        border_style: Panel border style (only with Rich)
+        expand: Expand panel to full width
+    """
+    if HAS_RICH:
+        syntax = RichSyntax(code, lexer, theme=theme)
+        panel = RichPanel(syntax, title=title, border_style=border_style, expand=expand)
+        console.print(panel, **kwargs)
+    else:
+        # Fallback: simple box
+        width = 80
+        border = "+" + "-" * (width - 2) + "+"
+        print(border)
+        if title:
+            # Strip Rich markup from title
+            clean_title = title
+            import re
+            clean_title = re.sub(r"\[/?[^\]]+\]", "", str(title))
+            print(f"| {clean_title.center(width - 4)} |")
+            print("|" + "-" * (width - 2) + "|")
+        for line in code.split("\n"):
+            # Truncate long lines
+            if len(line) > width - 4:
+                line = line[: width - 7] + "..."
+            print(f"| {line.ljust(width - 4)} |")
+        print(border)
 
 
 def print_table(
