@@ -164,27 +164,239 @@ class TestGetAuthHeaderName:
 
 
 class TestFormatAuthHeaderValue:
-    """Tests for format_auth_header_value function."""
+    """Tests for format_auth_header_value function.
 
-    # Decision: bearer -> Bearer prefix
-    def test_format_auth_header_value_bearer(self):
-        auth = AuthConfig(type="bearer")
-        assert format_auth_header_value(auth, "test-key") == "Bearer test-key"
+    Covers all 13 auth types:
+    - Basic family: basic, basic_email_token, basic_token, basic_email
+    - Bearer family: bearer, bearer_oauth, bearer_jwt, bearer_username_token,
+                     bearer_username_password, bearer_email_token, bearer_email_password
+    - Custom/API Key: x-api-key, custom
+    """
+    import base64
 
-    # Decision: x-api-key -> raw key
-    def test_format_auth_header_value_x_api_key(self):
-        auth = AuthConfig(type="x-api-key")
-        assert format_auth_header_value(auth, "test-key") == "test-key"
+    # =========================================================================
+    # Helper for expected base64 values
+    # =========================================================================
+    @staticmethod
+    def _encode_basic(identifier: str, secret: str) -> str:
+        import base64
+        credentials = f"{identifier}:{secret}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        return f"Basic {encoded}"
 
-    # Decision: custom -> raw key
-    def test_format_auth_header_value_custom(self):
-        auth = AuthConfig(type="custom", header_name="X-Auth")
-        assert format_auth_header_value(auth, "test-key") == "test-key"
+    @staticmethod
+    def _encode_bearer_base64(identifier: str, secret: str) -> str:
+        import base64
+        credentials = f"{identifier}:{secret}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        return f"Bearer {encoded}"
 
-    # Boundary: empty api_key for bearer
-    def test_format_auth_header_value_empty_key(self):
+    # =========================================================================
+    # Basic Auth Family Tests
+    # =========================================================================
+
+    def test_basic_with_email_and_token(self):
+        """basic auth with email + raw_api_key (token)"""
+        auth = AuthConfig(type="basic", email="test@email.com", raw_api_key="token123")
+        result = format_auth_header_value(auth, "token123")
+        expected = self._encode_basic("test@email.com", "token123")
+        assert result == expected
+
+    def test_basic_with_username_and_token(self):
+        """basic auth with username + raw_api_key (token)"""
+        auth = AuthConfig(type="basic", username="testuser", raw_api_key="token123")
+        result = format_auth_header_value(auth, "token123")
+        expected = self._encode_basic("testuser", "token123")
+        assert result == expected
+
+    def test_basic_with_email_and_password(self):
+        """basic auth with email + password (no raw_api_key)"""
+        auth = AuthConfig(type="basic", email="test@email.com", password="pass123")
+        result = format_auth_header_value(auth, "pass123")
+        expected = self._encode_basic("test@email.com", "pass123")
+        assert result == expected
+
+    def test_basic_email_token(self):
+        """basic_email_token: email + api_key → Basic <base64(email:token)>"""
+        auth = AuthConfig(type="basic_email_token", email="user@atlassian.com", raw_api_key="api_token")
+        result = format_auth_header_value(auth, "api_token")
+        expected = self._encode_basic("user@atlassian.com", "api_token")
+        assert result == expected
+
+    def test_basic_token(self):
+        """basic_token: username + api_key → Basic <base64(username:token)>"""
+        auth = AuthConfig(type="basic_token", username="admin", raw_api_key="token456")
+        result = format_auth_header_value(auth, "token456")
+        expected = self._encode_basic("admin", "token456")
+        assert result == expected
+
+    def test_basic_email(self):
+        """basic_email: email + password → Basic <base64(email:password)>"""
+        auth = AuthConfig(type="basic_email", email="user@example.com", password="secret")
+        result = format_auth_header_value(auth, "ignored")  # api_key is ignored, uses password
+        expected = self._encode_basic("user@example.com", "secret")
+        assert result == expected
+
+    # =========================================================================
+    # Bearer Auth Family Tests
+    # =========================================================================
+
+    def test_bearer_plain_token(self):
+        """bearer auth with plain token (PAT, OAuth, JWT)"""
+        auth = AuthConfig(type="bearer", raw_api_key="pat_token_123")
+        result = format_auth_header_value(auth, "pat_token_123")
+        assert result == "Bearer pat_token_123"
+
+    def test_bearer_with_username_encodes_base64(self):
+        """bearer auth with username uses base64 encoding"""
+        auth = AuthConfig(type="bearer", username="user", raw_api_key="token")
+        result = format_auth_header_value(auth, "token")
+        expected = self._encode_bearer_base64("user", "token")
+        assert result == expected
+
+    def test_bearer_with_email_encodes_base64(self):
+        """bearer auth with email uses base64 encoding"""
+        auth = AuthConfig(type="bearer", email="user@test.com", raw_api_key="token")
+        result = format_auth_header_value(auth, "token")
+        expected = self._encode_bearer_base64("user@test.com", "token")
+        assert result == expected
+
+    def test_bearer_oauth(self):
+        """bearer_oauth: OAuth 2.0 token as-is"""
+        auth = AuthConfig(type="bearer_oauth", raw_api_key="ya29.oauth_token_abc123")
+        result = format_auth_header_value(auth, "ya29.oauth_token_abc123")
+        assert result == "Bearer ya29.oauth_token_abc123"
+
+    def test_bearer_jwt(self):
+        """bearer_jwt: JWT token as-is"""
+        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+        auth = AuthConfig(type="bearer_jwt", raw_api_key=jwt)
+        result = format_auth_header_value(auth, jwt)
+        assert result == f"Bearer {jwt}"
+
+    def test_bearer_username_token(self):
+        """bearer_username_token: Bearer <base64(username:token)>"""
+        auth = AuthConfig(type="bearer_username_token", username="apiuser", raw_api_key="token789")
+        result = format_auth_header_value(auth, "token789")
+        expected = self._encode_bearer_base64("apiuser", "token789")
+        assert result == expected
+
+    def test_bearer_username_password(self):
+        """bearer_username_password: Bearer <base64(username:password)>"""
+        auth = AuthConfig(type="bearer_username_password", username="admin", password="adminpass")
+        result = format_auth_header_value(auth, "ignored")
+        expected = self._encode_bearer_base64("admin", "adminpass")
+        assert result == expected
+
+    def test_bearer_email_token(self):
+        """bearer_email_token: Bearer <base64(email:token)>"""
+        auth = AuthConfig(type="bearer_email_token", email="user@corp.com", raw_api_key="email_token")
+        result = format_auth_header_value(auth, "email_token")
+        expected = self._encode_bearer_base64("user@corp.com", "email_token")
+        assert result == expected
+
+    def test_bearer_email_password(self):
+        """bearer_email_password: Bearer <base64(email:password)>"""
+        auth = AuthConfig(type="bearer_email_password", email="user@corp.com", password="emailpass")
+        result = format_auth_header_value(auth, "ignored")
+        expected = self._encode_bearer_base64("user@corp.com", "emailpass")
+        assert result == expected
+
+    # =========================================================================
+    # Custom/API Key Auth Tests
+    # =========================================================================
+
+    def test_x_api_key(self):
+        """x-api-key: raw key value"""
+        auth = AuthConfig(type="x-api-key", raw_api_key="sk-1234567890abcdef")
+        result = format_auth_header_value(auth, "sk-1234567890abcdef")
+        assert result == "sk-1234567890abcdef"
+
+    def test_custom(self):
+        """custom: raw key with custom header"""
+        auth = AuthConfig(type="custom", header_name="X-Custom-Auth", raw_api_key="custom_token")
+        result = format_auth_header_value(auth, "custom_token")
+        assert result == "custom_token"
+
+    def test_custom_header(self):
+        """custom_header: same as custom"""
+        auth = AuthConfig(type="custom_header", header_name="X-Service-Key", raw_api_key="service_key_123")
+        result = format_auth_header_value(auth, "service_key_123")
+        assert result == "service_key_123"
+
+    # =========================================================================
+    # Double-Encoding Regression Tests (Bug Fix)
+    # =========================================================================
+
+    def test_already_encoded_basic_not_double_encoded(self):
+        """Regression: pre-encoded Basic value should not be double-encoded"""
+        # Simulate api_token returning pre-encoded value
+        pre_encoded = "Basic dGVzdEBlbWFpbC5jb206dG9rZW4xMjM="  # test@email.com:token123
+        auth = AuthConfig(type="bearer", raw_api_key=pre_encoded)  # Even with bearer type
+        result = format_auth_header_value(auth, pre_encoded)
+        # Should return as-is, NOT "Bearer Basic dGVzdEBlbWFpbC5jb206dG9rZW4xMjM="
+        assert result == pre_encoded
+        assert not result.startswith("Bearer Basic")
+
+    def test_already_encoded_bearer_not_double_encoded(self):
+        """Regression: pre-encoded Bearer value should not be double-encoded"""
+        pre_encoded = "Bearer token123"
+        auth = AuthConfig(type="bearer", raw_api_key=pre_encoded)
+        result = format_auth_header_value(auth, pre_encoded)
+        # Should return as-is, NOT "Bearer Bearer token123"
+        assert result == pre_encoded
+        assert result.count("Bearer") == 1
+
+    def test_already_encoded_basic_with_basic_type(self):
+        """Regression: pre-encoded Basic with basic auth type"""
+        pre_encoded = "Basic dXNlcjpwYXNz"  # user:pass
+        auth = AuthConfig(type="basic", email="user", raw_api_key=pre_encoded)
+        result = format_auth_header_value(auth, pre_encoded)
+        # Guard should catch the "Basic " prefix and return as-is
+        assert result == pre_encoded
+
+    def test_malformed_bearer_basic_prevented(self):
+        """Regression: ensure 'Bearer Basic <base64>' malformation is prevented"""
+        # This was the actual bug: api_token returned "Basic <base64>",
+        # then health check passed it to AuthConfig(type="bearer") which
+        # would produce "Bearer Basic <base64>"
+        pre_encoded_basic = "Basic " + __import__('base64').b64encode(b"email:token").decode()
+        auth = AuthConfig(type="bearer", raw_api_key=pre_encoded_basic)
+        result = format_auth_header_value(auth, pre_encoded_basic)
+        # Must NOT start with "Bearer Basic"
+        assert not result.startswith("Bearer Basic")
+        # Should return the pre-encoded Basic value as-is
+        assert result == pre_encoded_basic
+
+    # =========================================================================
+    # Edge Cases and Boundary Values
+    # =========================================================================
+
+    def test_empty_api_key_bearer(self):
+        """Boundary: empty api_key for bearer"""
         auth = AuthConfig(type="bearer")
         assert format_auth_header_value(auth, "") == "Bearer "
+
+    def test_none_identifier_basic(self):
+        """Boundary: None identifier falls back to empty string"""
+        auth = AuthConfig(type="basic_email_token", email=None, raw_api_key="token")
+        result = format_auth_header_value(auth, "token")
+        expected = self._encode_basic("", "token")
+        assert result == expected
+
+    def test_special_characters_in_credentials(self):
+        """Boundary: special characters preserved in base64 encoding"""
+        auth = AuthConfig(type="basic", email="user+tag@email.com", raw_api_key="p@ss:word!")
+        result = format_auth_header_value(auth, "p@ss:word!")
+        expected = self._encode_basic("user+tag@email.com", "p@ss:word!")
+        assert result == expected
+
+    def test_unicode_in_credentials(self):
+        """Boundary: unicode characters in credentials"""
+        auth = AuthConfig(type="basic", username="用户", raw_api_key="密码")
+        result = format_auth_header_value(auth, "密码")
+        expected = self._encode_basic("用户", "密码")
+        assert result == expected
 
 
 class TestResolveConfig:

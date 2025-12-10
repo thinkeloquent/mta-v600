@@ -117,26 +117,26 @@ describe('config', () => {
   });
 
   describe('validateAuthConfig', () => {
-    // Decision: type = 'bearer'
-    it('should pass for bearer auth type', () => {
-      expect(() => validateAuthConfig({ type: 'bearer' })).not.toThrow();
+    // Decision: type = 'bearer' with rawApiKey
+    it('should pass for bearer auth type with rawApiKey', () => {
+      expect(() => validateAuthConfig({ type: 'bearer', rawApiKey: 'key' })).not.toThrow();
     });
 
-    // Decision: type = 'x-api-key'
-    it('should pass for x-api-key auth type', () => {
-      expect(() => validateAuthConfig({ type: 'x-api-key' })).not.toThrow();
+    // Decision: type = 'x-api-key' with rawApiKey
+    it('should pass for x-api-key auth type with rawApiKey', () => {
+      expect(() => validateAuthConfig({ type: 'x-api-key', rawApiKey: 'key' })).not.toThrow();
     });
 
-    // Decision: type = 'custom' with headerName
-    it('should pass for custom auth type with headerName', () => {
+    // Decision: type = 'custom' with headerName and rawApiKey
+    it('should pass for custom auth type with headerName and rawApiKey', () => {
       expect(() =>
-        validateAuthConfig({ type: 'custom', headerName: 'X-Custom-Auth' })
+        validateAuthConfig({ type: 'custom', headerName: 'X-Custom-Auth', rawApiKey: 'key' })
       ).not.toThrow();
     });
 
     // Error Path: type = 'custom' without headerName
     it('should throw for custom auth type without headerName', () => {
-      expect(() => validateAuthConfig({ type: 'custom' })).toThrow(
+      expect(() => validateAuthConfig({ type: 'custom', rawApiKey: 'key' })).toThrow(
         'headerName is required for custom auth type'
       );
     });
@@ -160,9 +160,9 @@ describe('config', () => {
       expect(getAuthHeaderName({ type: 'bearer' })).toBe('Authorization');
     });
 
-    // Decision: x-api-key -> x-api-key
-    it('should return x-api-key for x-api-key type', () => {
-      expect(getAuthHeaderName({ type: 'x-api-key' })).toBe('x-api-key');
+    // Decision: x-api-key -> X-API-Key
+    it('should return X-API-Key for x-api-key type', () => {
+      expect(getAuthHeaderName({ type: 'x-api-key' })).toBe('X-API-Key');
     });
 
     // Decision: custom -> custom headerName
@@ -184,29 +184,199 @@ describe('config', () => {
   describe('formatAuthHeaderValue', () => {
     const apiKey = 'test-api-key-123';
 
-    // Decision: bearer -> Bearer prefix
-    it('should format bearer with Bearer prefix', () => {
+    // =========================================================================
+    // Helper for expected base64 values
+    // =========================================================================
+    function encodeBasic(identifier: string, secret: string): string {
+      const credentials = `${identifier}:${secret}`;
+      const encoded = Buffer.from(credentials).toString('base64');
+      return `Basic ${encoded}`;
+    }
+
+    function encodeBearerBase64(identifier: string, secret: string): string {
+      const credentials = `${identifier}:${secret}`;
+      const encoded = Buffer.from(credentials).toString('base64');
+      return `Bearer ${encoded}`;
+    }
+
+    // =========================================================================
+    // Basic Auth Family Tests
+    // =========================================================================
+
+    it('should format basic with email and token', () => {
+      const auth: AuthConfig = { type: 'basic', email: 'test@email.com', rawApiKey: 'token123' };
+      const result = formatAuthHeaderValue(auth, 'token123');
+      expect(result).toBe(encodeBasic('test@email.com', 'token123'));
+    });
+
+    it('should format basic with username and token', () => {
+      const auth: AuthConfig = { type: 'basic', username: 'testuser', rawApiKey: 'token123' };
+      const result = formatAuthHeaderValue(auth, 'token123');
+      expect(result).toBe(encodeBasic('testuser', 'token123'));
+    });
+
+    it('should format basic with email and password', () => {
+      const auth: AuthConfig = { type: 'basic', email: 'test@email.com', password: 'pass123' };
+      const result = formatAuthHeaderValue(auth, 'pass123');
+      expect(result).toBe(encodeBasic('test@email.com', 'pass123'));
+    });
+
+    it('should format basic_email_token', () => {
+      const auth: AuthConfig = { type: 'basic_email_token', email: 'user@atlassian.com', rawApiKey: 'api_token' };
+      const result = formatAuthHeaderValue(auth, 'api_token');
+      expect(result).toBe(encodeBasic('user@atlassian.com', 'api_token'));
+    });
+
+    it('should format basic_token', () => {
+      const auth: AuthConfig = { type: 'basic_token', username: 'admin', rawApiKey: 'token456' };
+      const result = formatAuthHeaderValue(auth, 'token456');
+      expect(result).toBe(encodeBasic('admin', 'token456'));
+    });
+
+    it('should format basic_email', () => {
+      const auth: AuthConfig = { type: 'basic_email', email: 'user@example.com', password: 'secret' };
+      const result = formatAuthHeaderValue(auth, 'ignored');
+      expect(result).toBe(encodeBasic('user@example.com', 'secret'));
+    });
+
+    // =========================================================================
+    // Bearer Auth Family Tests
+    // =========================================================================
+
+    it('should format bearer with plain token', () => {
       expect(formatAuthHeaderValue({ type: 'bearer' }, apiKey)).toBe(`Bearer ${apiKey}`);
     });
 
-    // Decision: x-api-key -> raw key
+    it('should format bearer with username as base64', () => {
+      const auth: AuthConfig = { type: 'bearer', username: 'user', rawApiKey: 'token' };
+      const result = formatAuthHeaderValue(auth, 'token');
+      expect(result).toBe(encodeBearerBase64('user', 'token'));
+    });
+
+    it('should format bearer with email as base64', () => {
+      const auth: AuthConfig = { type: 'bearer', email: 'user@test.com', rawApiKey: 'token' };
+      const result = formatAuthHeaderValue(auth, 'token');
+      expect(result).toBe(encodeBearerBase64('user@test.com', 'token'));
+    });
+
+    it('should format bearer_oauth', () => {
+      const auth: AuthConfig = { type: 'bearer_oauth', rawApiKey: 'ya29.oauth_token' };
+      expect(formatAuthHeaderValue(auth, 'ya29.oauth_token')).toBe('Bearer ya29.oauth_token');
+    });
+
+    it('should format bearer_jwt', () => {
+      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
+      const auth: AuthConfig = { type: 'bearer_jwt', rawApiKey: jwt };
+      expect(formatAuthHeaderValue(auth, jwt)).toBe(`Bearer ${jwt}`);
+    });
+
+    it('should format bearer_username_token', () => {
+      const auth: AuthConfig = { type: 'bearer_username_token', username: 'apiuser', rawApiKey: 'token789' };
+      const result = formatAuthHeaderValue(auth, 'token789');
+      expect(result).toBe(encodeBearerBase64('apiuser', 'token789'));
+    });
+
+    it('should format bearer_username_password', () => {
+      const auth: AuthConfig = { type: 'bearer_username_password', username: 'admin', password: 'adminpass' };
+      const result = formatAuthHeaderValue(auth, 'ignored');
+      expect(result).toBe(encodeBearerBase64('admin', 'adminpass'));
+    });
+
+    it('should format bearer_email_token', () => {
+      const auth: AuthConfig = { type: 'bearer_email_token', email: 'user@corp.com', rawApiKey: 'email_token' };
+      const result = formatAuthHeaderValue(auth, 'email_token');
+      expect(result).toBe(encodeBearerBase64('user@corp.com', 'email_token'));
+    });
+
+    it('should format bearer_email_password', () => {
+      const auth: AuthConfig = { type: 'bearer_email_password', email: 'user@corp.com', password: 'emailpass' };
+      const result = formatAuthHeaderValue(auth, 'ignored');
+      expect(result).toBe(encodeBearerBase64('user@corp.com', 'emailpass'));
+    });
+
+    // =========================================================================
+    // Custom/API Key Auth Tests
+    // =========================================================================
+
     it('should return raw key for x-api-key type', () => {
       expect(formatAuthHeaderValue({ type: 'x-api-key' }, apiKey)).toBe(apiKey);
     });
 
-    // Decision: custom -> raw key
     it('should return raw key for custom type', () => {
       expect(formatAuthHeaderValue({ type: 'custom', headerName: 'X-Auth' }, apiKey)).toBe(apiKey);
     });
 
-    // Decision: default case
+    it('should return raw key for custom_header type', () => {
+      const auth: AuthConfig = { type: 'custom_header', headerName: 'X-Service-Key', rawApiKey: 'service_key_123' };
+      expect(formatAuthHeaderValue(auth, 'service_key_123')).toBe('service_key_123');
+    });
+
+    // =========================================================================
+    // Double-Encoding Regression Tests (Bug Fix)
+    // =========================================================================
+
+    it('should not double-encode pre-encoded Basic value', () => {
+      // Simulate api_token returning pre-encoded value
+      const preEncoded = 'Basic dGVzdEBlbWFpbC5jb206dG9rZW4xMjM=';  // test@email.com:token123
+      const auth: AuthConfig = { type: 'bearer', rawApiKey: preEncoded };
+      const result = formatAuthHeaderValue(auth, preEncoded);
+      // Should return as-is, NOT "Bearer Basic dGVzdEBlbWFpbC5jb206dG9rZW4xMjM="
+      expect(result).toBe(preEncoded);
+      expect(result.startsWith('Bearer Basic')).toBe(false);
+    });
+
+    it('should not double-encode pre-encoded Bearer value', () => {
+      const preEncoded = 'Bearer token123';
+      const auth: AuthConfig = { type: 'bearer', rawApiKey: preEncoded };
+      const result = formatAuthHeaderValue(auth, preEncoded);
+      // Should return as-is, NOT "Bearer Bearer token123"
+      expect(result).toBe(preEncoded);
+      expect((result.match(/Bearer/g) || []).length).toBe(1);
+    });
+
+    it('should not double-encode pre-encoded Basic with basic auth type', () => {
+      const preEncoded = 'Basic dXNlcjpwYXNz';  // user:pass
+      const auth: AuthConfig = { type: 'basic', email: 'user', rawApiKey: preEncoded };
+      const result = formatAuthHeaderValue(auth, preEncoded);
+      // Guard should catch the "Basic " prefix and return as-is
+      expect(result).toBe(preEncoded);
+    });
+
+    it('should prevent Bearer Basic malformation', () => {
+      // This was the actual bug: api_token returned "Basic <base64>",
+      // then health check passed it to AuthConfig(type="bearer") which
+      // would produce "Bearer Basic <base64>"
+      const preEncodedBasic = 'Basic ' + Buffer.from('email:token').toString('base64');
+      const auth: AuthConfig = { type: 'bearer', rawApiKey: preEncodedBasic };
+      const result = formatAuthHeaderValue(auth, preEncodedBasic);
+      // Must NOT start with "Bearer Basic"
+      expect(result.startsWith('Bearer Basic')).toBe(false);
+      // Should return the pre-encoded Basic value as-is
+      expect(result).toBe(preEncodedBasic);
+    });
+
+    // =========================================================================
+    // Edge Cases and Boundary Values
+    // =========================================================================
+
+    it('should handle empty apiKey for bearer', () => {
+      expect(formatAuthHeaderValue({ type: 'bearer' }, '')).toBe('Bearer ');
+    });
+
     it('should return raw key for unknown type (default case)', () => {
       expect(formatAuthHeaderValue({ type: 'unknown' as any }, apiKey)).toBe(apiKey);
     });
 
-    // Boundary: empty apiKey
-    it('should handle empty apiKey for bearer', () => {
-      expect(formatAuthHeaderValue({ type: 'bearer' }, '')).toBe('Bearer ');
+    it('should handle special characters in credentials', () => {
+      const auth: AuthConfig = { type: 'basic', email: 'user+tag@email.com', rawApiKey: 'p@ss:word!' };
+      const result = formatAuthHeaderValue(auth, 'p@ss:word!');
+      expect(result).toBe(encodeBasic('user+tag@email.com', 'p@ss:word!'));
+    });
+
+    it('should handle unicode in credentials', () => {
+      const auth: AuthConfig = { type: 'basic', username: '用户', rawApiKey: '密码' };
+      const result = formatAuthHeaderValue(auth, '密码');
+      expect(result).toBe(encodeBasic('用户', '密码'));
     });
   });
 
@@ -262,7 +432,7 @@ describe('config', () => {
 
     // Path: with auth config
     it('should include auth config when provided', () => {
-      const auth: AuthConfig = { type: 'bearer', apiKey: 'secret' };
+      const auth: AuthConfig = { type: 'bearer', rawApiKey: 'secret' };
       const result = resolveConfig({
         baseUrl: validBaseUrl,
         auth,

@@ -43,7 +43,7 @@ describe('factory', () => {
     it('should pass auth config to client', () => {
       const client = createClient({
         ...baseConfig,
-        auth: { type: 'bearer', apiKey: 'test-key' },
+        auth: { type: 'bearer', rawApiKey: 'test-key' },
       });
 
       expect(client).toBeInstanceOf(RestAdapter);

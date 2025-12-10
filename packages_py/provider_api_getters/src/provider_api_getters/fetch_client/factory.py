@@ -350,7 +350,7 @@ class ProviderClientFactory:
                 )
                 auth_config = AuthConfig(
                     type="custom",
-                    raw_api_key=api_key_result.api_key,
+                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
                     header_name=header_name,
                 )
                 console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
@@ -364,7 +364,7 @@ class ProviderClientFactory:
                 )
                 auth_config = AuthConfig(
                     type="bearer",
-                    raw_api_key=api_key_result.api_key,
+                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
                 )
                 console.print("[bold green]AuthConfig (Bearer):[/bold green]", {
                     "type": "bearer",

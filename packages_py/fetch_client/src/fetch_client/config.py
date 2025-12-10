@@ -280,8 +280,18 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
     Auto-compute defaults:
     - basic: Detects identifier (email OR username) and secret (password OR api_key)
     - bearer: If has identifier+secret, encodes as base64; otherwise uses api_key as-is
+
+    Guard against double-encoding:
+    - If api_key already starts with "Basic " or "Bearer ", return as-is
+    - This prevents malformed headers like "Bearer Basic <base64>" when
+      pre-encoded values are passed through
     """
     import base64
+
+    # Guard: if api_key already has a scheme prefix, return as-is to prevent double-encoding
+    # This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
+    if api_key and (api_key.startswith("Basic ") or api_key.startswith("Bearer ")):
+        return api_key
 
     def encode_basic(identifier: str, secret: str) -> str:
         """Encode credentials as base64 for Basic auth."""

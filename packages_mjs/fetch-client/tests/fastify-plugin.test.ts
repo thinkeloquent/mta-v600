@@ -88,7 +88,7 @@ describe('fastify-plugin', () => {
       const fastify = createMockFastify();
       const config = {
         baseUrl: 'https://api.example.com',
-        auth: { type: 'bearer' as const, apiKey: 'test-key' },
+        auth: { type: 'bearer' as const, rawApiKey: 'test-key' },
       };
 
       await fetchClientPlugin(fastify, { name: 'apiClient', config });

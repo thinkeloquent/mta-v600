@@ -76,7 +76,7 @@ async def check_github_health(config: dict = None) -> dict:
         base_url=base_url,
         auth=AuthConfig(
             type=api_key_result.auth_type,
-            raw_api_key=api_key_result.api_key,
+            raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
             header_name=api_key_result.header_name,
         ),
         default_headers={

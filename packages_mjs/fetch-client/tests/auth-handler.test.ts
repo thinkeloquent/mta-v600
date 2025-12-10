@@ -161,7 +161,7 @@ describe('auth-handler', () => {
   describe('createAuthHandler', () => {
     // Decision: bearer type
     it('should create BearerAuthHandler for bearer type', () => {
-      const config: AuthConfig = { type: 'bearer', apiKey: 'key' };
+      const config: AuthConfig = { type: 'bearer', rawApiKey: 'key' };
       const handler = createAuthHandler(config);
 
       expect(handler).toBeInstanceOf(BearerAuthHandler);
@@ -170,7 +170,7 @@ describe('auth-handler', () => {
 
     // Decision: x-api-key type
     it('should create XApiKeyAuthHandler for x-api-key type', () => {
-      const config: AuthConfig = { type: 'x-api-key', apiKey: 'key' };
+      const config: AuthConfig = { type: 'x-api-key', rawApiKey: 'key' };
       const handler = createAuthHandler(config);
 
       expect(handler).toBeInstanceOf(XApiKeyAuthHandler);
@@ -179,7 +179,7 @@ describe('auth-handler', () => {
 
     // Decision: custom type
     it('should create CustomAuthHandler for custom type', () => {
-      const config: AuthConfig = { type: 'custom', headerName: 'X-Auth', apiKey: 'key' };
+      const config: AuthConfig = { type: 'custom', headerName: 'X-Auth', rawApiKey: 'key' };
       const handler = createAuthHandler(config);
 
       expect(handler).toBeInstanceOf(CustomAuthHandler);
@@ -188,7 +188,7 @@ describe('auth-handler', () => {
 
     // Decision: custom type without headerName uses Authorization
     it('should use Authorization for custom type without headerName', () => {
-      const config: AuthConfig = { type: 'custom', apiKey: 'key' };
+      const config: AuthConfig = { type: 'custom', rawApiKey: 'key' };
       const handler = createAuthHandler(config);
 
       expect(handler.getHeader(createContext())).toEqual({ Authorization: 'key' });
@@ -196,7 +196,7 @@ describe('auth-handler', () => {
 
     // Decision: default case (unknown type)
     it('should create BearerAuthHandler for unknown type (default)', () => {
-      const config = { type: 'unknown' as any, apiKey: 'key' };
+      const config = { type: 'unknown' as any, rawApiKey: 'key' };
       const handler = createAuthHandler(config);
 
       expect(handler).toBeInstanceOf(BearerAuthHandler);
@@ -205,7 +205,7 @@ describe('auth-handler', () => {
     // Path: with getApiKeyForRequest callback
     it('should pass callback to handler', () => {
       const callback = jest.fn().mockReturnValue('dynamic');
-      const config: AuthConfig = { type: 'bearer', apiKey: 'static', getApiKeyForRequest: callback };
+      const config: AuthConfig = { type: 'bearer', rawApiKey: 'static', getApiKeyForRequest: callback };
       const handler = createAuthHandler(config);
 
       handler.getHeader(createContext());

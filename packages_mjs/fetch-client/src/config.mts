@@ -233,8 +233,19 @@ export function getComputedApiKey(auth: AuthConfig): string | undefined {
  * Auto-compute defaults:
  * - basic: Detects identifier (email OR username) and secret (password OR rawApiKey)
  * - bearer: If has identifier+secret, encodes as base64; otherwise uses rawApiKey as-is
+ *
+ * Guard against double-encoding:
+ * - If apiKey already starts with "Basic " or "Bearer ", return as-is
+ * - This prevents malformed headers like "Bearer Basic <base64>" when
+ *   pre-encoded values are passed through
  */
 export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string {
+  // Guard: if apiKey already has a scheme prefix, return as-is to prevent double-encoding
+  // This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
+  if (apiKey && (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer '))) {
+    return apiKey;
+  }
+
   /**
    * Encode credentials as base64 for Basic auth
    */

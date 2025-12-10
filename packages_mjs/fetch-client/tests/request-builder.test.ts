@@ -160,7 +160,7 @@ describe('request-builder', () => {
 
     // Path: auth header injection
     it('should inject auth header when auth config present', () => {
-      const auth: AuthConfig = { type: 'bearer', apiKey: 'test-key' };
+      const auth: AuthConfig = { type: 'bearer', rawApiKey: 'test-key' };
       const config = createConfig({ auth });
       const result = buildHeaders(config, {}, createContext());
 
@@ -187,7 +187,7 @@ describe('request-builder', () => {
     it('should use callback when it returns a key', () => {
       const auth: AuthConfig = {
         type: 'bearer',
-        apiKey: 'static-key',
+        rawApiKey: 'static-key',
         getApiKeyForRequest: () => 'dynamic-key',
       };
       const result = resolveAuthHeader(auth, context);
@@ -199,7 +199,7 @@ describe('request-builder', () => {
     it('should fallback to static key when callback returns undefined', () => {
       const auth: AuthConfig = {
         type: 'bearer',
-        apiKey: 'static-key',
+        rawApiKey: 'static-key',
         getApiKeyForRequest: () => undefined,
       };
       const result = resolveAuthHeader(auth, context);
@@ -211,7 +211,7 @@ describe('request-builder', () => {
     it('should use static key when no callback', () => {
       const auth: AuthConfig = {
         type: 'bearer',
-        apiKey: 'static-key',
+        rawApiKey: 'static-key',
       };
       const result = resolveAuthHeader(auth, context);
 
@@ -228,10 +228,10 @@ describe('request-builder', () => {
 
     // Path: x-api-key type
     it('should format x-api-key correctly', () => {
-      const auth: AuthConfig = { type: 'x-api-key', apiKey: 'api-key-123' };
+      const auth: AuthConfig = { type: 'x-api-key', rawApiKey: 'api-key-123' };
       const result = resolveAuthHeader(auth, context);
 
-      expect(result).toEqual({ 'x-api-key': 'api-key-123' });
+      expect(result).toEqual({ 'X-API-Key': 'api-key-123' });
     });
 
     // Path: custom type
@@ -239,7 +239,7 @@ describe('request-builder', () => {
       const auth: AuthConfig = {
         type: 'custom',
         headerName: 'X-Auth-Token',
-        apiKey: 'token-123',
+        rawApiKey: 'token-123',
       };
       const result = resolveAuthHeader(auth, context);
 
