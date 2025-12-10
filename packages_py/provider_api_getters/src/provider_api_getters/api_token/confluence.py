@@ -382,3 +382,162 @@ class ConfluenceApiToken(BaseApiToken):
         )
 
         return config
+
+    def _get_service_config(self) -> Dict[str, Any]:
+        """
+        Get service configuration from static config.
+
+        Returns:
+            Service configuration dictionary from .services.{provider_name}
+        """
+        logger.debug(
+            f"ConfluenceApiToken._get_service_config: Getting service config for '{self.provider_name}'"
+        )
+
+        try:
+            config = self.config_store.get_nested("services", self.provider_name)
+            if config is None:
+                logger.debug(
+                    f"ConfluenceApiToken._get_service_config: No service config found, returning empty dict"
+                )
+                return {}
+            logger.debug(
+                f"ConfluenceApiToken._get_service_config: Found service config with keys: {list(config.keys())}"
+            )
+            return config
+        except Exception as e:
+            logger.error(
+                f"ConfluenceApiToken._get_service_config: Exception while getting config: {e}"
+            )
+            return {}
+
+    def get_service_config(self) -> Dict[str, Any]:
+        """
+        Get downstream service configuration.
+
+        Returns the entire service configuration dictionary from .services.confluence
+        which can contain arbitrary key-value pairs for downstream service config.
+
+        Example YAML:
+            services:
+              confluence:
+                headers:
+                  X-Atlassian-Token: "no-check"
+                default_expand: "body.storage,version"
+                pagination:
+                  limit: 25
+
+        Returns:
+            Dictionary with all service configuration values
+        """
+        logger.debug("ConfluenceApiToken.get_service_config: Getting service configuration")
+
+        service_config = self._get_service_config()
+
+        logger.debug(
+            f"ConfluenceApiToken.get_service_config: Returning config with "
+            f"{len(service_config)} keys: {list(service_config.keys())}"
+        )
+
+        return service_config
+
+    def get_env_by_name(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        Get environment variable value by name from service config.
+
+        Looks up env_{name} in the service config to get the environment variable name,
+        then resolves the actual value from the environment.
+
+        Example:
+            YAML config:
+                services:
+                  confluence:
+                    env_space_key: "CONFLUENCE_SPACE_KEY"
+
+            Code:
+                space_key = provider.get_env_by_name("space_key")
+                # Reads env var name from config: "CONFLUENCE_SPACE_KEY"
+                # Returns os.getenv("CONFLUENCE_SPACE_KEY")
+
+        Args:
+            name: The name suffix (without 'env_' prefix)
+            default: Default value if env var is not set
+
+        Returns:
+            Environment variable value or default
+        """
+        logger.debug(f"ConfluenceApiToken.get_env_by_name: Looking up env_{name}")
+
+        service_config = self._get_service_config()
+        env_key = f"env_{name}"
+        env_var_name = service_config.get(env_key)
+
+        if not env_var_name:
+            logger.debug(
+                f"ConfluenceApiToken.get_env_by_name: No '{env_key}' found in service config, "
+                f"returning default: {default}"
+            )
+            return default
+
+        value = os.getenv(env_var_name, default)
+
+        logger.debug(
+            f"ConfluenceApiToken.get_env_by_name: Resolved {env_key}='{env_var_name}' -> "
+            f"value={'<set>' if value else '<not set>'}"
+        )
+
+        return value
+
+    def get_headers(self) -> Dict[str, str]:
+        """
+        Get default headers from service configuration.
+
+        Returns:
+            Dictionary of default headers for API requests
+        """
+        logger.debug("ConfluenceApiToken.get_headers: Getting default headers")
+
+        service_config = self._get_service_config()
+        headers = service_config.get("headers", {}) or {}
+
+        logger.debug(
+            f"ConfluenceApiToken.get_headers: Found {len(headers)} headers: {list(headers.keys())}"
+        )
+
+        return headers
+
+    def get_endpoints(self) -> Dict[str, str]:
+        """
+        Get API endpoints from service configuration.
+
+        Returns:
+            Dictionary of endpoint paths
+        """
+        logger.debug("ConfluenceApiToken.get_endpoints: Getting endpoints")
+
+        service_config = self._get_service_config()
+        endpoints = service_config.get("endpoints", {}) or {}
+
+        logger.debug(
+            f"ConfluenceApiToken.get_endpoints: Found {len(endpoints)} endpoints: {list(endpoints.keys())}"
+        )
+
+        return endpoints
+
+    def get_pagination_defaults(self) -> Dict[str, Any]:
+        """
+        Get pagination defaults from service configuration.
+
+        Returns:
+            Dictionary with pagination settings (limit, start, etc.)
+        """
+        logger.debug("ConfluenceApiToken.get_pagination_defaults: Getting pagination defaults")
+
+        service_config = self._get_service_config()
+        pagination = service_config.get("pagination", {}) or {}
+
+        logger.debug(
+            f"ConfluenceApiToken.get_pagination_defaults: Found pagination config: {pagination}"
+        )
+
+        return pagination

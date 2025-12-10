@@ -47,6 +47,12 @@ providers:
     env_api_key: "FIGMA_TOKEN"
     api_auth_type: "custom"             # Figma uses custom X-Figma-Token header
     token_resolver: "static"
+    # Default HTTP headers
+    headers:
+      Accept: "application/json"
+    # Custom environment variable mappings
+    env_file_key: "FIGMA_FILE_KEY"
+    env_project_id: "FIGMA_PROJECT_ID"
   github:
     base_url: "https://api.github.com"
     env_api_key: "GITHUB_TOKEN"
@@ -56,13 +62,28 @@ providers:
       - "GITHUB_PAT"
     api_auth_type: "bearer"
     token_resolver: "static"
+    # Default HTTP headers
+    headers:
+      Accept: "application/vnd.github+json"
+      X-GitHub-Api-Version: "2022-11-28"
+    # Custom environment variable mappings
+    env_owner: "GITHUB_OWNER"
+    env_repo: "GITHUB_REPO"
   jira:
     base_url: null  # Set per-tenant or via JIRA_BASE_URL
+    env_base_url: "JIRA_BASE_URL"
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
     health_endpoint: "/rest/api/2/myself"
     api_auth_type: "basic"           # Jira uses Basic auth with email:token
     token_resolver: "static"
+    # Default HTTP headers
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+    # Custom environment variable mappings
+    env_project_key: "JIRA_PROJECT_KEY"
+    env_board_id: "JIRA_BOARD_ID"
   confluence:
     base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL (includes /wiki)
     env_base_url: "CONFLUENCE_BASE_URL"  # Environment variable for base URL
@@ -71,6 +92,15 @@ providers:
     health_endpoint: "/rest/api/user/current"  # base_url already has /wiki
     api_auth_type: "basic"           # Confluence uses Basic auth with email:token
     token_resolver: "static"
+    # Default HTTP headers for API requests
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      X-Atlassian-Token: "no-check"  # Required for write operations (CSRF protection)
+    # Custom environment variable mappings (env_{{name}}: "ENV_VAR_NAME")
+    # Access via: provider.get_env_by_name("space_key") -> os.getenv("CONFLUENCE_SPACE_KEY")
+    env_space_key: "CONFLUENCE_SPACE_KEY"
+    env_parent_page_id: "CONFLUENCE_PARENT_PAGE_ID"
     # Provider-specific network/proxy configuration (overrides global proxy settings)
     proxy_url: null       # Proxy URL for Confluence requests (e.g., "http://proxy:8080")
     ca_bundle: null       # CA bundle path for SSL verification
@@ -195,3 +225,108 @@ proxy:
   agent_proxy:
     http_proxy: null
     https_proxy: null
+
+# =============================================================================
+# Services Configuration (Downstream Service Configs)
+# =============================================================================
+# Unstructured configuration for downstream services.
+# Each service can have arbitrary key-value pairs accessible via:
+#   - provider.get_service_config() -> returns entire service config dict
+#   - provider.get_env_by_name("KEY") -> resolves env_KEY from config
+#
+# Convention for environment variables:
+#   env_{{NAME}}: "{{ENV_VAR_NAME}}" -> resolved via get_env_by_name(NAME)
+#
+# Example usage in code:
+#   provider = ConfluenceApiToken(static_config)
+#   service_config = provider.get_service_config()
+#   api_version = provider.get_env_by_name("api_version")  # reads env var from env_api_version
+#
+services:
+  confluence:
+    # Environment variable mappings (env_{{name}}: "ENV_VAR_NAME")
+    env_api_version: "CONFLUENCE_API_VERSION"
+    env_space_key: "CONFLUENCE_SPACE_KEY"
+    env_parent_page_id: "CONFLUENCE_PARENT_PAGE_ID"
+
+    # Default headers for Confluence API requests
+    headers:
+      X-Atlassian-Token: "no-check"  # Required for write operations
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    # Default request configuration
+    default_method: "GET"
+
+    # Default query parameters for content API
+    default_expand: "body.storage,version,container"
+
+    # Pagination defaults
+    pagination:
+      limit: 25
+      start: 0
+
+    # Content type mappings
+    content_types:
+      page: "page"
+      blogpost: "blogpost"
+      comment: "comment"
+      attachment: "attachment"
+
+    # API endpoints (relative to base_url)
+    endpoints:
+      content: "/rest/api/content"
+      space: "/rest/api/space"
+      user: "/rest/api/user"
+      search: "/rest/api/content/search"
+
+  jira:
+    # Environment variable mappings
+    env_project_key: "JIRA_PROJECT_KEY"
+    env_board_id: "JIRA_BOARD_ID"
+
+    # Default headers
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    # API version
+    api_version: "2"
+
+    # Default JQL for searches
+    default_jql_order: "created DESC"
+
+    # Issue types
+    issue_types:
+      story: "Story"
+      bug: "Bug"
+      task: "Task"
+      epic: "Epic"
+      subtask: "Sub-task"
+
+    # Pagination defaults
+    pagination:
+      max_results: 50
+      start_at: 0
+
+  github:
+    # Environment variable mappings
+    env_owner: "GITHUB_OWNER"
+    env_repo: "GITHUB_REPO"
+
+    # Default headers
+    headers:
+      Accept: "application/vnd.github+json"
+      X-GitHub-Api-Version: "2022-11-28"
+
+    # Pagination defaults
+    pagination:
+      per_page: 30
+      page: 1
+
+  # Template for adding new services:
+  # service_name:
+  #   env_custom_var: "ENV_VAR_NAME"
+  #   headers:
+  #     Custom-Header: "value"
+  #   custom_key: "custom_value"

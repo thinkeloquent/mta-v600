@@ -995,6 +995,80 @@ export class BaseApiToken {
   }
 
   /**
+   * Get default HTTP headers from provider configuration.
+   *
+   * Reads from providers.{name}.headers in YAML config.
+   * These are provider-specific default headers for API requests.
+   *
+   * @returns {Object} Dictionary of header name -> value
+   */
+  getHeaders() {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getHeaders: Getting default headers from provider config`);
+
+    const providerConfig = this._getProviderConfig();
+    const headers = providerConfig?.headers || {};
+
+    if (Object.keys(headers).length > 0) {
+      logger.debug(
+        `${className}.getHeaders: Found ${Object.keys(headers).length} headers: ` +
+        `[${Object.keys(headers).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getHeaders: No headers configured for provider`);
+    }
+
+    return headers;
+  }
+
+  /**
+   * Get environment variable value by name from provider config.
+   *
+   * Looks up env_{name} in the provider config to get the environment variable name,
+   * then resolves the actual value from the environment.
+   *
+   * Example:
+   *   YAML config:
+   *     providers:
+   *       confluence:
+   *         env_space_key: "CONFLUENCE_SPACE_KEY"
+   *
+   *   Code:
+   *     const spaceKey = provider.getEnvByName("space_key");
+   *     // Reads env var name from config: "CONFLUENCE_SPACE_KEY"
+   *     // Returns process.env.CONFLUENCE_SPACE_KEY
+   *
+   * @param {string} name - The name suffix (without 'env_' prefix)
+   * @param {string|null} defaultValue - Default value if env var is not set
+   * @returns {string|null} Environment variable value or default
+   */
+  getEnvByName(name, defaultValue = null) {
+    const className = this.constructor.name;
+    logger.debug(`${className}.getEnvByName: Looking up env_${name}`);
+
+    const providerConfig = this._getProviderConfig();
+    const envKey = `env_${name}`;
+    const envVarName = providerConfig?.[envKey];
+
+    if (!envVarName) {
+      logger.debug(
+        `${className}.getEnvByName: No '${envKey}' found in provider config, ` +
+        `returning default: ${defaultValue}`
+      );
+      return defaultValue;
+    }
+
+    const value = process.env[envVarName] || defaultValue;
+
+    logger.debug(
+      `${className}.getEnvByName: Resolved ${envKey}='${envVarName}' -> ` +
+      `value=${value ? '<set>' : '<not set>'}`
+    );
+
+    return value;
+  }
+
+  /**
    * Validate the provider configuration.
    * @returns {Object}
    */

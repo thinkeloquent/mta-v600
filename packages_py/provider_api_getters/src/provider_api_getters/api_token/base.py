@@ -783,6 +783,85 @@ class BaseApiToken(ABC):
         """Get OAuth token from environment."""
         return self._lookup_oauth_token()
 
+    # =========================================================================
+    # Generic configuration getters (headers, env vars)
+    # =========================================================================
+
+    def get_headers(self) -> Dict[str, str]:
+        """
+        Get default HTTP headers from provider configuration.
+
+        Reads the 'headers' field from the provider config in YAML.
+
+        Example YAML:
+            providers:
+              confluence:
+                headers:
+                  Content-Type: "application/json"
+                  X-Atlassian-Token: "no-check"
+
+        Returns:
+            Dictionary of default headers for API requests
+        """
+        logger.debug(f"{self.__class__.__name__}.get_headers: Getting default headers")
+
+        provider_config = self._get_provider_config()
+        headers = provider_config.get("headers", {}) or {}
+
+        logger.debug(
+            f"{self.__class__.__name__}.get_headers: Found {len(headers)} headers: {list(headers.keys())}"
+        )
+
+        return headers
+
+    def get_env_by_name(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        """
+        Get environment variable value by name from provider config.
+
+        Looks up env_{name} in the provider config to get the environment variable name,
+        then resolves the actual value from the environment.
+
+        Example YAML:
+            providers:
+              confluence:
+                env_space_key: "CONFLUENCE_SPACE_KEY"
+                env_parent_page_id: "CONFLUENCE_PARENT_PAGE_ID"
+
+        Code:
+            provider = ConfluenceApiToken(static_config)
+            space_key = provider.get_env_by_name("space_key")
+            # Reads env var name from config: "CONFLUENCE_SPACE_KEY"
+            # Returns os.getenv("CONFLUENCE_SPACE_KEY")
+
+        Args:
+            name: The name suffix (without 'env_' prefix)
+            default: Default value if env var is not set
+
+        Returns:
+            Environment variable value or default
+        """
+        logger.debug(f"{self.__class__.__name__}.get_env_by_name: Looking up env_{name}")
+
+        provider_config = self._get_provider_config()
+        env_key = f"env_{name}"
+        env_var_name = provider_config.get(env_key)
+
+        if not env_var_name:
+            logger.debug(
+                f"{self.__class__.__name__}.get_env_by_name: No '{env_key}' found in provider config, "
+                f"returning default: {default}"
+            )
+            return default
+
+        value = os.getenv(env_var_name, default)
+
+        logger.debug(
+            f"{self.__class__.__name__}.get_env_by_name: Resolved {env_key}='{env_var_name}' -> "
+            f"value={'<set>' if value else '<not set>'}"
+        )
+
+        return value
+
     @abstractmethod
     def get_api_key(self) -> ApiKeyResult:
         """

@@ -341,4 +341,144 @@ export class ConfluenceApiToken extends BaseApiToken {
 
     return config;
   }
+
+  /**
+   * Get service configuration from static config.
+   * @returns {Object} Service configuration from .services.{providerName}
+   * @private
+   */
+  _getServiceConfig() {
+    logger.debug(`ConfluenceApiToken._getServiceConfig: Getting service config for '${this.providerName}'`);
+
+    try {
+      const config = this.configStore.getNested('services', this.providerName);
+      if (config === null || config === undefined) {
+        logger.debug('ConfluenceApiToken._getServiceConfig: No service config found, returning empty object');
+        return {};
+      }
+      logger.debug(`ConfluenceApiToken._getServiceConfig: Found service config with keys: ${Object.keys(config)}`);
+      return config;
+    } catch (e) {
+      logger.error(`ConfluenceApiToken._getServiceConfig: Exception while getting config: ${e.message}`);
+      return {};
+    }
+  }
+
+  /**
+   * Get downstream service configuration.
+   *
+   * Returns the entire service configuration dictionary from .services.confluence
+   * which can contain arbitrary key-value pairs for downstream service config.
+   *
+   * @returns {Object} Dictionary with all service configuration values
+   */
+  getServiceConfig() {
+    logger.debug('ConfluenceApiToken.getServiceConfig: Getting service configuration');
+
+    const serviceConfig = this._getServiceConfig();
+
+    logger.debug(
+      `ConfluenceApiToken.getServiceConfig: Returning config with ` +
+      `${Object.keys(serviceConfig).length} keys: ${Object.keys(serviceConfig)}`
+    );
+
+    return serviceConfig;
+  }
+
+  /**
+   * Get environment variable value by name from service config.
+   *
+   * Looks up env_{name} in the service config to get the environment variable name,
+   * then resolves the actual value from the environment.
+   *
+   * Example:
+   *   YAML config:
+   *     services:
+   *       confluence:
+   *         env_space_key: "CONFLUENCE_SPACE_KEY"
+   *
+   *   Code:
+   *     const spaceKey = provider.getEnvByName("space_key");
+   *     // Reads env var name from config: "CONFLUENCE_SPACE_KEY"
+   *     // Returns process.env.CONFLUENCE_SPACE_KEY
+   *
+   * @param {string} name - The name suffix (without 'env_' prefix)
+   * @param {string|null} defaultValue - Default value if env var is not set
+   * @returns {string|null} Environment variable value or default
+   */
+  getEnvByName(name, defaultValue = null) {
+    logger.debug(`ConfluenceApiToken.getEnvByName: Looking up env_${name}`);
+
+    const serviceConfig = this._getServiceConfig();
+    const envKey = `env_${name}`;
+    const envVarName = serviceConfig[envKey];
+
+    if (!envVarName) {
+      logger.debug(
+        `ConfluenceApiToken.getEnvByName: No '${envKey}' found in service config, ` +
+        `returning default: ${defaultValue}`
+      );
+      return defaultValue;
+    }
+
+    const value = process.env[envVarName] || defaultValue;
+
+    logger.debug(
+      `ConfluenceApiToken.getEnvByName: Resolved ${envKey}='${envVarName}' -> ` +
+      `value=${value ? '<set>' : '<not set>'}`
+    );
+
+    return value;
+  }
+
+  /**
+   * Get default headers from service configuration.
+   * @returns {Object} Dictionary of default headers for API requests
+   */
+  getHeaders() {
+    logger.debug('ConfluenceApiToken.getHeaders: Getting default headers');
+
+    const serviceConfig = this._getServiceConfig();
+    const headers = serviceConfig.headers || {};
+
+    logger.debug(
+      `ConfluenceApiToken.getHeaders: Found ${Object.keys(headers).length} headers: ${Object.keys(headers)}`
+    );
+
+    return headers;
+  }
+
+  /**
+   * Get API endpoints from service configuration.
+   * @returns {Object} Dictionary of endpoint paths
+   */
+  getEndpoints() {
+    logger.debug('ConfluenceApiToken.getEndpoints: Getting endpoints');
+
+    const serviceConfig = this._getServiceConfig();
+    const endpoints = serviceConfig.endpoints || {};
+
+    logger.debug(
+      `ConfluenceApiToken.getEndpoints: Found ${Object.keys(endpoints).length} endpoints: ${Object.keys(endpoints)}`
+    );
+
+    return endpoints;
+  }
+
+  /**
+   * Get pagination defaults from service configuration.
+   * @returns {Object} Dictionary with pagination settings (limit, start, etc.)
+   */
+  getPaginationDefaults() {
+    logger.debug('ConfluenceApiToken.getPaginationDefaults: Getting pagination defaults');
+
+    const serviceConfig = this._getServiceConfig();
+    const pagination = serviceConfig.pagination || {};
+
+    logger.debug(
+      `ConfluenceApiToken.getPaginationDefaults: Found pagination config: ${JSON.stringify(pagination)}`
+    );
+
+    return pagination;
+  }
 }
