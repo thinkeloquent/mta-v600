@@ -140,7 +140,7 @@ class TestBuildHeaders:
 
     # Path: auth header injection
     def test_build_headers_auth_injection(self, sample_config):
-        sample_config.auth = AuthConfig(type="bearer", api_key="test-key")
+        sample_config.auth = AuthConfig(type="bearer", raw_api_key="test-key")
         context = RequestContext(method="GET", path="/users")
 
         result = build_headers(sample_config, None, context)
@@ -155,7 +155,7 @@ class TestResolveAuthHeader:
     def test_resolve_auth_header_callback(self):
         auth = AuthConfig(
             type="bearer",
-            api_key="static-key",
+            raw_api_key="static-key",
             get_api_key_for_request=lambda ctx: "dynamic-key",
         )
         context = RequestContext(method="GET", path="/users")
@@ -168,7 +168,7 @@ class TestResolveAuthHeader:
     def test_resolve_auth_header_callback_none(self):
         auth = AuthConfig(
             type="bearer",
-            api_key="static-key",
+            raw_api_key="static-key",
             get_api_key_for_request=lambda ctx: None,
         )
         context = RequestContext(method="GET", path="/users")
@@ -179,7 +179,7 @@ class TestResolveAuthHeader:
 
     # Decision: no callback, uses static key
     def test_resolve_auth_header_static(self):
-        auth = AuthConfig(type="bearer", api_key="static-key")
+        auth = AuthConfig(type="bearer", raw_api_key="static-key")
         context = RequestContext(method="GET", path="/users")
 
         result = resolve_auth_header(auth, context)
@@ -197,16 +197,17 @@ class TestResolveAuthHeader:
 
     # Path: x-api-key type
     def test_resolve_auth_header_x_api_key(self):
-        auth = AuthConfig(type="x-api-key", api_key="api-key-123")
+        auth = AuthConfig(type="x-api-key", raw_api_key="api-key-123")
         context = RequestContext(method="GET", path="/users")
 
         result = resolve_auth_header(auth, context)
 
-        assert result == {"x-api-key": "api-key-123"}
+        # resolve_auth_header uses get_auth_header_name which returns canonical form
+        assert result == {"X-API-Key": "api-key-123"}
 
     # Path: custom type
     def test_resolve_auth_header_custom(self):
-        auth = AuthConfig(type="custom", header_name="X-Auth-Token", api_key="token-123")
+        auth = AuthConfig(type="custom", header_name="X-Auth-Token", raw_api_key="token-123")
         context = RequestContext(method="GET", path="/users")
 
         result = resolve_auth_header(auth, context)

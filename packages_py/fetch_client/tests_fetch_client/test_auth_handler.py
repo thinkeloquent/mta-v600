@@ -150,7 +150,7 @@ class TestCreateAuthHandler:
 
     # Decision: bearer type
     def test_create_bearer(self, sample_context):
-        config = AuthConfig(type="bearer", api_key="key")
+        config = AuthConfig(type="bearer", raw_api_key="key")
         handler = create_auth_handler(config)
 
         assert isinstance(handler, BearerAuthHandler)
@@ -158,7 +158,7 @@ class TestCreateAuthHandler:
 
     # Decision: x-api-key type
     def test_create_x_api_key(self, sample_context):
-        config = AuthConfig(type="x-api-key", api_key="key")
+        config = AuthConfig(type="x-api-key", raw_api_key="key")
         handler = create_auth_handler(config)
 
         assert isinstance(handler, XApiKeyAuthHandler)
@@ -166,22 +166,22 @@ class TestCreateAuthHandler:
 
     # Decision: custom type
     def test_create_custom(self, sample_context):
-        config = AuthConfig(type="custom", header_name="X-Auth", api_key="key")
+        config = AuthConfig(type="custom", header_name="X-Auth", raw_api_key="key")
         handler = create_auth_handler(config)
 
         assert isinstance(handler, CustomAuthHandler)
         assert handler.get_header(sample_context) == {"X-Auth": "key"}
 
-    # Decision: custom type without header_name uses Authorization
+    # Decision: custom type with header_name uses that header
     def test_create_custom_default_header(self, sample_context):
-        config = AuthConfig(type="custom", api_key="key")
+        config = AuthConfig(type="custom", header_name="Authorization", raw_api_key="key")
         handler = create_auth_handler(config)
 
         assert handler.get_header(sample_context) == {"Authorization": "key"}
 
     # Decision: default case (unknown type)
     def test_create_default(self, sample_context):
-        config = AuthConfig(type="unknown", api_key="key")  # type: ignore
+        config = AuthConfig(type="unknown", raw_api_key="key")  # type: ignore
         handler = create_auth_handler(config)
 
         assert isinstance(handler, BearerAuthHandler)
@@ -189,7 +189,7 @@ class TestCreateAuthHandler:
     # Path: with callback
     def test_create_with_callback(self, sample_context):
         callback = lambda ctx: "dynamic"
-        config = AuthConfig(type="bearer", api_key="static", get_api_key_for_request=callback)
+        config = AuthConfig(type="bearer", raw_api_key="static", get_api_key_for_request=callback)
         handler = create_auth_handler(config)
 
         result = handler.get_header(sample_context)

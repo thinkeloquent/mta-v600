@@ -46,34 +46,6 @@ class TestJiraApiToken:
         assert DEFAULT_EMAIL_ENV_VAR == "JIRA_EMAIL"
         assert DEFAULT_BASE_URL_ENV_VAR == "JIRA_BASE_URL"
 
-    # _get_email_env_var_name tests
-    def test_get_email_env_var_name_default(self, jira_token, caplog):
-        """Test _get_email_env_var_name uses default."""
-        with caplog.at_level(logging.DEBUG):
-            result = jira_token._get_email_env_var_name()
-
-        assert result == "JIRA_EMAIL"
-        assert "from_config=" in caplog.text
-
-    def test_get_email_env_var_name_from_config(self, caplog):
-        """Test _get_email_env_var_name uses config value."""
-        config = {
-            "providers": {
-                "jira": {
-                    "env_api_key": "JIRA_API_TOKEN",
-                    "env_email": "CUSTOM_JIRA_EMAIL",
-                }
-            }
-        }
-        mock_store = MockConfigStore(config)
-        jira_token = JiraApiToken(config_store=mock_store)
-
-        with caplog.at_level(logging.DEBUG):
-            result = jira_token._get_email_env_var_name()
-
-        assert result == "CUSTOM_JIRA_EMAIL"
-        assert "from_config=True" in caplog.text
-
     # _get_email tests
     def test_get_email_found(self, jira_token, clean_env, caplog):
         """Test _get_email when email is set."""

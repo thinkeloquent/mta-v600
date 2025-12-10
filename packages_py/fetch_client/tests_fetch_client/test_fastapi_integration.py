@@ -116,7 +116,7 @@ class TestFetchClientService:
             client = await service.register_from_params(
                 name="api",
                 base_url="https://api.example.com",
-                auth=AuthConfig(type="bearer", api_key="key"),
+                auth=AuthConfig(type="bearer", raw_api_key="key"),
                 warmup=False,
             )
 

@@ -14,18 +14,9 @@ import json
 from pathlib import Path
 
 # ============================================================
-# Load static config FIRST
+# Provider API getter (relative import to avoid circular dependency)
 # ============================================================
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent.parent
-CONFIG_DIR = PROJECT_ROOT / "common" / "config"
-
-from static_config import load_yaml_config, config as static_config
-load_yaml_config(config_dir=str(CONFIG_DIR))
-
-# ============================================================
-# Provider API getter
-# ============================================================
-from provider_api_getters import ConfluenceApiToken
+from ...api_token import ConfluenceApiToken
 
 # ============================================================
 # Fetch client with dispatcher
@@ -33,19 +24,27 @@ from provider_api_getters import ConfluenceApiToken
 from fetch_client import create_client_with_dispatcher, AuthConfig
 
 
-async def check_confluence_health() -> dict:
+async def check_confluence_health(config: dict = None) -> dict:
     """
     Check Confluence connectivity and return status.
+
+    Args:
+        config: Configuration dict (if None, loads from static_config)
 
     Returns:
         dict: Health check result with success status and data/error
     """
+    # Load config if not provided
+    if config is None:
+        from static_config import config as static_config
+        config = static_config
+
     print("=" * 60)
     print("CONFLUENCE HEALTH CHECK")
     print("=" * 60)
 
-    # Initialize provider from static config
-    provider = ConfluenceApiToken(static_config)
+    # Initialize provider from config
+    provider = ConfluenceApiToken(config)
     api_key_result = provider.get_api_key()
     network_config = provider.get_network_config()
     base_url = provider.get_base_url()
@@ -132,8 +131,15 @@ async def check_confluence_health() -> dict:
 
 
 if __name__ == "__main__":
+    # Load config when run directly as standalone script
+    PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent.parent
+    CONFIG_DIR = PROJECT_ROOT / "common" / "config"
+
+    from static_config import load_yaml_config, config as static_config
+    load_yaml_config(config_dir=str(CONFIG_DIR))
+
     print("\n")
-    result = asyncio.run(check_confluence_health())
+    result = asyncio.run(check_confluence_health(static_config))
     print("\n" + "=" * 60)
     print("RESULT")
     print("=" * 60)

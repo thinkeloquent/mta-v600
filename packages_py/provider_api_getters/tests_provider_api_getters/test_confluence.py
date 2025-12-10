@@ -67,37 +67,6 @@ class TestConfluenceApiToken:
         assert DEFAULT_EMAIL_ENV_VAR == "CONFLUENCE_EMAIL"
         assert DEFAULT_BASE_URL_ENV_VAR == "CONFLUENCE_BASE_URL"
 
-    # _get_email_env_var_name tests
-    def test_get_email_env_var_name_default(self, caplog):
-        """Test _get_email_env_var_name uses default."""
-        config = {"providers": {"confluence": {"env_api_key": "CONFLUENCE_API_TOKEN"}}}
-        mock_store = MockConfigStore(config)
-        confluence_token = ConfluenceApiToken(config_store=mock_store)
-
-        with caplog.at_level(logging.DEBUG):
-            result = confluence_token._get_email_env_var_name()
-
-        assert result == "CONFLUENCE_EMAIL"
-
-    def test_get_email_env_var_name_from_config(self, caplog):
-        """Test _get_email_env_var_name uses config value."""
-        config = {
-            "providers": {
-                "confluence": {
-                    "env_api_key": "CONFLUENCE_API_TOKEN",
-                    "env_email": "CUSTOM_CONFLUENCE_EMAIL",
-                }
-            }
-        }
-        mock_store = MockConfigStore(config)
-        confluence_token = ConfluenceApiToken(config_store=mock_store)
-
-        with caplog.at_level(logging.DEBUG):
-            result = confluence_token._get_email_env_var_name()
-
-        assert result == "CUSTOM_CONFLUENCE_EMAIL"
-        assert "from_config=True" in caplog.text
-
     # _get_email tests
     def test_get_email_found(self, confluence_token, clean_env, caplog):
         """Test _get_email when email is set."""

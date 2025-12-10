@@ -158,9 +158,9 @@ build-log: $(LOG_DIR)
 
 # Run tests
 test:
-	@echo "Running FastAPI tests..."
-	@cd $(MAKEFILE_DIR) && $(PYTEST) $(APP_DIR) -v
-	@echo "Tests complete!"
+	@find ./logs -type f -name "pytest-*" -delete 2>/dev/null || true
+	make -f Makefile.pytest build-log
+	make -f Makefile.pytest test-log
 
 # Run tests with output logs
 test-log: $(LOG_DIR)
@@ -238,10 +238,42 @@ stop:
 		echo "No server running on port $(PORT)"
 	@echo "Done!"
 
-# Health check
+# ============================================================================
+# Integration Tests (Standalone Python Connection Tests)
+# ============================================================================
+# Note: Node.js/MJS integration tests are in Makefile.fastify
+
+# Test directory
+INTEGRATION_TEST_DIR := $(MAKEFILE_DIR)tools/testing/connection/python-client
+
+# Run all Python integration tests (*.integration.py and *.py)
 health:
-	@echo "Checking FastAPI server health..."
-	@curl -s http://localhost:$(PORT)/health/status 2>/dev/null || echo "Server not responding"
+	@echo "Running Python integration tests..."
+	@echo "Test directory: $(INTEGRATION_TEST_DIR)"
+	@find $(INTEGRATION_TEST_DIR) -maxdepth 1 -type f \( -name "*.integration.py" -o -name "*.py" \) ! -name "__*" 2>/dev/null | sort | while read f; do \
+		echo ""; \
+		echo "=== Running $$(basename $$f) ==="; \
+		$(PYTHON) "$$f" 2>&1 || echo "FAILED: $$f"; \
+	done
+	@echo ""
+	@echo "Python integration tests complete!"
+
+# Run a single Python integration test (usage: make health-test PROVIDER=github)
+health-test:
+	@if [ -z "$(PROVIDER)" ]; then \
+		echo "Usage: make -f Makefile.fastapi health-test PROVIDER=<provider>"; \
+		echo "Available providers:"; \
+		find $(INTEGRATION_TEST_DIR) -maxdepth 1 -type f -name "*.py" ! -name "__*" -exec basename {} .py \; 2>/dev/null | sort; \
+		exit 1; \
+	fi
+	@test_file=$$(find $(INTEGRATION_TEST_DIR) -maxdepth 1 -type f \( -name "$(PROVIDER).integration.py" -o -name "$(PROVIDER).py" \) 2>/dev/null | head -1); \
+	if [ -n "$$test_file" ]; then \
+		echo "Running $(PROVIDER) Python integration test..."; \
+		$(PYTHON) "$$test_file"; \
+	else \
+		echo "Error: Test file not found for provider '$(PROVIDER)'"; \
+		exit 1; \
+	fi
 
 # ============================================================================
 # Setup & Clean Commands

@@ -14,33 +14,32 @@ import json
 from pathlib import Path
 
 # ============================================================
-# Load static config FIRST
+# Provider API getter (relative import to avoid circular dependency)
 # ============================================================
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent.parent
-CONFIG_DIR = PROJECT_ROOT / "common" / "config"
-
-from static_config import load_yaml_config, config as static_config
-load_yaml_config(config_dir=str(CONFIG_DIR))
-
-# ============================================================
-# Provider API getter
-# ============================================================
-from provider_api_getters import PostgresApiToken
+from ...api_token import PostgresApiToken
 
 
-async def check_postgres_health() -> dict:
+async def check_postgres_health(config: dict = None) -> dict:
     """
     Check PostgreSQL connectivity using native asyncpg client.
+
+    Args:
+        config: Configuration dict (if None, loads from static_config)
 
     Returns:
         dict: Health check result with success status and data/error
     """
+    # Load config if not provided
+    if config is None:
+        from static_config import config as static_config
+        config = static_config
+
     print("=" * 60)
     print("POSTGRESQL HEALTH CHECK")
     print("=" * 60)
 
-    # Initialize provider from static config
-    provider = PostgresApiToken(static_config)
+    # Initialize provider from config
+    provider = PostgresApiToken(config)
     api_key_result = provider.get_api_key()
     connection_config = provider.get_connection_config()
 
@@ -141,8 +140,15 @@ async def check_postgres_health() -> dict:
 
 
 if __name__ == "__main__":
+    # Load config when run directly as standalone script
+    PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent.parent
+    CONFIG_DIR = PROJECT_ROOT / "common" / "config"
+
+    from static_config import load_yaml_config, config as static_config
+    load_yaml_config(config_dir=str(CONFIG_DIR))
+
     print("\n")
-    result = asyncio.run(check_postgres_health())
+    result = asyncio.run(check_postgres_health(static_config))
     print("\n" + "=" * 60)
     print("RESULT")
     print("=" * 60)

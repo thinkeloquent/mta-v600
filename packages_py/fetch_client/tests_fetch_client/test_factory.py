@@ -47,7 +47,7 @@ class TestCreateClient:
 
     # Path: with auth config
     def test_create_client_with_auth(self):
-        auth = AuthConfig(type="bearer", api_key="test-key")
+        auth = AuthConfig(type="bearer", raw_api_key="test-key")
         client = create_client(base_url="https://api.example.com", auth=auth)
 
         assert isinstance(client, AsyncFetchClient)
@@ -102,7 +102,7 @@ class TestCreateAsyncClient:
     def test_create_async_client_all_options(self):
         client = create_async_client(
             base_url="https://api.example.com",
-            auth=AuthConfig(type="bearer", api_key="key"),
+            auth=AuthConfig(type="bearer", raw_api_key="key"),
             timeout=30.0,
             default_headers={"Accept": "application/json"},
             content_type="application/json",
@@ -133,7 +133,7 @@ class TestCreateSyncClient:
     def test_create_sync_client_all_options(self):
         client = create_sync_client(
             base_url="https://api.example.com",
-            auth=AuthConfig(type="x-api-key", api_key="key"),
+            auth=AuthConfig(type="x-api-key", raw_api_key="key"),
             timeout=TimeoutConfig(connect=5.0, read=60.0, write=10.0),
             default_headers={"User-Agent": "SyncClient"},
         )

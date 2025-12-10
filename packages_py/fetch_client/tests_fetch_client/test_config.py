@@ -105,24 +105,24 @@ class TestValidateConfig:
 class TestValidateAuthConfig:
     """Tests for validate_auth_config function."""
 
-    # Decision: bearer type passes
+    # Decision: bearer type with raw_api_key passes
     def test_validate_auth_config_bearer(self):
-        auth = AuthConfig(type="bearer")
+        auth = AuthConfig(type="bearer", raw_api_key="key")
         validate_auth_config(auth)  # Should not raise
 
-    # Decision: x-api-key type passes
+    # Decision: x-api-key type with raw_api_key passes
     def test_validate_auth_config_x_api_key(self):
-        auth = AuthConfig(type="x-api-key")
+        auth = AuthConfig(type="x-api-key", raw_api_key="key")
         validate_auth_config(auth)  # Should not raise
 
-    # Decision: custom type with header_name passes
+    # Decision: custom type with header_name and raw_api_key passes
     def test_validate_auth_config_custom_valid(self):
-        auth = AuthConfig(type="custom", header_name="X-Custom-Auth")
+        auth = AuthConfig(type="custom", header_name="X-Custom-Auth", raw_api_key="key")
         validate_auth_config(auth)  # Should not raise
 
     # Error Path: custom type without header_name
     def test_validate_auth_config_custom_no_header(self):
-        auth = AuthConfig(type="custom")
+        auth = AuthConfig(type="custom", raw_api_key="key")
         with pytest.raises(ValueError, match="header_name is required"):
             validate_auth_config(auth)
 
@@ -141,10 +141,11 @@ class TestGetAuthHeaderName:
         auth = AuthConfig(type="bearer")
         assert get_auth_header_name(auth) == "Authorization"
 
-    # Decision: x-api-key -> x-api-key
+    # Decision: x-api-key -> X-API-Key (canonical form)
     def test_get_auth_header_name_x_api_key(self):
-        auth = AuthConfig(type="x-api-key")
-        assert get_auth_header_name(auth) == "x-api-key"
+        auth = AuthConfig(type="x-api-key", raw_api_key="key")
+        # get_auth_header_name returns canonical form
+        assert get_auth_header_name(auth) == "X-API-Key"
 
     # Decision: custom -> custom header_name
     def test_get_auth_header_name_custom(self):
@@ -229,7 +230,7 @@ class TestResolveConfig:
 
     # Path: with auth config
     def test_resolve_config_with_auth(self):
-        auth = AuthConfig(type="bearer", api_key="secret")
+        auth = AuthConfig(type="bearer", raw_api_key="secret")
         config = ClientConfig(base_url="https://api.example.com", auth=auth)
         result = resolve_config(config)
         assert result.auth == auth
