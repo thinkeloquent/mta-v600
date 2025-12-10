@@ -1,0 +1,338 @@
+# Makefile.fastify
+# CI/CD and development commands for Fastify backend applications
+# Usage: make -f Makefile.fastify <target>
+
+# ============================================================================
+# Constants and Configuration
+# ============================================================================
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Application settings
+APP_NAME := fastify-main-entry
+APP_DIR := $(MAKEFILE_DIR)fastify_apps/main_entry
+ENTRY_FILE := src/main.mjs
+PORT ?= 51000
+
+# Build parameters (set by CI/CD or manually)
+BUILD_ID ?= local
+BUILD_VERSION ?= 0.0.0-dev
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIMESTAMP := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Node.js settings
+NODE_VERSION := 22
+NODE_ENV ?= development
+NODE_OPTIONS ?= --max-old-space-size=4096
+
+# Package managers
+PNPM := pnpm
+NX := npx nx
+
+# Docker settings
+DOCKER_REGISTRY ?= localhost:5000
+DOCKER_IMAGE_NAME := $(APP_NAME)
+DOCKER_TAG ?= $(BUILD_VERSION)
+DOCKER_FULL_IMAGE := $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
+DOCKERFILE_PATH := $(APP_DIR)/Dockerfile
+
+# Log directories
+LOG_DIR := $(MAKEFILE_DIR)logs
+BUILD_LOG := $(LOG_DIR)/fastify-build.log
+TEST_LOG := $(LOG_DIR)/fastify-test.log
+
+# Cache directories
+NODE_MODULES_CACHE := $(MAKEFILE_DIR)node_modules
+NX_CACHE := $(MAKEFILE_DIR).nx/cache
+PNPM_STORE := $(shell pnpm store path 2>/dev/null || echo "$(HOME)/.local/share/pnpm/store")
+
+# Export environment variables
+export NODE_ENV
+export PORT
+export BUILD_ID
+export BUILD_VERSION
+export GIT_COMMIT
+
+# ============================================================================
+# Phony Targets
+# ============================================================================
+.PHONY: help build build-log test test-log install dev dev-no-cache \
+        setup clean-cache docker-build docker-run docker-push \
+        info stop health lint format
+
+# ============================================================================
+# Help
+# ============================================================================
+help:
+	@echo "Makefile.fastify - Fastify CI/CD Commands"
+	@echo ""
+	@echo "Build:"
+	@echo "  make -f Makefile.fastify build          - Build the application"
+	@echo "  make -f Makefile.fastify build-log      - Build with output logs"
+	@echo ""
+	@echo "Test:"
+	@echo "  make -f Makefile.fastify test           - Run tests"
+	@echo "  make -f Makefile.fastify test-log       - Run tests with output logs"
+	@echo ""
+	@echo "Install:"
+	@echo "  make -f Makefile.fastify install        - Install dependencies (pnpm, nx)"
+	@echo ""
+	@echo "Development:"
+	@echo "  make -f Makefile.fastify dev            - Run server in development mode (reload)"
+	@echo "  make -f Makefile.fastify dev-no-cache   - Run without cache (fresh start)"
+	@echo "  make -f Makefile.fastify stop           - Stop running dev server"
+	@echo "  make -f Makefile.fastify health         - Check server health"
+	@echo ""
+	@echo "Setup & Clean:"
+	@echo "  make -f Makefile.fastify setup          - Full reinstall (clear + install)"
+	@echo "  make -f Makefile.fastify clean-cache    - Clear all caches"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make -f Makefile.fastify docker-build   - Build Docker image"
+	@echo "  make -f Makefile.fastify docker-run     - Run Docker container"
+	@echo "  make -f Makefile.fastify docker-push    - Push image to registry"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make -f Makefile.fastify lint           - Lint code"
+	@echo "  make -f Makefile.fastify format         - Format code"
+	@echo ""
+	@echo "Info:"
+	@echo "  make -f Makefile.fastify info           - Show configuration info"
+	@echo ""
+	@echo "Configuration Variables:"
+	@echo "  PORT=$(PORT)"
+	@echo "  BUILD_VERSION=$(BUILD_VERSION)"
+	@echo "  DOCKER_REGISTRY=$(DOCKER_REGISTRY)"
+
+# ============================================================================
+# Build Commands
+# ============================================================================
+
+# Ensure log directory exists
+$(LOG_DIR):
+	@mkdir -p $(LOG_DIR)
+
+# Build application
+build:
+	@echo "Building Fastify application..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) run build
+	@echo "Build complete!"
+
+# Build with output logs
+build-log: $(LOG_DIR)
+	@echo "Building Fastify application (logging to $(BUILD_LOG))..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) run build 2>&1 | tee $(BUILD_LOG)
+	@echo ""
+	@echo "Build complete! Log saved to $(BUILD_LOG)"
+
+# ============================================================================
+# Test Commands
+# ============================================================================
+
+# Run tests
+test:
+	@echo "Running Fastify tests..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) run test
+	@echo "Tests complete!"
+
+# Run tests with output logs
+test-log: $(LOG_DIR)
+	@echo "Running Fastify tests (logging to $(TEST_LOG))..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) run test 2>&1 | tee $(TEST_LOG)
+	@echo ""
+	@echo "Tests complete! Log saved to $(TEST_LOG)"
+
+# ============================================================================
+# Install Commands
+# ============================================================================
+
+# Install dependencies
+install:
+	@echo "Installing Fastify dependencies..."
+	@echo ""
+	@echo "Step 1: Installing pnpm packages..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) install
+	@echo ""
+	@echo "Step 2: Building Nx workspace packages..."
+	@cd $(MAKEFILE_DIR) && $(NX) run-many --target=build --all --skip-nx-cache=false
+	@echo ""
+	@echo "Install complete!"
+
+# ============================================================================
+# Development Commands
+# ============================================================================
+
+# Run server in development mode with hot reload
+dev:
+	@echo "Starting Fastify development server..."
+	@echo "  URL: http://localhost:$(PORT)"
+	@echo "  Mode: development (hot reload)"
+	@echo ""
+	@cd $(APP_DIR) && \
+		PORT=$(PORT) \
+		NODE_ENV=development \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		node --watch $(ENTRY_FILE)
+
+# Run without cache (fresh start)
+dev-no-cache:
+	@echo "Starting Fastify development server (no cache)..."
+	@echo "  URL: http://localhost:$(PORT)"
+	@echo "  Mode: development (no cache)"
+	@echo ""
+	@cd $(APP_DIR) && \
+		PORT=$(PORT) \
+		NODE_ENV=development \
+		NODE_NO_WARNINGS=1 \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		node --watch --no-warnings $(ENTRY_FILE)
+
+# Stop running dev server
+stop:
+	@echo "Stopping Fastify server on port $(PORT)..."
+	@lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || echo "No server running on port $(PORT)"
+	@echo "Done!"
+
+# Health check
+health:
+	@echo "Checking Fastify server health..."
+	@curl -s http://localhost:$(PORT)/health/status 2>/dev/null || echo "Server not responding"
+
+# ============================================================================
+# Setup & Clean Commands
+# ============================================================================
+
+# Full reinstall (clear + install)
+setup:
+	@echo "Running full Fastify setup..."
+	@echo ""
+	@echo "Step 1: Cleaning caches..."
+	@$(MAKE) -f Makefile.fastify clean-cache
+	@echo ""
+	@echo "Step 2: Installing dependencies..."
+	@$(MAKE) -f Makefile.fastify install
+	@echo ""
+	@echo "Setup complete!"
+
+# Clear all caches
+clean-cache:
+	@echo "Clearing Fastify caches..."
+	@echo "  - Removing node_modules..."
+	@rm -rf $(MAKEFILE_DIR)node_modules
+	@rm -rf $(APP_DIR)/node_modules
+	@echo "  - Clearing Nx cache..."
+	@rm -rf $(NX_CACHE)
+	@echo "  - Clearing pnpm store (optional, run 'pnpm store prune' manually)..."
+	@echo "  - Removing dist directories..."
+	@find $(MAKEFILE_DIR)packages_mjs -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
+	@find $(MAKEFILE_DIR)fastify_apps -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing build logs..."
+	@rm -f $(BUILD_LOG) $(TEST_LOG)
+	@echo "Cache cleared!"
+
+# ============================================================================
+# Docker Commands
+# ============================================================================
+
+# Build Docker image
+docker-build:
+	@echo "Building Fastify Docker image..."
+	@echo "  Image: $(DOCKER_FULL_IMAGE)"
+	@echo ""
+	@if [ ! -f "$(DOCKERFILE_PATH)" ]; then \
+		echo "Error: Dockerfile not found at $(DOCKERFILE_PATH)"; \
+		echo "Please create a Dockerfile for the application."; \
+		exit 1; \
+	fi
+	@docker build \
+		--build-arg NODE_VERSION=$(NODE_VERSION) \
+		--build-arg BUILD_ID=$(BUILD_ID) \
+		--build-arg BUILD_VERSION=$(BUILD_VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_TIMESTAMP="$(BUILD_TIMESTAMP)" \
+		-t $(DOCKER_FULL_IMAGE) \
+		-t $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):latest \
+		-f $(DOCKERFILE_PATH) \
+		$(MAKEFILE_DIR)
+	@echo ""
+	@echo "Docker image built: $(DOCKER_FULL_IMAGE)"
+
+# Run Docker container
+docker-run:
+	@echo "Running Fastify Docker container..."
+	@echo "  Image: $(DOCKER_FULL_IMAGE)"
+	@echo "  Port: $(PORT)"
+	@echo ""
+	@docker run -d \
+		--name $(APP_NAME) \
+		-p $(PORT):$(PORT) \
+		-e PORT=$(PORT) \
+		-e NODE_ENV=production \
+		-e BUILD_ID=$(BUILD_ID) \
+		-e BUILD_VERSION=$(BUILD_VERSION) \
+		-e GIT_COMMIT=$(GIT_COMMIT) \
+		$(DOCKER_FULL_IMAGE)
+	@echo ""
+	@echo "Container started! Access at http://localhost:$(PORT)"
+
+# Push image to registry
+docker-push:
+	@echo "Pushing Fastify Docker image to registry..."
+	@docker push $(DOCKER_FULL_IMAGE)
+	@docker push $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):latest
+	@echo "Image pushed!"
+
+# ============================================================================
+# Code Quality Commands
+# ============================================================================
+
+# Lint code
+lint:
+	@echo "Linting Fastify code..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) lint
+	@echo "Lint complete!"
+
+# Format code
+format:
+	@echo "Formatting Fastify code..."
+	@cd $(MAKEFILE_DIR) && $(PNPM) format
+	@echo "Format complete!"
+
+# ============================================================================
+# Info Commands
+# ============================================================================
+
+# Show configuration info
+info:
+	@echo "Makefile.fastify Configuration"
+	@echo "=============================="
+	@echo ""
+	@echo "Application:"
+	@echo "  APP_NAME:       $(APP_NAME)"
+	@echo "  APP_DIR:        $(APP_DIR)"
+	@echo "  ENTRY_FILE:     $(ENTRY_FILE)"
+	@echo "  PORT:           $(PORT)"
+	@echo ""
+	@echo "Build:"
+	@echo "  BUILD_ID:       $(BUILD_ID)"
+	@echo "  BUILD_VERSION:  $(BUILD_VERSION)"
+	@echo "  GIT_COMMIT:     $(GIT_COMMIT)"
+	@echo "  BUILD_TIMESTAMP:$(BUILD_TIMESTAMP)"
+	@echo ""
+	@echo "Node.js:"
+	@echo "  NODE_VERSION:   $(NODE_VERSION)"
+	@echo "  NODE_ENV:       $(NODE_ENV)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  DOCKER_REGISTRY:$(DOCKER_REGISTRY)"
+	@echo "  DOCKER_IMAGE:   $(DOCKER_FULL_IMAGE)"
+	@echo ""
+	@echo "Paths:"
+	@echo "  MAKEFILE_DIR:   $(MAKEFILE_DIR)"
+	@echo "  LOG_DIR:        $(LOG_DIR)"
+	@echo "  NX_CACHE:       $(NX_CACHE)"

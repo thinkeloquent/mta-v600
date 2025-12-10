@@ -1,0 +1,397 @@
+# Makefile.fastapi
+# CI/CD and development commands for FastAPI backend applications
+# Usage: make -f Makefile.fastapi <target>
+
+# ============================================================================
+# Constants and Configuration
+# ============================================================================
+
+# Get the directory where Makefile is located (project root)
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Application settings
+APP_NAME := fastapi-main-entry
+APP_DIR := $(MAKEFILE_DIR)fastapi_apps/main_entry
+APP_MODULE := app.main:app
+PORT ?= 52000
+HOST ?= 0.0.0.0
+
+# Build parameters (set by CI/CD or manually)
+BUILD_ID ?= local
+BUILD_VERSION ?= 0.0.0-dev
+GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIMESTAMP := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Python settings
+PYTHON_VERSION := 3.11
+VENV_DIR := $(MAKEFILE_DIR).venv
+PYTHON := $(if $(wildcard $(VENV_DIR)/bin/python),$(VENV_DIR)/bin/python,python)
+PIP := $(if $(wildcard $(VENV_DIR)/bin/pip),$(VENV_DIR)/bin/pip,pip)
+UVICORN := $(if $(wildcard $(VENV_DIR)/bin/uvicorn),$(VENV_DIR)/bin/uvicorn,uvicorn)
+PYTEST := $(if $(wildcard $(VENV_DIR)/bin/pytest),$(VENV_DIR)/bin/pytest,pytest)
+POETRY := poetry
+PIPX := pipx
+
+# PYTHONPATH configuration
+PYTHON_PATHS := $(shell for pkg in $(MAKEFILE_DIR)packages_py/*/src; do [ -d "$$pkg" ] && printf "%s:" "$$pkg"; done)
+PYTHON_PATHS := $(PYTHON_PATHS)$(shell for app in $(MAKEFILE_DIR)fastapi_apps/*/; do [ -d "$$app" ] && printf "%s:" "$$app"; done)
+PYTHON_PATHS := $(PYTHON_PATHS:%:=%)
+
+# Docker settings
+DOCKER_REGISTRY ?= localhost:5000
+DOCKER_IMAGE_NAME := $(APP_NAME)
+DOCKER_TAG ?= $(BUILD_VERSION)
+DOCKER_FULL_IMAGE := $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
+DOCKERFILE_PATH := $(APP_DIR)/Dockerfile
+
+# Log directories
+LOG_DIR := $(MAKEFILE_DIR)logs
+BUILD_LOG := $(LOG_DIR)/fastapi-build.log
+TEST_LOG := $(LOG_DIR)/fastapi-test.log
+
+# Cache directories
+POETRY_CACHE := $(HOME)/.cache/pypoetry
+PIP_CACHE := $(HOME)/.cache/pip
+PYTEST_CACHE := $(MAKEFILE_DIR).pytest_cache
+
+# Export environment variables
+export PYTHONPATH := $(PYTHON_PATHS):$(PYTHONPATH)
+export PORT
+export HOST
+export BUILD_ID
+export BUILD_VERSION
+export GIT_COMMIT
+
+# ============================================================================
+# Phony Targets
+# ============================================================================
+.PHONY: help build build-log test test-log install dev dev-no-cache \
+        setup clean-cache docker-build docker-run docker-push \
+        info stop health lint format venv
+
+# ============================================================================
+# Help
+# ============================================================================
+help:
+	@echo "Makefile.fastapi - FastAPI CI/CD Commands"
+	@echo ""
+	@echo "Build:"
+	@echo "  make -f Makefile.fastapi build          - Build the application"
+	@echo "  make -f Makefile.fastapi build-log      - Build with output logs"
+	@echo ""
+	@echo "Test:"
+	@echo "  make -f Makefile.fastapi test           - Run tests"
+	@echo "  make -f Makefile.fastapi test-log       - Run tests with output logs"
+	@echo ""
+	@echo "Install:"
+	@echo "  make -f Makefile.fastapi install        - Install dependencies (pipx, poetry)"
+	@echo ""
+	@echo "Development:"
+	@echo "  make -f Makefile.fastapi dev            - Run server in development mode (reload)"
+	@echo "  make -f Makefile.fastapi dev-no-cache   - Run without cache (fresh start)"
+	@echo "  make -f Makefile.fastapi stop           - Stop running dev server"
+	@echo "  make -f Makefile.fastapi health         - Check server health"
+	@echo ""
+	@echo "Setup & Clean:"
+	@echo "  make -f Makefile.fastapi setup          - Full reinstall (clear + install)"
+	@echo "  make -f Makefile.fastapi clean-cache    - Clear all caches"
+	@echo "  make -f Makefile.fastapi venv           - Create/recreate virtualenv"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make -f Makefile.fastapi docker-build   - Build Docker image"
+	@echo "  make -f Makefile.fastapi docker-run     - Run Docker container"
+	@echo "  make -f Makefile.fastapi docker-push    - Push image to registry"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make -f Makefile.fastapi lint           - Lint code (ruff)"
+	@echo "  make -f Makefile.fastapi format         - Format code (ruff)"
+	@echo ""
+	@echo "Info:"
+	@echo "  make -f Makefile.fastapi info           - Show configuration info"
+	@echo ""
+	@echo "Configuration Variables:"
+	@echo "  PORT=$(PORT)"
+	@echo "  BUILD_VERSION=$(BUILD_VERSION)"
+	@echo "  DOCKER_REGISTRY=$(DOCKER_REGISTRY)"
+
+# ============================================================================
+# Build Commands
+# ============================================================================
+
+# Ensure log directory exists
+$(LOG_DIR):
+	@mkdir -p $(LOG_DIR)
+
+# Build application (for Python this mainly validates and pre-compiles)
+build:
+	@echo "Building FastAPI application..."
+	@echo ""
+	@echo "Step 1: Validating Python syntax..."
+	@$(PYTHON) -m py_compile $(APP_DIR)/app/main.py
+	@echo "Step 2: Checking imports..."
+	@cd $(APP_DIR) && $(PYTHON) -c "from app.main import app; print('  Imports OK')"
+	@echo ""
+	@echo "Build complete!"
+
+# Build with output logs
+build-log: $(LOG_DIR)
+	@echo "Building FastAPI application (logging to $(BUILD_LOG))..."
+	@{ \
+		echo "=== FastAPI Build Log ===" ; \
+		echo "Timestamp: $(BUILD_TIMESTAMP)" ; \
+		echo "Version: $(BUILD_VERSION)" ; \
+		echo "Commit: $(GIT_COMMIT)" ; \
+		echo "" ; \
+		echo "Step 1: Validating Python syntax..." ; \
+		$(PYTHON) -m py_compile $(APP_DIR)/app/main.py 2>&1 ; \
+		echo "Step 2: Checking imports..." ; \
+		cd $(APP_DIR) && $(PYTHON) -c "from app.main import app; print('  Imports OK')" 2>&1 ; \
+		echo "" ; \
+		echo "Build complete!" ; \
+	} 2>&1 | tee $(BUILD_LOG)
+	@echo ""
+	@echo "Log saved to $(BUILD_LOG)"
+
+# ============================================================================
+# Test Commands
+# ============================================================================
+
+# Run tests
+test:
+	@echo "Running FastAPI tests..."
+	@cd $(MAKEFILE_DIR) && $(PYTEST) $(APP_DIR) -v
+	@echo "Tests complete!"
+
+# Run tests with output logs
+test-log: $(LOG_DIR)
+	@echo "Running FastAPI tests (logging to $(TEST_LOG))..."
+	@{ \
+		echo "=== FastAPI Test Log ===" ; \
+		echo "Timestamp: $(BUILD_TIMESTAMP)" ; \
+		echo "Version: $(BUILD_VERSION)" ; \
+		echo "" ; \
+		cd $(MAKEFILE_DIR) && $(PYTEST) $(APP_DIR) -v 2>&1 ; \
+	} 2>&1 | tee $(TEST_LOG)
+	@echo ""
+	@echo "Log saved to $(TEST_LOG)"
+
+# ============================================================================
+# Install Commands
+# ============================================================================
+
+# Install dependencies
+install:
+	@echo "Installing FastAPI dependencies..."
+	@echo ""
+	@echo "Step 1: Checking pipx..."
+	@which pipx > /dev/null 2>&1 || (echo "  Installing pipx..." && pip install --user pipx)
+	@echo "  pipx OK"
+	@echo ""
+	@echo "Step 2: Checking poetry..."
+	@which poetry > /dev/null 2>&1 || (echo "  Installing poetry via pipx..." && pipx install poetry)
+	@echo "  poetry OK"
+	@echo ""
+	@echo "Step 3: Installing Python packages via poetry..."
+	@cd $(MAKEFILE_DIR) && $(POETRY) lock --no-update
+	@cd $(MAKEFILE_DIR) && $(POETRY) install --no-root
+	@echo ""
+	@echo "Install complete!"
+
+# ============================================================================
+# Development Commands
+# ============================================================================
+
+# Run server in development mode with hot reload
+dev:
+	@echo "Starting FastAPI development server..."
+	@echo "  URL: http://$(HOST):$(PORT)"
+	@echo "  Mode: development (hot reload)"
+	@echo ""
+	@cd $(APP_DIR) && \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		$(UVICORN) $(APP_MODULE) --reload --host $(HOST) --port $(PORT)
+
+# Run without cache (fresh start)
+dev-no-cache:
+	@echo "Starting FastAPI development server (no cache)..."
+	@echo "  URL: http://$(HOST):$(PORT)"
+	@echo "  Mode: development (no cache)"
+	@echo ""
+	@echo "Clearing Python cache..."
+	@find $(MAKEFILE_DIR) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find $(MAKEFILE_DIR) -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo ""
+	@cd $(APP_DIR) && \
+		PYTHONDONTWRITEBYTECODE=1 \
+		BUILD_ID=$(BUILD_ID) \
+		BUILD_VERSION=$(BUILD_VERSION) \
+		GIT_COMMIT=$(GIT_COMMIT) \
+		$(UVICORN) $(APP_MODULE) --reload --host $(HOST) --port $(PORT)
+
+# Stop running dev server
+stop:
+	@echo "Stopping FastAPI server on port $(PORT)..."
+	@pkill -f "uvicorn $(APP_MODULE).*$(PORT)" 2>/dev/null || \
+		lsof -ti:$(PORT) | xargs kill -9 2>/dev/null || \
+		echo "No server running on port $(PORT)"
+	@echo "Done!"
+
+# Health check
+health:
+	@echo "Checking FastAPI server health..."
+	@curl -s http://localhost:$(PORT)/health/status 2>/dev/null || echo "Server not responding"
+
+# ============================================================================
+# Setup & Clean Commands
+# ============================================================================
+
+# Full reinstall (clear + install)
+setup:
+	@echo "Running full FastAPI setup..."
+	@echo ""
+	@echo "Step 1: Cleaning caches..."
+	@$(MAKE) -f Makefile.fastapi clean-cache
+	@echo ""
+	@echo "Step 2: Recreating virtualenv..."
+	@$(MAKE) -f Makefile.fastapi venv
+	@echo ""
+	@echo "Step 3: Installing dependencies..."
+	@$(MAKE) -f Makefile.fastapi install
+	@echo ""
+	@echo "Setup complete!"
+
+# Create/recreate virtualenv
+venv:
+	@echo "Creating Python virtualenv..."
+	@rm -rf $(VENV_DIR)
+	@python$(PYTHON_VERSION) -m venv $(VENV_DIR) || python3 -m venv $(VENV_DIR)
+	@echo "Virtualenv created at $(VENV_DIR)"
+
+# Clear all caches
+clean-cache:
+	@echo "Clearing FastAPI caches..."
+	@echo "  - Removing __pycache__ directories..."
+	@find $(MAKEFILE_DIR) -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing .pyc files..."
+	@find $(MAKEFILE_DIR) -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "  - Removing .pytest_cache..."
+	@rm -rf $(PYTEST_CACHE)
+	@find $(MAKEFILE_DIR) -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing .ruff_cache..."
+	@find $(MAKEFILE_DIR) -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing .mypy_cache..."
+	@find $(MAKEFILE_DIR) -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing egg-info directories..."
+	@find $(MAKEFILE_DIR) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	@echo "  - Removing build logs..."
+	@rm -f $(BUILD_LOG) $(TEST_LOG)
+	@echo "Cache cleared!"
+
+# ============================================================================
+# Docker Commands
+# ============================================================================
+
+# Build Docker image
+docker-build:
+	@echo "Building FastAPI Docker image..."
+	@echo "  Image: $(DOCKER_FULL_IMAGE)"
+	@echo ""
+	@if [ ! -f "$(DOCKERFILE_PATH)" ]; then \
+		echo "Error: Dockerfile not found at $(DOCKERFILE_PATH)"; \
+		echo "Please create a Dockerfile for the application."; \
+		exit 1; \
+	fi
+	@docker build \
+		--build-arg PYTHON_VERSION=$(PYTHON_VERSION) \
+		--build-arg BUILD_ID=$(BUILD_ID) \
+		--build-arg BUILD_VERSION=$(BUILD_VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_TIMESTAMP="$(BUILD_TIMESTAMP)" \
+		-t $(DOCKER_FULL_IMAGE) \
+		-t $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):latest \
+		-f $(DOCKERFILE_PATH) \
+		$(MAKEFILE_DIR)
+	@echo ""
+	@echo "Docker image built: $(DOCKER_FULL_IMAGE)"
+
+# Run Docker container
+docker-run:
+	@echo "Running FastAPI Docker container..."
+	@echo "  Image: $(DOCKER_FULL_IMAGE)"
+	@echo "  Port: $(PORT)"
+	@echo ""
+	@docker run -d \
+		--name $(APP_NAME) \
+		-p $(PORT):$(PORT) \
+		-e PORT=$(PORT) \
+		-e HOST=$(HOST) \
+		-e BUILD_ID=$(BUILD_ID) \
+		-e BUILD_VERSION=$(BUILD_VERSION) \
+		-e GIT_COMMIT=$(GIT_COMMIT) \
+		$(DOCKER_FULL_IMAGE)
+	@echo ""
+	@echo "Container started! Access at http://localhost:$(PORT)"
+
+# Push image to registry
+docker-push:
+	@echo "Pushing FastAPI Docker image to registry..."
+	@docker push $(DOCKER_FULL_IMAGE)
+	@docker push $(DOCKER_REGISTRY)/$(DOCKER_IMAGE_NAME):latest
+	@echo "Image pushed!"
+
+# ============================================================================
+# Code Quality Commands
+# ============================================================================
+
+# Lint code
+lint:
+	@echo "Linting FastAPI code..."
+	@cd $(MAKEFILE_DIR) && $(PYTHON) -m ruff check $(APP_DIR) $(MAKEFILE_DIR)packages_py || \
+		echo "Note: Install ruff with 'pip install ruff' for linting"
+	@echo "Lint complete!"
+
+# Format code
+format:
+	@echo "Formatting FastAPI code..."
+	@cd $(MAKEFILE_DIR) && $(PYTHON) -m ruff format $(APP_DIR) $(MAKEFILE_DIR)packages_py || \
+		echo "Note: Install ruff with 'pip install ruff' for formatting"
+	@echo "Format complete!"
+
+# ============================================================================
+# Info Commands
+# ============================================================================
+
+# Show configuration info
+info:
+	@echo "Makefile.fastapi Configuration"
+	@echo "==============================="
+	@echo ""
+	@echo "Application:"
+	@echo "  APP_NAME:       $(APP_NAME)"
+	@echo "  APP_DIR:        $(APP_DIR)"
+	@echo "  APP_MODULE:     $(APP_MODULE)"
+	@echo "  PORT:           $(PORT)"
+	@echo "  HOST:           $(HOST)"
+	@echo ""
+	@echo "Build:"
+	@echo "  BUILD_ID:       $(BUILD_ID)"
+	@echo "  BUILD_VERSION:  $(BUILD_VERSION)"
+	@echo "  GIT_COMMIT:     $(GIT_COMMIT)"
+	@echo "  BUILD_TIMESTAMP:$(BUILD_TIMESTAMP)"
+	@echo ""
+	@echo "Python:"
+	@echo "  PYTHON_VERSION: $(PYTHON_VERSION)"
+	@echo "  PYTHON:         $(PYTHON)"
+	@echo "  UVICORN:        $(UVICORN)"
+	@echo "  VENV_DIR:       $(VENV_DIR)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  DOCKER_REGISTRY:$(DOCKER_REGISTRY)"
+	@echo "  DOCKER_IMAGE:   $(DOCKER_FULL_IMAGE)"
+	@echo ""
+	@echo "Paths:"
+	@echo "  MAKEFILE_DIR:   $(MAKEFILE_DIR)"
+	@echo "  LOG_DIR:        $(LOG_DIR)"
+	@echo "  PYTHONPATH:     $(PYTHONPATH)"
