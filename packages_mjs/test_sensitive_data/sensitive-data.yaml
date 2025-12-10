@@ -1,0 +1,241 @@
+# ==============================================================================
+# SENSITIVE TEST DATA - CENTRALIZED CONFIGURATION
+# ==============================================================================
+# This file contains all sensitive test data for the test suite.
+# DO NOT use real credentials - these are fake values for testing only.
+#
+# Usage (JavaScript):
+#   import { get, getAll } from '@internal/test-sensitive-data';
+#   const email = get('email');                    // Flat access
+#   const email = get('credentials.email');        // Dot notation
+#
+# Usage (Python):
+#   from test_sensitive_data import get, get_all
+#   email = get('email')                           # Flat access
+#   email = get('credentials.email')               # Dot notation
+# ==============================================================================
+
+# ==============================================================================
+# PRIMARY TEST DATA (Flat key-value for direct test consumption)
+# ==============================================================================
+
+# Credentials
+email: "test@example.com"
+username: "testuser"
+password: "TestPassword123!"
+
+# API Keys and Tokens
+api_key: "sk-test-1234567890abcdef"
+api_token: "test-api-token-abc123"
+bearer_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTUxNjIzOTAyMn0.test"
+oauth_token: "oauth-test-token-xyz789"
+jwt_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
+x_api_key: "x-api-key-test-value-12345"
+
+# Base64 encoded credentials
+basic_auth_token: "dGVzdEBleGFtcGxlLmNvbTpUZXN0UGFzc3dvcmQxMjMh"
+basic_auth_header: "Basic dGVzdEBleGFtcGxlLmNvbTpUZXN0UGFzc3dvcmQxMjMh"
+bearer_auth_header: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
+
+# AWS test credentials (fake - AWS example format)
+aws_access_key_id: "AKIAIOSFODNN7EXAMPLE"
+aws_secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+aws_region: "us-east-1"
+
+# URLs
+base_url: "https://api.example.com"
+proxy_url: "http://proxy.example.com:8080"
+callback_url: "https://callback.example.com/webhook"
+
+# PII test data (fake values)
+credit_card: "4111111111111111"
+credit_card_cvv: "123"
+credit_card_expiry: "12/25"
+phone_number: "+1-555-123-4567"
+address_street: "123 Test Street"
+address_city: "Test City"
+address_state: "TS"
+address_zip: "12345"
+address_country: "US"
+date_of_birth: "1990-01-15"
+ssn: "123-45-6789"
+
+# ==============================================================================
+# CATEGORIZED GROUPS (Reference - accessible via dot notation)
+# ==============================================================================
+
+credentials:
+  email: "test@example.com"
+  username: "testuser"
+  password: "TestPassword123!"
+
+  # Provider-specific test credentials
+  confluence:
+    email: "confluence-test@example.com"
+    token: "confluence-test-token-abc123"
+    base_url: "https://confluence.example.com"
+  jira:
+    email: "jira-test@example.com"
+    token: "jira-test-token-xyz789"
+    base_url: "https://jira.example.com"
+  figma:
+    token: "figma-test-token-12345"
+    base_url: "https://api.figma.com"
+  elasticsearch:
+    username: "elastic-test"
+    password: "elastic-password-test"
+    base_url: "https://elasticsearch.example.com:9200"
+  saucelabs:
+    username: "saucelabs-user"
+    access_key: "saucelabs-access-key-test"
+    base_url: "https://api.saucelabs.com"
+  openai:
+    api_key: "sk-test-openai-1234567890abcdef"
+    base_url: "https://api.openai.com/v1"
+  gemini:
+    api_key: "gemini-test-api-key-12345"
+    base_url: "https://generativelanguage.googleapis.com"
+
+tokens:
+  api_key: "sk-test-1234567890abcdef"
+  bearer: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
+  oauth: "oauth-test-token-xyz789"
+  jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.test"
+  x_api_key: "x-api-key-test-value"
+  refresh_token: "refresh-token-test-abc123"
+
+auth_headers:
+  basic: "Basic dGVzdEBleGFtcGxlLmNvbTpUZXN0UGFzc3dvcmQxMjMh"
+  bearer: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
+  x_api_key: "sk-test-1234567890abcdef"
+  custom: "CustomAuth test-token-12345"
+
+pii:
+  credit_card:
+    number: "4111111111111111"
+    cvv: "123"
+    expiry: "12/25"
+    holder: "Test User"
+  phone: "+1-555-123-4567"
+  address:
+    street: "123 Test Street"
+    city: "Test City"
+    state: "TS"
+    zip: "12345"
+    country: "US"
+    full: "123 Test Street, Test City, TS 12345, US"
+  dob: "1990-01-15"
+  ssn: "123-45-6789"
+  passport: "AB1234567"
+  driver_license: "DL123456789"
+
+aws:
+  access_key_id: "AKIAIOSFODNN7EXAMPLE"
+  secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  region: "us-east-1"
+  bucket: "test-bucket"
+  arn: "arn:aws:s3:::test-bucket"
+
+urls:
+  base: "https://api.example.com"
+  proxy: "http://proxy.example.com:8080"
+  callback: "https://callback.example.com/webhook"
+  oauth_redirect: "https://example.com/oauth/callback"
+
+connection_strings:
+  postgres: "postgresql://testuser:testpass@localhost:5432/testdb"
+  mysql: "mysql://testuser:testpass@localhost:3306/testdb"
+  redis: "redis://localhost:6379/0"
+  mongodb: "mongodb://testuser:testpass@localhost:27017/testdb"
+
+# ==============================================================================
+# NLP BENCHMARK PLACEHOLDERS (Sample data for future use)
+# ==============================================================================
+
+nlp_benchmarks:
+  ppi:
+    name: "PPI"
+    description: "Protein-Protein Interaction dataset"
+    task: "binary_classification"
+    sample:
+      text: "Protein A interacts with Protein B through binding domain X"
+      label: 1
+    labels: [0, 1]
+
+  rte:
+    name: "RTE"
+    description: "Recognizing Textual Entailment"
+    task: "textual_entailment"
+    sample:
+      premise: "The cat sat on the mat."
+      hypothesis: "An animal is on the mat."
+      label: "entailment"
+    labels: ["entailment", "not_entailment"]
+
+  sts_b:
+    name: "STS-B"
+    description: "Semantic Textual Similarity Benchmark"
+    task: "similarity_regression"
+    sample:
+      sentence1: "A man is playing guitar."
+      sentence2: "Someone is playing a musical instrument."
+      score: 4.2
+    score_range: [0, 5]
+
+  mrpc:
+    name: "MRPC"
+    description: "Microsoft Research Paraphrase Corpus"
+    task: "paraphrase_detection"
+    sample:
+      sentence1: "The company reported earnings."
+      sentence2: "Earnings were reported by the company."
+      label: 1
+    labels: [0, 1]
+
+  qqp:
+    name: "QQP"
+    description: "Quora Question Pairs"
+    task: "duplicate_detection"
+    sample:
+      question1: "How do I learn Python?"
+      question2: "What is the best way to learn Python?"
+      label: 1
+    labels: [0, 1]
+
+  mnli:
+    name: "MNLI"
+    description: "Multi-Genre Natural Language Inference"
+    task: "natural_language_inference"
+    sample:
+      premise: "The old man spoke softly."
+      hypothesis: "Someone was speaking."
+      label: "entailment"
+    labels: ["entailment", "neutral", "contradiction"]
+
+  qnli:
+    name: "QNLI"
+    description: "Question Natural Language Inference"
+    task: "question_answering_nli"
+    sample:
+      question: "What is the capital of France?"
+      context: "Paris is the capital and largest city of France."
+      label: "entailment"
+    labels: ["entailment", "not_entailment"]
+
+  sst_2:
+    name: "SST-2"
+    description: "Stanford Sentiment Treebank (binary)"
+    task: "sentiment_analysis"
+    sample:
+      text: "This movie was absolutely wonderful!"
+      label: 1
+    labels: [0, 1]
+
+  cola:
+    name: "CoLA"
+    description: "Corpus of Linguistic Acceptability"
+    task: "linguistic_acceptability"
+    sample:
+      text: "The cat sat on the mat."
+      label: 1
+    labels: [0, 1]

@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "test-sensitive-data"
+version = "0.0.1"
+description = "Centralized sensitive test data for test suites"
+authors = ["Your Name"]
+readme = "README.md"
+packages = [{include = "test_sensitive_data", from = "src"}]
+include = ["sensitive-data.yaml"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pyyaml = "^6.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

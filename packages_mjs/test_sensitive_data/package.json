@@ -1,0 +1,31 @@
+{
+  "name": "@internal/test-sensitive-data",
+  "version": "0.0.1",
+  "description": "Centralized sensitive test data for test suites",
+  "type": "module",
+  "main": "src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src",
+    "sensitive-data.yaml"
+  ],
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [
+    "test",
+    "sensitive-data",
+    "fixtures",
+    "test-data"
+  ],
+  "license": "MIT",
+  "private": true
+}
