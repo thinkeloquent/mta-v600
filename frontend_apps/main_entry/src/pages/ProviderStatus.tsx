@@ -248,11 +248,6 @@ export function ProviderStatus() {
     init();
   }, [refreshAll]);
 
-  // Auto-refresh every 3 minutes
-  useEffect(() => {
-    const interval = setInterval(refreshAll, 180000);
-    return () => clearInterval(interval);
-  }, [refreshAll]);
 
   const providers = providersList.map(
     (name) =>
@@ -372,7 +367,7 @@ export function ProviderStatus() {
               {HEALTHZ_API}
             </code>
           </p>
-          <p className="mt-1">Auto-refreshes every 3 minutes</p>
+          <p className="mt-1">Use refresh buttons to check connection status</p>
         </div>
       </div>
     </div>
