@@ -1,6 +1,6 @@
-# mta-v600
+# MTA PolyNx Orchestrator
 
-Multi-language monorepo (Python + JavaScript/TypeScript) using Nx for orchestration.
+PolyNx Orchestrator is a polyglot Nx-powered monorepo that unifies Python and TypeScript/JavaScript services in a single workspace. It includes FastAPI and Fastify backend services, React-based frontend applications, and shared libraries in both languages to enable cross-service code reuse, consistent patterns, and streamlined CI/CD orchestration.
 
 ## Quick Start
 

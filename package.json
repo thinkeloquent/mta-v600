@@ -30,7 +30,9 @@
     "graph": "nx graph",
     "affected": "nx affected",
     "affected:build": "nx affected -t build",
-    "affected:test": "nx affected -t test"
+    "affected:test": "nx affected -t test",
+    "polynx": "node packages_mjs/project-generator/dist/index.js",
+    "new": "node packages_mjs/project-generator/dist/index.js create"
   },
   "keywords": [
     "monorepo",

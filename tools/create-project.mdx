@@ -1,0 +1,49 @@
+Usage Examples
+
+# Interactive mode
+
+polynx create
+
+# Direct commands
+
+polynx create fastapi user-service
+polynx create ts-package utils
+polynx create py-package data-utils
+
+# Presets
+
+polynx init vite my-app
+polynx init nx
+
+# Help
+
+polynx list
+polynx help create
+polynx help --ai "how do I add a route?"
+
+Files Created
+
+packages_mjs/project-generator/
+├── package.json
+├── tsconfig.json
+├── src/
+│ ├── index.ts # CLI entry point
+│ ├── cli/
+│ │ ├── interactive.ts # @clack/prompts flow
+│ │ └── commands/ # create, init, list, help
+│ ├── core/
+│ │ ├── naming-conventions.ts # Case conversions
+│ │ ├── validators.ts # kebab-case validation
+│ │ └── template-engine.ts # Template processing
+│ ├── generators/
+│ │ ├── types.ts # Type definitions
+│ │ ├── base.ts # Base generator
+│ │ └── index.ts # Exports
+│ ├── presets/
+│ │ └── index.ts # degit, vite, nx wrappers
+│ ├── utils/
+│ │ ├── logger.ts # Colored output
+│ │ └── exec.ts # Shell execution
+│ └── templates/
+│ ├── ts-package/ # TypeScript package template
+│ └── py-package/ # Python package template
