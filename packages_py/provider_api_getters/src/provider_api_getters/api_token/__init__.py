@@ -17,6 +17,8 @@ from .redis import RedisApiToken
 from .rally import RallyApiToken
 from .elasticsearch import ElasticsearchApiToken
 from .saucelabs import SaucelabsApiToken
+from .sonar import SonarApiToken
+from .akamai import AkamaiApiToken
 
 # Registry mapping provider names to their token classes
 PROVIDER_REGISTRY: dict[str, type[BaseApiToken]] = {
@@ -32,6 +34,10 @@ PROVIDER_REGISTRY: dict[str, type[BaseApiToken]] = {
     "rally": RallyApiToken,
     "elasticsearch": ElasticsearchApiToken,
     "saucelabs": SaucelabsApiToken,
+    "sonar": SonarApiToken,
+    "sonarqube": SonarApiToken,
+    "sonarcloud": SonarApiToken,
+    "akamai": AkamaiApiToken,
 }
 
 
@@ -58,6 +64,8 @@ __all__ = [
     "RallyApiToken",
     "ElasticsearchApiToken",
     "SaucelabsApiToken",
+    "SonarApiToken",
+    "AkamaiApiToken",
     "get_api_token_class",
     "PROVIDER_REGISTRY",
 ]

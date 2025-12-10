@@ -94,6 +94,27 @@ providers:
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"           # SauceLabs uses Basic auth with username:access_key
     token_resolver: "static"
+  # Sonar (SonarQube/SonarCloud)
+  sonar:
+    base_url: "https://sonarcloud.io"  # or https://your-sonar.example.com for SonarQube
+    env_api_key: "SONAR_TOKEN"
+    env_api_key_fallbacks:
+      - "SONARQUBE_TOKEN"
+      - "SONARCLOUD_TOKEN"
+      - "SONAR_API_TOKEN"
+    health_endpoint: "/api/authentication/validate"
+    api_auth_type: "bearer"
+    token_resolver: "static"
+  # Akamai Edge API (EdgeGrid authentication)
+  akamai:
+    base_url: null  # Set via AKAMAI_HOST or .edgerc file
+    env_client_token: "AKAMAI_CLIENT_TOKEN"
+    env_client_secret: "AKAMAI_CLIENT_SECRET"
+    env_access_token: "AKAMAI_ACCESS_TOKEN"
+    env_host: "AKAMAI_HOST"
+    health_endpoint: "/-/client-api/active-grants/implicit"
+    api_auth_type: "edgegrid"  # Akamai EdgeGrid signature-based auth
+    token_resolver: "static"
   # Placeholder providers (not implemented)
   rally:
     placeholder: true
