@@ -353,13 +353,13 @@ class ProviderClientFactory:
                 )
                 auth_config = AuthConfig(
                     type="custom",
-                    api_key=api_key_result.api_key,
+                    raw_api_key=api_key_result.api_key,
                     header_name=header_name,
                 )
                 console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
                     "type": "custom",
                     "header_name": header_name,
-                    "api_key": api_key_masked,
+                    "raw_api_key": api_key_masked,
                 })
             else:
                 logger.debug(
@@ -367,11 +367,11 @@ class ProviderClientFactory:
                 )
                 auth_config = AuthConfig(
                     type="bearer",
-                    api_key=api_key_result.api_key,
+                    raw_api_key=api_key_result.api_key,
                 )
                 console.print("[bold green]AuthConfig (Bearer):[/bold green]", {
                     "type": "bearer",
-                    "api_key": api_key_masked,
+                    "raw_api_key": api_key_masked,
                 })
             logger.info(
                 f"ProviderClientFactory.get_client: Auth config created "

@@ -167,7 +167,7 @@ async def startup_event():
 ║  Provider Health Endpoints:
 ║    GET  /healthz/providers/connection      - Providers list
 ║    GET  /healthz/providers/connection/:p   - Check provider
-║    GET  /health/status                     - Full health status
+║    GET  /healthz/status                    - Full health status
 ║                                                            
 ║  Frontend: {str(FRONTEND_DIR):<40}║
 ║    Status: {frontend_status:<42}║
@@ -190,7 +190,7 @@ app.include_router(hello.router, prefix="/api/fastapi", tags=["hello"])
 app.include_router(vault.router, prefix="/healthz/admin/vault", tags=["vault"])
 app.include_router(loaded_config.router, prefix="/healthz/admin/loaded-config", tags=["loaded-config"])
 app.include_router(provider_connection.router, prefix="/healthz/providers/connection", tags=["provider-connection"])
-app.include_router(health_status.router, prefix="/health/status", tags=["health-status"])
+app.include_router(health_status.router, prefix="/healthz", tags=["health-status"])
 
 
 # Mount static files if frontend is built (must be after API routes)

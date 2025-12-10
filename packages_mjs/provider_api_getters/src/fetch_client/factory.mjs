@@ -239,13 +239,13 @@ export class ProviderClientFactory {
       if (authType === 'basic' || authType === 'x-api-key' || authType === 'custom') {
         auth = {
           type: 'custom',
-          apiKey: apiKeyResult.apiKey,
+          rawApiKey: apiKeyResult.apiKey,
           headerName: headerName,
         };
       } else {
         auth = {
           type: 'bearer',
-          apiKey: apiKeyResult.apiKey,
+          rawApiKey: apiKeyResult.apiKey,
         };
       }
       logger.info({ providerName, authType, headerName }, 'Auth config created');

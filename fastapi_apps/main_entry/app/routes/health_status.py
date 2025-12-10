@@ -16,7 +16,7 @@ from provider_api_getters import ConfluenceApiToken
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("/status")
 async def health_status():
     """
     Health status endpoint demonstrating internal package integration.

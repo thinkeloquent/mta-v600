@@ -133,7 +133,7 @@ await fastify.register(providerConnectionRoutesPlugin, {
 
 // Register health status routes
 await fastify.register(healthStatusRoutesPlugin, {
-  prefix: "/health/status",
+  prefix: "/healthz/status",
 });
 
 // Register main_entry plugin with shared frontend
@@ -198,7 +198,7 @@ try {
 ║  Provider Health Endpoints:                                ║
 ║    GET  /healthz/providers/connection      - Providers list║
 ║    GET  /healthz/providers/connection/:p   - Check provider║
-║    GET  /health/status                     - Full health   ║
+║    GET  /healthz/status                    - Full health   ║
 ║                                                            ║
 ║  Frontend: Served from frontend_apps/main_entry/dist       ║
 ║    GET  /                    - SPA with SSR config         ║
