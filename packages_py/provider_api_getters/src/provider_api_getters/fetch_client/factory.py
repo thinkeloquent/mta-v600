@@ -11,16 +11,13 @@ and configuration issues.
 """
 import logging
 from typing import Any, Dict, Optional
-from rich.console import Console
+from console_print import console
 from ..api_token import get_api_token_class, BaseApiToken
 from ..api_token.base import mask_sensitive
 from ..utils.deep_merge import deep_merge
 
 # Configure logger
 logger = logging.getLogger("provider_api_getters.fetch_client")
-
-# Rich console for pretty printing
-console = Console()
 
 
 class ProviderClientFactory:

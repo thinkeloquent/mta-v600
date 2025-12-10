@@ -6,10 +6,9 @@ import os
 from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 
 import httpx
-from rich.console import Console
-from rich.panel import Panel
-from rich.syntax import Syntax
 import json
+
+from console_print import console, print_panel, print_syntax_panel
 
 from ..types import FetchResponse, HttpMethod, RequestContext, SSEEvent
 from ..config import ClientConfig, resolve_config, ResolvedConfig
@@ -38,9 +37,6 @@ from ..streaming.sse_reader import parse_sse_stream, parse_sse_stream_sync
 from ..streaming.ndjson_reader import parse_ndjson_stream, parse_ndjson_stream_sync
 
 logger = logging.getLogger("fetch_client.base_client")
-
-# Rich console for pretty printing
-console = Console()
 
 
 def _mask_auth_header(headers: Dict[str, str]) -> Dict[str, str]:
@@ -125,11 +121,11 @@ class AsyncFetchClient:
         # Pretty print request
         masked_headers = _mask_auth_header(request_headers)
         request_info = f"[bold cyan]{method}[/bold cyan] {url}"
-        console.print(Panel(request_info, title="[bold blue]Request[/bold blue]", expand=False))
+        print_panel(request_info, title="[bold blue]Request[/bold blue]")
         console.print("[bold]Headers:[/bold]", masked_headers)
         if json is not None:
             body_str = _format_body(json)
-            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Request Body[/bold]", expand=False))
+            print_syntax_panel(body_str, lexer="json", title="[bold]Request Body[/bold]")
 
         response = await self._client.request(
             method=method,
@@ -150,11 +146,11 @@ class AsyncFetchClient:
         # Pretty print response
         status_color = "green" if 200 <= response.status_code < 300 else "red"
         response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
-        console.print(Panel(response_info, title="[bold blue]Response[/bold blue]", expand=False))
+        print_panel(response_info, title="[bold blue]Response[/bold blue]")
         console.print("[bold]Headers:[/bold]", dict(response_headers))
         if data:
             body_str = _format_body(data)
-            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Response Body[/bold]", expand=False))
+            print_syntax_panel(body_str, lexer="json", title="[bold]Response Body[/bold]")
 
         return FetchResponse(
             status=response.status_code,
@@ -318,11 +314,11 @@ class SyncFetchClient:
         # Pretty print request
         masked_headers = _mask_auth_header(request_headers)
         request_info = f"[bold cyan]{method}[/bold cyan] {url}"
-        console.print(Panel(request_info, title="[bold blue]Request[/bold blue]", expand=False))
+        print_panel(request_info, title="[bold blue]Request[/bold blue]")
         console.print("[bold]Headers:[/bold]", masked_headers)
         if json is not None:
             body_str = _format_body(json)
-            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Request Body[/bold]", expand=False))
+            print_syntax_panel(body_str, lexer="json", title="[bold]Request Body[/bold]")
 
         response = self._client.request(
             method=method,
@@ -343,11 +339,11 @@ class SyncFetchClient:
         # Pretty print response
         status_color = "green" if 200 <= response.status_code < 300 else "red"
         response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
-        console.print(Panel(response_info, title="[bold blue]Response[/bold blue]", expand=False))
+        print_panel(response_info, title="[bold blue]Response[/bold blue]")
         console.print("[bold]Headers:[/bold]", dict(response_headers))
         if data:
             body_str = _format_body(data)
-            console.print(Panel(Syntax(body_str, "json", theme="monokai"), title="[bold]Response Body[/bold]", expand=False))
+            print_syntax_panel(body_str, lexer="json", title="[bold]Response Body[/bold]")
 
         return FetchResponse(
             status=response.status_code,
