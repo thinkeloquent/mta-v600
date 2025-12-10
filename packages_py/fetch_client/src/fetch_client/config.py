@@ -23,24 +23,46 @@ class AuthConfig:
     """Authentication configuration.
 
     Auth types:
-    - bearer: "Bearer <api_key>" (standard bearer token)
-    - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+    Basic auth family (Authorization: Basic <base64>):
+    - basic: Auto-compute Basic <base64((username|email):(password|token))>
+    - basic_email_token: Basic <base64(email:token)> - Atlassian APIs
+    - basic_token: Basic <base64(username:token)>
+    - basic_email: Basic <base64(email:password)>
+
+    Bearer auth family (Authorization: Bearer <value>):
+    - bearer: Auto-compute Bearer <PAT|OAuth|JWT|base64(...)>
+    - bearer_oauth: Bearer <OAuth2.0_token>
+    - bearer_jwt: Bearer <JWT_token>
+    - bearer_username_token: Bearer <base64(username:token)>
+    - bearer_username_password: Bearer <base64(username:password)>
+    - bearer_email_token: Bearer <base64(email:token)>
+    - bearer_email_password: Bearer <base64(email:password)>
+
+    Custom/API Key auth:
     - x-api-key: api_key in X-API-Key header
-    - custom: raw api_key in custom header (specified by header_name)
+    - custom: raw string in custom header (specified by header_name)
+    - custom_header: api_key in custom header (specified by header_name)
+
+    HMAC auth (stub for future implementation):
+    - hmac: AWS Signature, GCP HMAC, HTTP Signatures, Webhooks
     """
 
     type: AuthType
-    api_key: Optional[str] = None
-    username: Optional[str] = None  # Required for bearer_user type
-    header_name: Optional[str] = None
+    api_key: Optional[str] = None       # Token/key for bearer/api-key types
+    username: Optional[str] = None      # For basic/bearer_username_* types
+    email: Optional[str] = None         # For *_email* types
+    password: Optional[str] = None      # For *_password types
+    header_name: Optional[str] = None   # For custom/custom_header types
     get_api_key_for_request: Optional[Callable[[RequestContext], Optional[str]]] = None
 
     def __repr__(self) -> str:
-        """Safe repr that masks api_key."""
+        """Safe repr that masks sensitive values."""
         return (
             f"AuthConfig(type={self.type!r}, "
             f"api_key={_mask_sensitive(self.api_key)!r}, "
             f"username={self.username!r}, "
+            f"email={self.email!r}, "
+            f"password={_mask_sensitive(self.password)!r}, "
             f"header_name={self.header_name!r}, "
             f"has_callback={self.get_api_key_for_request is not None})"
         )
@@ -114,45 +136,212 @@ def validate_config(config: ClientConfig) -> None:
 
 def validate_auth_config(auth: AuthConfig) -> None:
     """Validate auth configuration."""
-    valid_types = {"bearer", "bearer_user", "x-api-key", "custom"}
+    valid_types = {
+        # Basic auth family
+        "basic", "basic_email_token", "basic_token", "basic_email",
+        # Bearer auth family
+        "bearer", "bearer_oauth", "bearer_jwt",
+        "bearer_username_token", "bearer_username_password",
+        "bearer_email_token", "bearer_email_password",
+        # Custom/API Key
+        "x-api-key", "custom", "custom_header",
+        # HMAC (stub)
+        "hmac",
+    }
 
     if auth.type not in valid_types:
-        raise ValueError(f"Invalid auth type: {auth.type}. Must be one of: {valid_types}")
+        raise ValueError(f"Invalid auth type: {auth.type}. Must be one of: {sorted(valid_types)}")
 
-    if auth.type == "custom" and not auth.header_name:
-        raise ValueError("header_name is required for custom auth type")
+    # Validation rules per type
+    if auth.type == "basic":
+        # Auto-compute: need (username OR email) AND (password OR api_key)
+        has_identifier = auth.username or auth.email
+        has_secret = auth.password or auth.api_key
+        if not has_identifier or not has_secret:
+            raise ValueError("basic auth requires (username OR email) AND (password OR api_key)")
 
-    if auth.type == "bearer_user" and not auth.username:
-        raise ValueError("username is required for bearer_user auth type")
+    elif auth.type == "basic_email_token":
+        if not auth.email:
+            raise ValueError("email is required for basic_email_token auth type")
+        if not auth.api_key:
+            raise ValueError("api_key is required for basic_email_token auth type")
+
+    elif auth.type == "basic_token":
+        if not auth.username:
+            raise ValueError("username is required for basic_token auth type")
+        if not auth.api_key:
+            raise ValueError("api_key is required for basic_token auth type")
+
+    elif auth.type == "basic_email":
+        if not auth.email:
+            raise ValueError("email is required for basic_email auth type")
+        if not auth.password:
+            raise ValueError("password is required for basic_email auth type")
+
+    elif auth.type == "bearer":
+        # Auto-compute: need api_key OR ((username OR email) AND (password OR api_key))
+        has_identifier = auth.username or auth.email
+        has_secret = auth.password or auth.api_key
+        has_credentials = has_identifier and has_secret
+        if not auth.api_key and not has_credentials:
+            raise ValueError("bearer auth requires api_key OR ((username OR email) AND (password OR api_key))")
+
+    elif auth.type in ("bearer_oauth", "bearer_jwt"):
+        if not auth.api_key:
+            raise ValueError(f"api_key is required for {auth.type} auth type")
+
+    elif auth.type == "bearer_username_token":
+        if not auth.username:
+            raise ValueError("username is required for bearer_username_token auth type")
+        if not auth.api_key:
+            raise ValueError("api_key is required for bearer_username_token auth type")
+
+    elif auth.type == "bearer_username_password":
+        if not auth.username:
+            raise ValueError("username is required for bearer_username_password auth type")
+        if not auth.password:
+            raise ValueError("password is required for bearer_username_password auth type")
+
+    elif auth.type == "bearer_email_token":
+        if not auth.email:
+            raise ValueError("email is required for bearer_email_token auth type")
+        if not auth.api_key:
+            raise ValueError("api_key is required for bearer_email_token auth type")
+
+    elif auth.type == "bearer_email_password":
+        if not auth.email:
+            raise ValueError("email is required for bearer_email_password auth type")
+        if not auth.password:
+            raise ValueError("password is required for bearer_email_password auth type")
+
+    elif auth.type == "x-api-key":
+        if not auth.api_key:
+            raise ValueError("api_key is required for x-api-key auth type")
+
+    elif auth.type in ("custom", "custom_header"):
+        if not auth.header_name:
+            raise ValueError(f"header_name is required for {auth.type} auth type")
+        if not auth.api_key:
+            raise ValueError(f"api_key is required for {auth.type} auth type")
+
+    elif auth.type == "hmac":
+        # HMAC validation is a stub - will be expanded with AuthConfigHMAC
+        raise ValueError("hmac auth type requires AuthConfigHMAC class (not yet implemented)")
 
 
 def get_auth_header_name(auth: AuthConfig) -> str:
     """Get auth header name based on auth type."""
-    if auth.type == "bearer":
+    # Basic auth family - all use Authorization header
+    if auth.type in ("basic", "basic_email_token", "basic_token", "basic_email"):
         return "Authorization"
-    elif auth.type == "bearer_user":
+
+    # Bearer auth family - all use Authorization header
+    if auth.type in (
+        "bearer", "bearer_oauth", "bearer_jwt",
+        "bearer_username_token", "bearer_username_password",
+        "bearer_email_token", "bearer_email_password",
+    ):
         return "Authorization"
-    elif auth.type == "x-api-key":
-        return "x-api-key"
-    elif auth.type == "custom":
+
+    # X-API-Key header
+    if auth.type == "x-api-key":
+        return "X-API-Key"
+
+    # Custom header
+    if auth.type in ("custom", "custom_header"):
         return auth.header_name or "Authorization"
+
+    # HMAC - varies by type, default to Authorization
+    if auth.type == "hmac":
+        return "Authorization"
+
     return "Authorization"
 
 
 def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
     """Format auth header value based on auth type.
 
-    For bearer_user type, encodes username:api_key as base64.
+    Auto-compute defaults:
+    - basic: Detects identifier (email OR username) and secret (password OR api_key)
+    - bearer: If has identifier+secret, encodes as base64; otherwise uses api_key as-is
     """
     import base64
 
-    if auth.type == "bearer":
-        return f"Bearer {api_key}"
-    elif auth.type == "bearer_user":
-        # Encode username:api_key as base64 for bearer_user
-        credentials = f"{auth.username}:{api_key}"
+    def encode_basic(identifier: str, secret: str) -> str:
+        """Encode credentials as base64 for Basic auth."""
+        credentials = f"{identifier}:{secret}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        return f"Basic {encoded}"
+
+    def encode_bearer_base64(identifier: str, secret: str) -> str:
+        """Encode credentials as base64 for Bearer auth."""
+        credentials = f"{identifier}:{secret}"
         encoded = base64.b64encode(credentials.encode()).decode()
         return f"Bearer {encoded}"
+
+    # === Basic Auth Family ===
+    if auth.type == "basic":
+        # Auto-compute: detect identifier (email or username) and secret (password or token)
+        identifier = auth.email or auth.username or ""
+        secret = auth.password or api_key
+        return encode_basic(identifier, secret)
+
+    elif auth.type == "basic_email_token":
+        # Explicit: email + api_key (token)
+        return encode_basic(auth.email or "", api_key)
+
+    elif auth.type == "basic_token":
+        # Explicit: username + api_key (token)
+        return encode_basic(auth.username or "", api_key)
+
+    elif auth.type == "basic_email":
+        # Explicit: email + password
+        return encode_basic(auth.email or "", auth.password or "")
+
+    # === Bearer Auth Family ===
+    elif auth.type == "bearer":
+        # Auto-compute: detect if credentials need base64 encoding
+        identifier = auth.email or auth.username
+        if identifier:
+            # Has identifier → encode as base64(identifier:secret)
+            secret = auth.password or api_key
+            return encode_bearer_base64(identifier, secret)
+        else:
+            # No identifier → use api_key as-is (PAT, OAuth, JWT)
+            return f"Bearer {api_key}"
+
+    elif auth.type in ("bearer_oauth", "bearer_jwt"):
+        # Explicit bearer types - always use api_key as-is
+        return f"Bearer {api_key}"
+
+    elif auth.type == "bearer_username_token":
+        # Explicit: username + api_key (token)
+        return encode_bearer_base64(auth.username or "", api_key)
+
+    elif auth.type == "bearer_username_password":
+        # Explicit: username + password
+        return encode_bearer_base64(auth.username or "", auth.password or "")
+
+    elif auth.type == "bearer_email_token":
+        # Explicit: email + api_key (token)
+        return encode_bearer_base64(auth.email or "", api_key)
+
+    elif auth.type == "bearer_email_password":
+        # Explicit: email + password
+        return encode_bearer_base64(auth.email or "", auth.password or "")
+
+    # === Custom/API Key ===
+    elif auth.type == "x-api-key":
+        return api_key
+
+    elif auth.type in ("custom", "custom_header"):
+        return api_key
+
+    # === HMAC (stub) ===
+    elif auth.type == "hmac":
+        # HMAC requires separate handling with AuthConfigHMAC
+        raise ValueError("hmac auth type requires AuthConfigHMAC class (not yet implemented)")
+
     return api_key
 
 

@@ -15,12 +15,51 @@ from typing import (
 from dataclasses import dataclass
 
 
-# Auth types
-# - bearer: "Bearer <api_key>" (standard bearer token)
-# - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+# Auth types - Comprehensive authentication type system
+#
+# Basic auth family (Authorization: Basic <base64>):
+# - basic: Auto-compute Basic <base64((username|email):(password|token))>
+# - basic_email_token: Basic <base64(email:token)> - Atlassian APIs
+# - basic_token: Basic <base64(username:token)>
+# - basic_email: Basic <base64(email:password)>
+#
+# Bearer auth family (Authorization: Bearer <value>):
+# - bearer: Auto-compute Bearer <PAT|OAuth|JWT|base64(...)>
+# - bearer_oauth: Bearer <OAuth2.0_token>
+# - bearer_jwt: Bearer <JWT_token>
+# - bearer_username_token: Bearer <base64(username:token)>
+# - bearer_username_password: Bearer <base64(username:password)>
+# - bearer_email_token: Bearer <base64(email:token)>
+# - bearer_email_password: Bearer <base64(email:password)>
+#
+# Custom/API Key auth:
 # - x-api-key: api_key in X-API-Key header
-# - custom: raw api_key in custom header (specified by header_name)
-AuthType = Literal["bearer", "bearer_user", "x-api-key", "custom"]
+# - custom: raw string in custom header (specified by header_name)
+# - custom_header: api_key in custom header (specified by header_name)
+#
+# HMAC auth (stub for future implementation):
+# - hmac: AWS Signature, GCP HMAC, HTTP Signatures, Webhooks
+AuthType = Literal[
+    # Basic auth family
+    "basic",
+    "basic_email_token",
+    "basic_token",
+    "basic_email",
+    # Bearer auth family
+    "bearer",
+    "bearer_oauth",
+    "bearer_jwt",
+    "bearer_username_token",
+    "bearer_username_password",
+    "bearer_email_token",
+    "bearer_email_password",
+    # Custom/API Key
+    "x-api-key",
+    "custom",
+    "custom_header",
+    # HMAC (stub)
+    "hmac",
+]
 
 # Stream formats
 StreamFormat = Literal["sse", "ndjson", False]

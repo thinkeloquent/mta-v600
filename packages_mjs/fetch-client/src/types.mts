@@ -4,13 +4,51 @@
 import type { Dispatcher } from 'undici';
 
 /**
- * Authentication type options
- * - bearer: "Bearer <api_key>" (standard bearer token)
- * - bearer_user: "Bearer <base64(username:api_key)>" (bearer with basic-style encoding)
+ * Authentication type options - Comprehensive authentication type system
+ *
+ * Basic auth family (Authorization: Basic <base64>):
+ * - basic: Auto-compute Basic <base64((username|email):(password|token))>
+ * - basic_email_token: Basic <base64(email:token)> - Atlassian APIs
+ * - basic_token: Basic <base64(username:token)>
+ * - basic_email: Basic <base64(email:password)>
+ *
+ * Bearer auth family (Authorization: Bearer <value>):
+ * - bearer: Auto-compute Bearer <PAT|OAuth|JWT|base64(...)>
+ * - bearer_oauth: Bearer <OAuth2.0_token>
+ * - bearer_jwt: Bearer <JWT_token>
+ * - bearer_username_token: Bearer <base64(username:token)>
+ * - bearer_username_password: Bearer <base64(username:password)>
+ * - bearer_email_token: Bearer <base64(email:token)>
+ * - bearer_email_password: Bearer <base64(email:password)>
+ *
+ * Custom/API Key auth:
  * - x-api-key: api_key in X-API-Key header
- * - custom: raw api_key in custom header (specified by headerName)
+ * - custom: raw string in custom header (specified by headerName)
+ * - custom_header: api_key in custom header (specified by headerName)
+ *
+ * HMAC auth (stub for future implementation):
+ * - hmac: AWS Signature, GCP HMAC, HTTP Signatures, Webhooks
  */
-export type AuthType = 'bearer' | 'bearer_user' | 'x-api-key' | 'custom';
+export type AuthType =
+  // Basic auth family
+  | 'basic'
+  | 'basic_email_token'
+  | 'basic_token'
+  | 'basic_email'
+  // Bearer auth family
+  | 'bearer'
+  | 'bearer_oauth'
+  | 'bearer_jwt'
+  | 'bearer_username_token'
+  | 'bearer_username_password'
+  | 'bearer_email_token'
+  | 'bearer_email_password'
+  // Custom/API Key
+  | 'x-api-key'
+  | 'custom'
+  | 'custom_header'
+  // HMAC (stub)
+  | 'hmac';
 
 /**
  * Streaming format options
@@ -42,9 +80,11 @@ export interface RequestContext {
  */
 export interface AuthConfig {
   type: AuthType;
-  apiKey?: string;
-  username?: string; // Required for bearer_user type
-  headerName?: string;
+  apiKey?: string; // Token/key for bearer/api-key types
+  username?: string; // For basic/bearer_username_* types
+  email?: string; // For *_email* types
+  password?: string; // For *_password types
+  headerName?: string; // For custom/custom_header types
   getApiKeyForRequest?: (context: RequestContext) => string | undefined;
 }
 

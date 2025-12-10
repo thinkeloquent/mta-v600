@@ -72,18 +72,106 @@ export function validateConfig(config: ClientConfig): void {
  * Validate auth configuration
  */
 export function validateAuthConfig(auth: AuthConfig): void {
-  const validTypes = ['bearer', 'bearer_user', 'x-api-key', 'custom'];
+  const validTypes = [
+    // Basic auth family
+    'basic', 'basic_email_token', 'basic_token', 'basic_email',
+    // Bearer auth family
+    'bearer', 'bearer_oauth', 'bearer_jwt',
+    'bearer_username_token', 'bearer_username_password',
+    'bearer_email_token', 'bearer_email_password',
+    // Custom/API Key
+    'x-api-key', 'custom', 'custom_header',
+    // HMAC (stub)
+    'hmac',
+  ];
 
   if (!validTypes.includes(auth.type)) {
-    throw new Error(`Invalid auth type: ${auth.type}. Must be one of: ${validTypes.join(', ')}`);
+    throw new Error(`Invalid auth type: ${auth.type}. Must be one of: ${validTypes.sort().join(', ')}`);
   }
 
-  if (auth.type === 'custom' && !auth.headerName) {
-    throw new Error('headerName is required for custom auth type');
-  }
-
-  if (auth.type === 'bearer_user' && !auth.username) {
-    throw new Error('username is required for bearer_user auth type');
+  // Validation rules per type
+  if (auth.type === 'basic') {
+    // Auto-compute: need (username OR email) AND (password OR apiKey)
+    const hasIdentifier = auth.username || auth.email;
+    const hasSecret = auth.password || auth.apiKey;
+    if (!hasIdentifier || !hasSecret) {
+      throw new Error('basic auth requires (username OR email) AND (password OR apiKey)');
+    }
+  } else if (auth.type === 'basic_email_token') {
+    if (!auth.email) {
+      throw new Error('email is required for basic_email_token auth type');
+    }
+    if (!auth.apiKey) {
+      throw new Error('apiKey is required for basic_email_token auth type');
+    }
+  } else if (auth.type === 'basic_token') {
+    if (!auth.username) {
+      throw new Error('username is required for basic_token auth type');
+    }
+    if (!auth.apiKey) {
+      throw new Error('apiKey is required for basic_token auth type');
+    }
+  } else if (auth.type === 'basic_email') {
+    if (!auth.email) {
+      throw new Error('email is required for basic_email auth type');
+    }
+    if (!auth.password) {
+      throw new Error('password is required for basic_email auth type');
+    }
+  } else if (auth.type === 'bearer') {
+    // Auto-compute: need apiKey OR ((username OR email) AND (password OR apiKey))
+    const hasIdentifier = auth.username || auth.email;
+    const hasSecret = auth.password || auth.apiKey;
+    const hasCredentials = hasIdentifier && hasSecret;
+    if (!auth.apiKey && !hasCredentials) {
+      throw new Error('bearer auth requires apiKey OR ((username OR email) AND (password OR apiKey))');
+    }
+  } else if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
+    if (!auth.apiKey) {
+      throw new Error(`apiKey is required for ${auth.type} auth type`);
+    }
+  } else if (auth.type === 'bearer_username_token') {
+    if (!auth.username) {
+      throw new Error('username is required for bearer_username_token auth type');
+    }
+    if (!auth.apiKey) {
+      throw new Error('apiKey is required for bearer_username_token auth type');
+    }
+  } else if (auth.type === 'bearer_username_password') {
+    if (!auth.username) {
+      throw new Error('username is required for bearer_username_password auth type');
+    }
+    if (!auth.password) {
+      throw new Error('password is required for bearer_username_password auth type');
+    }
+  } else if (auth.type === 'bearer_email_token') {
+    if (!auth.email) {
+      throw new Error('email is required for bearer_email_token auth type');
+    }
+    if (!auth.apiKey) {
+      throw new Error('apiKey is required for bearer_email_token auth type');
+    }
+  } else if (auth.type === 'bearer_email_password') {
+    if (!auth.email) {
+      throw new Error('email is required for bearer_email_password auth type');
+    }
+    if (!auth.password) {
+      throw new Error('password is required for bearer_email_password auth type');
+    }
+  } else if (auth.type === 'x-api-key') {
+    if (!auth.apiKey) {
+      throw new Error('apiKey is required for x-api-key auth type');
+    }
+  } else if (auth.type === 'custom' || auth.type === 'custom_header') {
+    if (!auth.headerName) {
+      throw new Error(`headerName is required for ${auth.type} auth type`);
+    }
+    if (!auth.apiKey) {
+      throw new Error(`apiKey is required for ${auth.type} auth type`);
+    }
+  } else if (auth.type === 'hmac') {
+    // HMAC validation is a stub - will be expanded with AuthConfigHMAC
+    throw new Error('hmac auth type requires AuthConfigHMAC class (not yet implemented)');
   }
 }
 
@@ -91,40 +179,142 @@ export function validateAuthConfig(auth: AuthConfig): void {
  * Get auth header name based on auth type
  */
 export function getAuthHeaderName(auth: AuthConfig): string {
-  switch (auth.type) {
-    case 'bearer':
-    case 'bearer_user':
-      return 'Authorization';
-    case 'x-api-key':
-      return 'x-api-key';
-    case 'custom':
-      return auth.headerName || 'Authorization';
-    default:
-      return 'Authorization';
+  // Basic auth family - all use Authorization header
+  if (['basic', 'basic_email_token', 'basic_token', 'basic_email'].includes(auth.type)) {
+    return 'Authorization';
   }
+
+  // Bearer auth family - all use Authorization header
+  if ([
+    'bearer', 'bearer_oauth', 'bearer_jwt',
+    'bearer_username_token', 'bearer_username_password',
+    'bearer_email_token', 'bearer_email_password',
+  ].includes(auth.type)) {
+    return 'Authorization';
+  }
+
+  // X-API-Key header
+  if (auth.type === 'x-api-key') {
+    return 'X-API-Key';
+  }
+
+  // Custom header
+  if (auth.type === 'custom' || auth.type === 'custom_header') {
+    return auth.headerName || 'Authorization';
+  }
+
+  // HMAC - varies by type, default to Authorization
+  if (auth.type === 'hmac') {
+    return 'Authorization';
+  }
+
+  return 'Authorization';
 }
 
 /**
  * Format auth header value based on auth type
  *
- * For bearer_user type, encodes username:apiKey as base64.
+ * Auto-compute defaults:
+ * - basic: Detects identifier (email OR username) and secret (password OR apiKey)
+ * - bearer: If has identifier+secret, encodes as base64; otherwise uses apiKey as-is
  */
 export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string {
-  switch (auth.type) {
-    case 'bearer':
-      return `Bearer ${apiKey}`;
-    case 'bearer_user': {
-      // Encode username:apiKey as base64 for bearer_user
-      const credentials = `${auth.username}:${apiKey}`;
-      const encoded = Buffer.from(credentials).toString('base64');
-      return `Bearer ${encoded}`;
-    }
-    case 'x-api-key':
-    case 'custom':
-      return apiKey;
-    default:
-      return apiKey;
+  /**
+   * Encode credentials as base64 for Basic auth
+   */
+  function encodeBasic(identifier: string, secret: string): string {
+    const credentials = `${identifier}:${secret}`;
+    const encoded = Buffer.from(credentials).toString('base64');
+    return `Basic ${encoded}`;
   }
+
+  /**
+   * Encode credentials as base64 for Bearer auth
+   */
+  function encodeBearerBase64(identifier: string, secret: string): string {
+    const credentials = `${identifier}:${secret}`;
+    const encoded = Buffer.from(credentials).toString('base64');
+    return `Bearer ${encoded}`;
+  }
+
+  // === Basic Auth Family ===
+  if (auth.type === 'basic') {
+    // Auto-compute: detect identifier (email or username) and secret (password or token)
+    const identifier = auth.email || auth.username || '';
+    const secret = auth.password || apiKey;
+    return encodeBasic(identifier, secret);
+  }
+
+  if (auth.type === 'basic_email_token') {
+    // Explicit: email + apiKey (token)
+    return encodeBasic(auth.email || '', apiKey);
+  }
+
+  if (auth.type === 'basic_token') {
+    // Explicit: username + apiKey (token)
+    return encodeBasic(auth.username || '', apiKey);
+  }
+
+  if (auth.type === 'basic_email') {
+    // Explicit: email + password
+    return encodeBasic(auth.email || '', auth.password || '');
+  }
+
+  // === Bearer Auth Family ===
+  if (auth.type === 'bearer') {
+    // Auto-compute: detect if credentials need base64 encoding
+    const identifier = auth.email || auth.username;
+    if (identifier) {
+      // Has identifier → encode as base64(identifier:secret)
+      const secret = auth.password || apiKey;
+      return encodeBearerBase64(identifier, secret);
+    } else {
+      // No identifier → use apiKey as-is (PAT, OAuth, JWT)
+      return `Bearer ${apiKey}`;
+    }
+  }
+
+  if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
+    // Explicit bearer types - always use apiKey as-is
+    return `Bearer ${apiKey}`;
+  }
+
+  if (auth.type === 'bearer_username_token') {
+    // Explicit: username + apiKey (token)
+    return encodeBearerBase64(auth.username || '', apiKey);
+  }
+
+  if (auth.type === 'bearer_username_password') {
+    // Explicit: username + password
+    return encodeBearerBase64(auth.username || '', auth.password || '');
+  }
+
+  if (auth.type === 'bearer_email_token') {
+    // Explicit: email + apiKey (token)
+    return encodeBearerBase64(auth.email || '', apiKey);
+  }
+
+  if (auth.type === 'bearer_email_password') {
+    // Explicit: email + password
+    return encodeBearerBase64(auth.email || '', auth.password || '');
+  }
+
+  // === Custom/API Key ===
+  if (auth.type === 'x-api-key') {
+    return apiKey;
+  }
+
+  if (auth.type === 'custom' || auth.type === 'custom_header') {
+    return apiKey;
+  }
+
+  // === HMAC (stub) ===
+  if (auth.type === 'hmac') {
+    // HMAC requires separate handling with AuthConfigHMAC
+    throw new Error('hmac auth type requires AuthConfigHMAC class (not yet implemented)');
+  }
+
+  return apiKey;
 }
 
 /**

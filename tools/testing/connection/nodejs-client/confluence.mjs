@@ -93,11 +93,11 @@ async function listSpaces() {
 
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
-    // bearer_user type: "Bearer <base64(email:token)>"
+    // basic_email_token type: "Basic <base64(email:token)>" - Atlassian APIs
     auth: {
-      type: 'bearer_user',
+      type: 'basic_email_token',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
-      username: CONFIG.CONFLUENCE_EMAIL,
+      email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
       Accept: 'application/json',
@@ -132,9 +132,9 @@ async function getSpace(spaceKey) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'bearer_user',
+      type: 'basic_email_token',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
-      username: CONFIG.CONFLUENCE_EMAIL,
+      email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
       Accept: 'application/json',
@@ -161,9 +161,9 @@ async function searchContent(query) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'bearer_user',
+      type: 'basic_email_token',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
-      username: CONFIG.CONFLUENCE_EMAIL,
+      email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
       Accept: 'application/json',
@@ -200,9 +200,9 @@ async function getPage(pageId) {
   const client = await createClientWithDispatcher({
     baseUrl: CONFIG.BASE_URL,
     auth: {
-      type: 'bearer_user',
+      type: 'basic_email_token',
       apiKey: CONFIG.CONFLUENCE_API_TOKEN,
-      username: CONFIG.CONFLUENCE_EMAIL,
+      email: CONFIG.CONFLUENCE_EMAIL,
     },
     headers: {
       Accept: 'application/json',

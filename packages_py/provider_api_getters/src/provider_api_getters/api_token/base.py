@@ -97,8 +97,21 @@ class RequestContext:
         }
 
 
-# Valid auth types
-VALID_AUTH_TYPES = frozenset({"bearer", "x-api-key", "basic", "custom", "connection_string"})
+# Valid auth types - comprehensive authentication type system
+VALID_AUTH_TYPES = frozenset({
+    # Basic auth family
+    "basic", "basic_email_token", "basic_token", "basic_email",
+    # Bearer auth family
+    "bearer", "bearer_oauth", "bearer_jwt",
+    "bearer_username_token", "bearer_username_password",
+    "bearer_email_token", "bearer_email_password",
+    # Custom/API Key
+    "x-api-key", "custom", "custom_header",
+    # HMAC (stub)
+    "hmac",
+    # Connection string (for databases)
+    "connection_string",
+})
 
 
 @dataclass
@@ -572,6 +585,203 @@ class BaseApiToken(ABC):
         """
         logger.debug(f"{self.__class__.__name__}._lookup_raw_api_key: Looking up raw API key")
         return self._lookup_env_api_key()
+
+    # =========================================================================
+    # New credential getter methods for comprehensive auth support
+    # =========================================================================
+
+    def _get_env_username_name(self) -> Optional[str]:
+        """Get the environment variable name for the username."""
+        logger.debug(f"{self.__class__.__name__}._get_env_username_name: Getting env username name")
+        provider_config = self._get_provider_config()
+        return provider_config.get("env_username")
+
+    def _get_env_username_fallbacks(self) -> list[str]:
+        """Get fallback environment variable names for the username."""
+        provider_config = self._get_provider_config()
+        return provider_config.get("env_username_fallbacks", [])
+
+    def _lookup_username(self) -> Optional[str]:
+        """
+        Lookup username from environment variable.
+
+        Resolution order:
+        1. env_username from config
+        2. env_username_fallbacks from config
+
+        Returns:
+            Username value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_username: Looking up username")
+
+        env_username_name = self._get_env_username_name()
+        if env_username_name:
+            username = os.getenv(env_username_name)
+            if username:
+                logger.debug(f"{self.__class__.__name__}._lookup_username: Found in {env_username_name}")
+                return username
+
+        for fallback in self._get_env_username_fallbacks():
+            username = os.getenv(fallback)
+            if username:
+                logger.debug(f"{self.__class__.__name__}._lookup_username: Found in fallback {fallback}")
+                return username
+
+        logger.debug(f"{self.__class__.__name__}._lookup_username: Not found")
+        return None
+
+    def _get_env_password_name(self) -> Optional[str]:
+        """Get the environment variable name for the password."""
+        logger.debug(f"{self.__class__.__name__}._get_env_password_name: Getting env password name")
+        provider_config = self._get_provider_config()
+        return provider_config.get("env_password")
+
+    def _get_env_password_fallbacks(self) -> list[str]:
+        """Get fallback environment variable names for the password."""
+        provider_config = self._get_provider_config()
+        return provider_config.get("env_password_fallbacks", [])
+
+    def _lookup_password(self) -> Optional[str]:
+        """
+        Lookup password from environment variable.
+
+        Resolution order:
+        1. env_password from config
+        2. env_password_fallbacks from config
+
+        Returns:
+            Password value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_password: Looking up password")
+
+        env_password_name = self._get_env_password_name()
+        if env_password_name:
+            password = os.getenv(env_password_name)
+            if password:
+                logger.debug(f"{self.__class__.__name__}._lookup_password: Found in {env_password_name}")
+                return password
+
+        for fallback in self._get_env_password_fallbacks():
+            password = os.getenv(fallback)
+            if password:
+                logger.debug(f"{self.__class__.__name__}._lookup_password: Found in fallback {fallback}")
+                return password
+
+        logger.debug(f"{self.__class__.__name__}._lookup_password: Not found")
+        return None
+
+    def _lookup_pat(self) -> Optional[str]:
+        """
+        Lookup Personal Access Token from environment variable.
+
+        Resolution order:
+        1. env_pat from config
+        2. Falls back to env_api_key
+
+        Returns:
+            PAT value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_pat: Looking up PAT")
+
+        provider_config = self._get_provider_config()
+        env_pat_name = provider_config.get("env_pat")
+
+        if env_pat_name:
+            pat = os.getenv(env_pat_name)
+            if pat:
+                logger.debug(f"{self.__class__.__name__}._lookup_pat: Found in {env_pat_name}")
+                return pat
+
+        # Fall back to env_api_key
+        return self._lookup_env_api_key()
+
+    def _lookup_jwt(self) -> Optional[str]:
+        """
+        Lookup JWT token from environment variable.
+
+        Resolution order:
+        1. env_jwt from config
+        2. Falls back to env_api_key
+
+        Returns:
+            JWT value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_jwt: Looking up JWT")
+
+        provider_config = self._get_provider_config()
+        env_jwt_name = provider_config.get("env_jwt")
+
+        if env_jwt_name:
+            jwt = os.getenv(env_jwt_name)
+            if jwt:
+                logger.debug(f"{self.__class__.__name__}._lookup_jwt: Found in {env_jwt_name}")
+                return jwt
+
+        # Fall back to env_api_key
+        return self._lookup_env_api_key()
+
+    def _lookup_oauth_token(self) -> Optional[str]:
+        """
+        Lookup OAuth token from environment variable.
+
+        Resolution order:
+        1. env_oauth_token from config
+        2. Falls back to env_api_key
+
+        Returns:
+            OAuth token value or None if not found
+        """
+        logger.debug(f"{self.__class__.__name__}._lookup_oauth_token: Looking up OAuth token")
+
+        provider_config = self._get_provider_config()
+        env_oauth_name = provider_config.get("env_oauth_token")
+
+        if env_oauth_name:
+            oauth_token = os.getenv(env_oauth_name)
+            if oauth_token:
+                logger.debug(f"{self.__class__.__name__}._lookup_oauth_token: Found in {env_oauth_name}")
+                return oauth_token
+
+        # Fall back to env_api_key
+        return self._lookup_env_api_key()
+
+    def _get_custom_header_name(self) -> Optional[str]:
+        """Get the custom header name from config."""
+        logger.debug(f"{self.__class__.__name__}._get_custom_header_name: Getting custom header name")
+        provider_config = self._get_provider_config()
+        return provider_config.get("custom_header_name")
+
+    # =========================================================================
+    # Public getter methods for credential types
+    # =========================================================================
+
+    def get_email(self) -> Optional[str]:
+        """Get email from environment."""
+        return self._lookup_email()
+
+    def get_username(self) -> Optional[str]:
+        """Get username from environment."""
+        return self._lookup_username()
+
+    def get_password(self) -> Optional[str]:
+        """Get password from environment."""
+        return self._lookup_password()
+
+    def get_token(self) -> Optional[str]:
+        """Get token (alias for api_key) from environment."""
+        return self._lookup_env_api_key()
+
+    def get_pat(self) -> Optional[str]:
+        """Get Personal Access Token from environment."""
+        return self._lookup_pat()
+
+    def get_jwt(self) -> Optional[str]:
+        """Get JWT token from environment."""
+        return self._lookup_jwt()
+
+    def get_oauth_token(self) -> Optional[str]:
+        """Get OAuth token from environment."""
+        return self._lookup_oauth_token()
 
     @abstractmethod
     def get_api_key(self) -> ApiKeyResult:
