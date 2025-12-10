@@ -57,6 +57,12 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
 
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
+
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
 };
@@ -79,20 +85,29 @@ async function healthCheck() {
 }
 
 // ============================================================================
+// Client Factory
+// ============================================================================
+function createFigmaClient() {
+  return createClient({
+    baseUrl: CONFIG.BASE_URL,
+    dispatcher: CONFIG.DISPATCHER,
+    auth: {
+      type: 'custom_header',
+      apiKey: CONFIG.FIGMA_TOKEN,
+      headerName: CONFIG.HEADER_NAME,
+    },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
+  });
+}
+
+// ============================================================================
 // Sample API Calls using fetch-client
 // ============================================================================
 async function getMe() {
   console.log('\n=== Get Current User ===\n');
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'x-api-key',
-      apiKey: CONFIG.FIGMA_TOKEN,
-      headerName: 'X-Figma-Token',
-    },
-  });
+  const client = createFigmaClient();
 
   try {
     const response = await client.get('/v1/me');
@@ -109,15 +124,7 @@ async function getMe() {
 async function getFile(fileKey) {
   console.log(`\n=== Get File: ${fileKey} ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'x-api-key',
-      apiKey: CONFIG.FIGMA_TOKEN,
-      headerName: 'X-Figma-Token',
-    },
-  });
+  const client = createFigmaClient();
 
   try {
     const response = await client.get(`/v1/files/${fileKey}`);
@@ -140,15 +147,7 @@ async function getFile(fileKey) {
 async function getFileNodes(fileKey, nodeIds) {
   console.log(`\n=== Get File Nodes: ${fileKey} ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'x-api-key',
-      apiKey: CONFIG.FIGMA_TOKEN,
-      headerName: 'X-Figma-Token',
-    },
-  });
+  const client = createFigmaClient();
 
   try {
     const response = await client.get(`/v1/files/${fileKey}/nodes`, {
@@ -167,15 +166,7 @@ async function getFileNodes(fileKey, nodeIds) {
 async function getTeamProjects(teamId) {
   console.log(`\n=== Get Team Projects: ${teamId} ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'x-api-key',
-      apiKey: CONFIG.FIGMA_TOKEN,
-      headerName: 'X-Figma-Token',
-    },
-  });
+  const client = createFigmaClient();
 
   try {
     const response = await client.get(`/v1/teams/${teamId}/projects`);

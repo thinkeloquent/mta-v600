@@ -53,6 +53,14 @@ CONFIG = {
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
 
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
+
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
 }
@@ -80,25 +88,37 @@ async def health_check() -> dict[str, Any]:
 
 
 # ============================================================================
+# Client Factory
+# ============================================================================
+def get_auth_config() -> AuthConfig:
+    """Get auth config based on auth type."""
+    if CONFIG["AUTH_TYPE"] == "bearer":
+        return AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
+    else:
+        return AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
+
+
+def create_es_client(headers: dict[str, str] | None = None):
+    """Create Elasticsearch client with standard config."""
+    return create_client_with_dispatcher(
+        base_url=CONFIG["BASE_URL"],
+        auth=get_auth_config(),
+        default_headers=headers or {"Accept": "application/json"},
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
+    )
+
+
+# ============================================================================
 # Sample API Calls using fetch_client
 # ============================================================================
 async def get_cluster_info() -> dict[str, Any]:
     """Get cluster info (root endpoint)."""
     print("\n=== Get Cluster Info ===\n")
 
-    # Determine auth config based on auth type
-    if CONFIG["AUTH_TYPE"] == "bearer":
-        auth = AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
-    else:
-        auth = AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
-
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=auth,
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_es_client()
 
     async with client:
         response = await client.get("/")
@@ -118,19 +138,7 @@ async def get_cluster_health() -> dict[str, Any]:
     """Get cluster health."""
     print("\n=== Get Cluster Health ===\n")
 
-    # Determine auth config based on auth type
-    if CONFIG["AUTH_TYPE"] == "bearer":
-        auth = AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
-    else:
-        auth = AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
-
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=auth,
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_es_client()
 
     async with client:
         response = await client.get("/_cluster/health")
@@ -151,19 +159,7 @@ async def list_indices() -> dict[str, Any]:
     """List all indices."""
     print("\n=== List Indices ===\n")
 
-    # Determine auth config based on auth type
-    if CONFIG["AUTH_TYPE"] == "bearer":
-        auth = AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
-    else:
-        auth = AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
-
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=auth,
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_es_client()
 
     async with client:
         response = await client.get("/_cat/indices", params={"format": "json"})
@@ -183,20 +179,10 @@ async def search_index(index: str, query: dict) -> dict[str, Any]:
     """Search an index."""
     print(f"\n=== Search Index: {index} ===\n")
 
-    # Determine auth config based on auth type
-    if CONFIG["AUTH_TYPE"] == "bearer":
-        auth = AuthConfig(type="bearer", api_key=CONFIG["ES_API_KEY"])
-    else:
-        auth = AuthConfig(type="basic", api_key=CONFIG["ES_API_KEY"], username=CONFIG["ES_USERNAME"])
-
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=auth,
-        default_headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        },
-    )
+    client = create_es_client({
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    })
 
     async with client:
         response = await client.post(f"/{index}/_search", json=query)

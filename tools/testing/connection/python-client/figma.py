@@ -48,10 +48,18 @@ CONFIG = {
     # From provider_api_getters
     "FIGMA_TOKEN": api_key_result.api_key,
     "AUTH_TYPE": api_key_result.auth_type,
-    "HEADER_NAME": api_key_result.header_name,
+    "HEADER_NAME": api_key_result.header_name or "X-Figma-Token",
 
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or "https://api.figma.com",
+
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
 
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
@@ -80,16 +88,32 @@ async def health_check() -> dict[str, Any]:
 
 
 # ============================================================================
+# Client Factory
+# ============================================================================
+def create_figma_client():
+    """Create Figma client with standard config."""
+    return create_client_with_dispatcher(
+        base_url=CONFIG["BASE_URL"],
+        auth=AuthConfig(
+            type="custom_header",
+            api_key=CONFIG["FIGMA_TOKEN"],
+            header_name=CONFIG["HEADER_NAME"],
+        ),
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
+    )
+
+
+# ============================================================================
 # Sample API Calls using fetch_client
 # ============================================================================
 async def get_me() -> dict[str, Any]:
     """Get current user."""
     print("\n=== Get Current User ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["FIGMA_TOKEN"], header_name="X-Figma-Token"),
-    )
+    client = create_figma_client()
 
     async with client:
         response = await client.get("/v1/me")
@@ -104,10 +128,7 @@ async def get_file(file_key: str) -> dict[str, Any]:
     """Get file details."""
     print(f"\n=== Get File: {file_key} ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["FIGMA_TOKEN"], header_name="X-Figma-Token"),
-    )
+    client = create_figma_client()
 
     async with client:
         response = await client.get(f"/v1/files/{file_key}")
@@ -127,10 +148,7 @@ async def get_file_nodes(file_key: str, node_ids: list[str]) -> dict[str, Any]:
     """Get specific nodes from a file."""
     print(f"\n=== Get File Nodes: {file_key} ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["FIGMA_TOKEN"], header_name="X-Figma-Token"),
-    )
+    client = create_figma_client()
 
     async with client:
         response = await client.get(
@@ -148,10 +166,7 @@ async def get_team_projects(team_id: str) -> dict[str, Any]:
     """Get team projects."""
     print(f"\n=== Get Team Projects: {team_id} ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["FIGMA_TOKEN"], header_name="X-Figma-Token"),
-    )
+    client = create_figma_client()
 
     async with client:
         response = await client.get(f"/v1/teams/{team_id}/projects")

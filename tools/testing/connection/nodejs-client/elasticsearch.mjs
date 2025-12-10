@@ -57,6 +57,12 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
 
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
+
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
 };
@@ -81,7 +87,7 @@ async function healthCheck() {
 // ============================================================================
 // Sample API Calls using fetch-client
 // ============================================================================
-function createEsClient() {
+function createEsClient(headers = { Accept: 'application/json' }) {
   const authConfig =
     CONFIG.AUTH_TYPE === 'bearer'
       ? { type: 'bearer', apiKey: CONFIG.ES_API_KEY }
@@ -91,9 +97,9 @@ function createEsClient() {
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: authConfig,
-    headers: {
-      Accept: 'application/json',
-    },
+    headers,
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 }
 

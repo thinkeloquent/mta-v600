@@ -49,12 +49,19 @@ const CONFIG = {
   // From provider_api_getters
   RALLY_API_KEY: apiKeyResult.apiKey,
   AUTH_TYPE: apiKeyResult.authType,
+  HEADER_NAME: apiKeyResult.headerName || 'ZSESSIONID',
 
   // Base URL (from provider or override)
   BASE_URL: provider.getBaseUrl() || 'https://rally1.rallydev.com/slm/webservice/v2.0',
 
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
+
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
 
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
@@ -78,22 +85,28 @@ async function healthCheck() {
 }
 
 // ============================================================================
-// Sample API Calls using fetch-client
+// Client Factory
 // ============================================================================
 function createRallyClient() {
   return createClient({
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
-      type: 'x-api-key',
+      type: 'custom_header',
       apiKey: CONFIG.RALLY_API_KEY,
-      headerName: 'ZSESSIONID',
+      headerName: CONFIG.HEADER_NAME,
     },
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 }
+
+// ============================================================================
+// Sample API Calls using fetch-client
+// ============================================================================
 
 async function getSubscription() {
   console.log('\n=== Get Subscription ===\n');

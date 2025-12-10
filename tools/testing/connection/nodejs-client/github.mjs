@@ -56,6 +56,12 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
 
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
+
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
 };
@@ -78,12 +84,10 @@ async function healthCheck() {
 }
 
 // ============================================================================
-// Sample API Calls using fetch-client
+// Client Factory
 // ============================================================================
-async function getUser() {
-  console.log('\n=== Get Authenticated User ===\n');
-
-  const client = createClient({
+function createGithubClient() {
+  return createClient({
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
@@ -94,7 +98,18 @@ async function getUser() {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
+}
+
+// ============================================================================
+// Sample API Calls using fetch-client
+// ============================================================================
+async function getUser() {
+  console.log('\n=== Get Authenticated User ===\n');
+
+  const client = createGithubClient();
 
   try {
     const response = await client.get('/user');
@@ -111,18 +126,7 @@ async function getUser() {
 async function listRepositories() {
   console.log('\n=== List Repositories ===\n');
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'bearer',
-      apiKey: CONFIG.GITHUB_TOKEN,
-    },
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
+  const client = createGithubClient();
 
   try {
     const response = await client.get('/user/repos');
@@ -146,18 +150,7 @@ async function listRepositories() {
 async function getRepository(owner, repo) {
   console.log(`\n=== Get Repository: ${owner}/${repo} ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'bearer',
-      apiKey: CONFIG.GITHUB_TOKEN,
-    },
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
+  const client = createGithubClient();
 
   try {
     const response = await client.get(`/repos/${owner}/${repo}`);

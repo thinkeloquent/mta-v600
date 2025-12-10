@@ -47,12 +47,20 @@ api_key_result = provider.get_api_key()
 
 CONFIG = {
     # From provider_api_getters
-    "JIRA_API_TOKEN": api_key_result.api_key,
-    "JIRA_EMAIL": api_key_result.username,
-    "AUTH_TYPE": api_key_result.auth_type,
+    "JIRA_API_TOKEN": api_key_result.raw_api_key,  # Raw API token (not pre-encoded)
+    "JIRA_EMAIL": api_key_result.email or api_key_result.username,
+    "AUTH_TYPE": "basic_email_token",  # Atlassian APIs use Basic <base64(email:token)>
 
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or os.getenv("JIRA_BASE_URL", "https://your-company.atlassian.net"),
+
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
 
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
@@ -96,11 +104,19 @@ async def get_myself() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["JIRA_API_TOKEN"], username=CONFIG["JIRA_EMAIL"]),
+        auth=AuthConfig(
+            type="basic_email_token",
+            api_key=CONFIG["JIRA_API_TOKEN"],
+            email=CONFIG["JIRA_EMAIL"],
+        ),
         default_headers={
             "Accept": "application/json",
             "Content-Type": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -118,10 +134,18 @@ async def list_projects() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["JIRA_API_TOKEN"], username=CONFIG["JIRA_EMAIL"]),
+        auth=AuthConfig(
+            type="basic_email_token",
+            api_key=CONFIG["JIRA_API_TOKEN"],
+            email=CONFIG["JIRA_EMAIL"],
+        ),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -144,10 +168,18 @@ async def search_issues(jql: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["JIRA_API_TOKEN"], username=CONFIG["JIRA_EMAIL"]),
+        auth=AuthConfig(
+            type="basic_email_token",
+            api_key=CONFIG["JIRA_API_TOKEN"],
+            email=CONFIG["JIRA_EMAIL"],
+        ),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:
@@ -173,10 +205,18 @@ async def get_issue(issue_key: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="basic", api_key=CONFIG["JIRA_API_TOKEN"], username=CONFIG["JIRA_EMAIL"]),
+        auth=AuthConfig(
+            type="basic_email_token",
+            api_key=CONFIG["JIRA_API_TOKEN"],
+            email=CONFIG["JIRA_EMAIL"],
+        ),
         default_headers={
             "Accept": "application/json",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
 
     async with client:

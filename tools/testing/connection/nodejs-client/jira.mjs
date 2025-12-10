@@ -47,15 +47,21 @@ const apiKeyResult = provider.getApiKey();
 
 const CONFIG = {
   // From provider_api_getters
-  JIRA_API_TOKEN: apiKeyResult.apiKey,
-  JIRA_EMAIL: apiKeyResult.username,
-  AUTH_TYPE: apiKeyResult.authType,
+  JIRA_API_TOKEN: apiKeyResult.apiKey,  // Raw API token
+  JIRA_EMAIL: apiKeyResult.email || apiKeyResult.username,
+  AUTH_TYPE: 'basic_email_token',  // Atlassian APIs use Basic <base64(email:token)>
 
   // Base URL (from provider or override)
   BASE_URL: provider.getBaseUrl() || process.env.JIRA_BASE_URL || 'https://your-company.atlassian.net',
 
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
+
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
 
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
@@ -88,14 +94,16 @@ async function getMyself() {
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
-      type: 'basic',
+      type: 'basic_email_token',
       apiKey: CONFIG.JIRA_API_TOKEN,
-      username: CONFIG.JIRA_EMAIL,
+      email: CONFIG.JIRA_EMAIL,
     },
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -117,13 +125,15 @@ async function listProjects() {
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
-      type: 'basic',
+      type: 'basic_email_token',
       apiKey: CONFIG.JIRA_API_TOKEN,
-      username: CONFIG.JIRA_EMAIL,
+      email: CONFIG.JIRA_EMAIL,
     },
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -152,13 +162,15 @@ async function searchIssues(jql) {
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
-      type: 'basic',
+      type: 'basic_email_token',
       apiKey: CONFIG.JIRA_API_TOKEN,
-      username: CONFIG.JIRA_EMAIL,
+      email: CONFIG.JIRA_EMAIL,
     },
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {
@@ -189,13 +201,15 @@ async function getIssue(issueKey) {
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
-      type: 'basic',
+      type: 'basic_email_token',
       apiKey: CONFIG.JIRA_API_TOKEN,
-      username: CONFIG.JIRA_EMAIL,
+      email: CONFIG.JIRA_EMAIL,
     },
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
 
   try {

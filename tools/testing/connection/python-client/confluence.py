@@ -47,21 +47,13 @@ api_key_result = provider.get_api_key()
 
 CONFIG = {
     # From provider_api_getters
-    "CONFLUENCE_BEARER_TOKEN": os.getenv("CONFLUENCE_API_TOKEN"),
-    "CONFLUENCE_API_TOKEN": api_key_result.api_key,
+    "BEARER_TOKEN": api_key_result.api_key or os.getenv("CONFLUENCE_API_TOKEN"),
+    "API_TOKEN": api_key_result.api_key,
     "CONFLUENCE_EMAIL": api_key_result.username or os.getenv("CONFLUENCE_EMAIL"),
     "AUTH_TYPE": "bearer",
-
-    # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or os.getenv("CONFLUENCE_BASE_URL", "https://your-company.atlassian.net/wiki"),
-
-    # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
-
-    # Proxy Configuration (set to override YAML/environment config)
-    # Examples: "http://proxy:8080", "http://user:pass@proxy:8080", "socks5://proxy:1080"
-    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),  # Set to None to use YAML config
-
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
     # SSL/TLS Configuration (runtime override, or use YAML config)
     "SSL_VERIFY": False,  # Set to None to use YAML config
     "CERT": os.getenv("CERT"),  # Client certificate path
@@ -85,7 +77,7 @@ async def health_check() -> dict[str, Any]:
             email=CONFIG["CONFLUENCE_EMAIL"],
         ),
         # Alternative: use custom type with pre-encoded token
-        # auth=AuthConfig(type="custom", api_key=CONFIG["CONFLUENCE_API_TOKEN"], header_name="Authorization"),
+        # auth=AuthConfig(type="custom", api_key=CONFIG["API_TOKEN"], header_name="Authorization"),
         default_headers={
             "Accept": "application/json",
         },
@@ -120,7 +112,7 @@ async def list_spaces() -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -151,7 +143,7 @@ async def get_space(space_key: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -176,7 +168,7 @@ async def search_content(query: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },
@@ -210,7 +202,7 @@ async def get_page(page_id: str) -> dict[str, Any]:
 
     client = create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["CONFLUENCE_BEARER_TOKEN"]),
+        auth=AuthConfig(type="bearer", api_key=CONFIG["BEARER_TOKEN"]),
         default_headers={
             "Accept": "application/json",
         },

@@ -52,6 +52,14 @@ CONFIG = {
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or "https://generativelanguage.googleapis.com/v1beta/openai",
 
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
+
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
 }
@@ -79,16 +87,28 @@ async def health_check() -> dict[str, Any]:
 
 
 # ============================================================================
+# Client Factory
+# ============================================================================
+def create_gemini_client():
+    """Create Gemini client with standard config."""
+    return create_client_with_dispatcher(
+        base_url=CONFIG["BASE_URL"],
+        auth=AuthConfig(type="bearer", api_key=CONFIG["GEMINI_API_KEY"]),
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
+    )
+
+
+# ============================================================================
 # Sample API Calls using fetch_client
 # ============================================================================
 async def chat_completion(messages: list[dict], model: str = "gemini-1.5-flash") -> dict[str, Any]:
     """Chat completion using fetch_client."""
     print(f"\n=== Chat Completion ({model}) ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GEMINI_API_KEY"]),
-    )
+    client = create_gemini_client()
 
     async with client:
         response = await client.post(
@@ -110,10 +130,7 @@ async def stream_chat_completion(messages: list[dict], model: str = "gemini-1.5-
     """Streaming chat completion using fetch_client SSE support."""
     print(f"\n=== Streaming Chat Completion ({model}) ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GEMINI_API_KEY"]),
-    )
+    client = create_gemini_client()
 
     full_content = ""
     async with client:
@@ -140,10 +157,7 @@ async def create_embedding(input_text: str, model: str = "text-embedding-004") -
     """Create embedding using fetch_client."""
     print(f"\n=== Create Embedding ({model}) ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GEMINI_API_KEY"]),
-    )
+    client = create_gemini_client()
 
     async with client:
         response = await client.post(

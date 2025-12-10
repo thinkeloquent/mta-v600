@@ -56,6 +56,12 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
 
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
+
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
 };
@@ -78,19 +84,28 @@ async function healthCheck() {
 }
 
 // ============================================================================
-// Sample API Calls using fetch-client
+// Client Factory
 // ============================================================================
-async function chatCompletion(messages, model = 'gemini-1.5-flash') {
-  console.log(`\n=== Chat Completion (${model}) ===\n`);
-
-  const client = createClient({
+function createGeminiClient() {
+  return createClient({
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
       type: 'bearer',
       apiKey: CONFIG.GEMINI_API_KEY,
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
+}
+
+// ============================================================================
+// Sample API Calls using fetch-client
+// ============================================================================
+async function chatCompletion(messages, model = 'gemini-1.5-flash') {
+  console.log(`\n=== Chat Completion (${model}) ===\n`);
+
+  const client = createGeminiClient();
 
   try {
     const response = await client.post('/chat/completions', {
@@ -113,14 +128,7 @@ async function chatCompletion(messages, model = 'gemini-1.5-flash') {
 async function streamChatCompletion(messages, model = 'gemini-1.5-flash') {
   console.log(`\n=== Streaming Chat Completion (${model}) ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'bearer',
-      apiKey: CONFIG.GEMINI_API_KEY,
-    },
-  });
+  const client = createGeminiClient();
 
   let fullContent = '';
   try {
@@ -148,14 +156,7 @@ async function streamChatCompletion(messages, model = 'gemini-1.5-flash') {
 async function createEmbedding(input, model = 'text-embedding-004') {
   console.log(`\n=== Create Embedding (${model}) ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'bearer',
-      apiKey: CONFIG.GEMINI_API_KEY,
-    },
-  });
+  const client = createGeminiClient();
 
   try {
     const response = await client.post('/embeddings', {

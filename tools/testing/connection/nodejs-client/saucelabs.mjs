@@ -57,6 +57,12 @@ const CONFIG = {
   // Dispatcher (from fetch-proxy-dispatcher)
   DISPATCHER: getProxyDispatcher(),
 
+  // Proxy Configuration (set to override YAML/environment config)
+  PROXY: process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined,
+
+  // SSL/TLS Configuration (runtime override, or undefined to use YAML config)
+  SSL_VERIFY: false,  // Set to undefined to use YAML config
+
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
 };
@@ -79,12 +85,10 @@ async function healthCheck() {
 }
 
 // ============================================================================
-// Sample API Calls using fetch-client
+// Client Factory
 // ============================================================================
-async function getUser() {
-  console.log('\n=== Get User Info ===\n');
-
-  const client = createClient({
+function createSaucelabsClient() {
+  return createClient({
     baseUrl: CONFIG.BASE_URL,
     dispatcher: CONFIG.DISPATCHER,
     auth: {
@@ -95,7 +99,18 @@ async function getUser() {
     headers: {
       Accept: 'application/json',
     },
+    proxy: CONFIG.PROXY,
+    verify: CONFIG.SSL_VERIFY,
   });
+}
+
+// ============================================================================
+// Sample API Calls using fetch-client
+// ============================================================================
+async function getUser() {
+  console.log('\n=== Get User Info ===\n');
+
+  const client = createSaucelabsClient();
 
   try {
     const response = await client.get(`/rest/v1.2/users/${CONFIG.SAUCELABS_USERNAME}`);
@@ -112,18 +127,7 @@ async function getUser() {
 async function listJobs(limit = 10) {
   console.log(`\n=== List Jobs (limit: ${limit}) ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'basic',
-      apiKey: CONFIG.SAUCELABS_ACCESS_KEY,
-      username: CONFIG.SAUCELABS_USERNAME,
-    },
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  const client = createSaucelabsClient();
 
   try {
     const response = await client.get(`/rest/v1.1/${CONFIG.SAUCELABS_USERNAME}/jobs`, {
@@ -149,18 +153,7 @@ async function listJobs(limit = 10) {
 async function getJob(jobId) {
   console.log(`\n=== Get Job: ${jobId} ===\n`);
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'basic',
-      apiKey: CONFIG.SAUCELABS_ACCESS_KEY,
-      username: CONFIG.SAUCELABS_USERNAME,
-    },
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  const client = createSaucelabsClient();
 
   try {
     const response = await client.get(`/rest/v1.1/${CONFIG.SAUCELABS_USERNAME}/jobs/${jobId}`);
@@ -177,18 +170,7 @@ async function getJob(jobId) {
 async function getUsage() {
   console.log('\n=== Get Usage Statistics ===\n');
 
-  const client = createClient({
-    baseUrl: CONFIG.BASE_URL,
-    dispatcher: CONFIG.DISPATCHER,
-    auth: {
-      type: 'basic',
-      apiKey: CONFIG.SAUCELABS_ACCESS_KEY,
-      username: CONFIG.SAUCELABS_USERNAME,
-    },
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  const client = createSaucelabsClient();
 
   try {
     const response = await client.get(`/rest/v1.2/users/${CONFIG.SAUCELABS_USERNAME}/concurrency`);

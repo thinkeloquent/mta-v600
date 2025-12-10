@@ -48,9 +48,18 @@ CONFIG = {
     # From provider_api_getters
     "RALLY_API_KEY": api_key_result.api_key,
     "AUTH_TYPE": api_key_result.auth_type,
+    "HEADER_NAME": api_key_result.header_name or "ZSESSIONID",
 
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or "https://rally1.rallydev.com/slm/webservice/v2.0",
+
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
 
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
@@ -79,19 +88,35 @@ async def health_check() -> dict[str, Any]:
 
 
 # ============================================================================
+# Client Factory
+# ============================================================================
+def create_rally_client():
+    """Create Rally client with standard config."""
+    return create_client_with_dispatcher(
+        base_url=CONFIG["BASE_URL"],
+        auth=AuthConfig(
+            type="custom_header",
+            api_key=CONFIG["RALLY_API_KEY"],
+            header_name=CONFIG["HEADER_NAME"],
+        ),
+        default_headers={
+            "Accept": "application/json",
+        },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
+    )
+
+
+# ============================================================================
 # Sample API Calls using fetch_client
 # ============================================================================
 async def get_subscription() -> dict[str, Any]:
     """Get subscription info."""
     print("\n=== Get Subscription ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["RALLY_API_KEY"], header_name="ZSESSIONID"),
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_rally_client()
 
     async with client:
         response = await client.get("/subscription")
@@ -111,13 +136,7 @@ async def get_current_user() -> dict[str, Any]:
     """Get current user info."""
     print("\n=== Get Current User ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["RALLY_API_KEY"], header_name="ZSESSIONID"),
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_rally_client()
 
     async with client:
         response = await client.get("/user")
@@ -137,13 +156,7 @@ async def list_projects() -> dict[str, Any]:
     """List projects."""
     print("\n=== List Projects ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["RALLY_API_KEY"], header_name="ZSESSIONID"),
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_rally_client()
 
     async with client:
         response = await client.get(
@@ -168,13 +181,7 @@ async def query_user_stories(project_id: str = None) -> dict[str, Any]:
     """Query user stories."""
     print("\n=== Query User Stories ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["RALLY_API_KEY"], header_name="ZSESSIONID"),
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_rally_client()
 
     params = {
         "pagesize": 10,
@@ -206,13 +213,7 @@ async def query_defects() -> dict[str, Any]:
     """Query defects."""
     print("\n=== Query Defects ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="x-api-key", api_key=CONFIG["RALLY_API_KEY"], header_name="ZSESSIONID"),
-        default_headers={
-            "Accept": "application/json",
-        },
-    )
+    client = create_rally_client()
 
     async with client:
         response = await client.get(

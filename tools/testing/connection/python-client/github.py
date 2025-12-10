@@ -52,6 +52,14 @@ CONFIG = {
     # Base URL (from provider or override)
     "BASE_URL": provider.get_base_url() or "https://api.github.com",
 
+    # SSL/TLS Configuration (runtime override, or use YAML config)
+    "SSL_VERIFY": False,  # Set to None to use YAML config
+    "CERT": os.getenv("CERT"),  # Client certificate path
+    "CA_BUNDLE": os.getenv("CA_BUNDLE"),  # CA bundle path
+
+    # Proxy Configuration
+    "PROXY": os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"),
+
     # Debug
     "DEBUG": os.getenv("DEBUG", "true").lower() not in ("false", "0"),
 }
@@ -79,20 +87,32 @@ async def health_check() -> dict[str, Any]:
 
 
 # ============================================================================
-# Sample API Calls using fetch_client
+# Client Factory
 # ============================================================================
-async def get_user() -> dict[str, Any]:
-    """Get authenticated user."""
-    print("\n=== Get Authenticated User ===\n")
-
-    client = create_client_with_dispatcher(
+def create_github_client():
+    """Create GitHub client with standard config."""
+    return create_client_with_dispatcher(
         base_url=CONFIG["BASE_URL"],
         auth=AuthConfig(type="bearer", api_key=CONFIG["GITHUB_TOKEN"]),
         default_headers={
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
         },
+        verify=CONFIG["SSL_VERIFY"],
+        cert=CONFIG["CERT"],
+        ca_bundle=CONFIG["CA_BUNDLE"],
+        proxy=CONFIG["PROXY"],
     )
+
+
+# ============================================================================
+# Sample API Calls using fetch_client
+# ============================================================================
+async def get_user() -> dict[str, Any]:
+    """Get authenticated user."""
+    print("\n=== Get Authenticated User ===\n")
+
+    client = create_github_client()
 
     async with client:
         response = await client.get("/user")
@@ -107,14 +127,7 @@ async def list_repositories() -> dict[str, Any]:
     """List user repositories."""
     print("\n=== List Repositories ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GITHUB_TOKEN"]),
-        default_headers={
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-    )
+    client = create_github_client()
 
     async with client:
         response = await client.get("/user/repos")
@@ -134,14 +147,7 @@ async def get_repository(owner: str, repo: str) -> dict[str, Any]:
     """Get repository details."""
     print(f"\n=== Get Repository: {owner}/{repo} ===\n")
 
-    client = create_client_with_dispatcher(
-        base_url=CONFIG["BASE_URL"],
-        auth=AuthConfig(type="bearer", api_key=CONFIG["GITHUB_TOKEN"]),
-        default_headers={
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-    )
+    client = create_github_client()
 
     async with client:
         response = await client.get(f"/repos/{owner}/{repo}")
