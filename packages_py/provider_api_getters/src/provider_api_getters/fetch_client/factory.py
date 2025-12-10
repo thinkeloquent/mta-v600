@@ -348,9 +348,11 @@ class ProviderClientFactory:
                     f"ProviderClientFactory.get_client: Using {auth_type} auth with "
                     f"header={header_name}, key={api_key_masked}"
                 )
+                # For basic/custom auth, use the fully computed api_key (e.g., "Basic <base64>")
+                # NOT raw_api_key which is just the raw token
                 auth_config = AuthConfig(
                     type="custom",
-                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
+                    raw_api_key=api_key_result.api_key,
                     header_name=header_name,
                 )
                 console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
