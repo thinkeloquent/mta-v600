@@ -125,18 +125,23 @@ class SaucelabsApiToken(BaseApiToken):
         """
         Get SauceLabs credentials from environment.
 
-        SauceLabs uses Basic auth with username:access_key format.
+        SauceLabs uses Basic auth with username:access_key format by default,
+        but respects the api_auth_type from config.
 
         Returns:
-            ApiKeyResult configured for SauceLabs Basic authentication
+            ApiKeyResult configured for the auth type in config
         """
         logger.debug("SaucelabsApiToken.get_api_key: Starting API key resolution")
 
         username, username_var = self._lookup_username()
         access_key, access_key_var = self._lookup_access_key()
 
+        # Get configured auth type from YAML config
+        config_auth_type = self.get_auth_type()
+        logger.debug(f"SaucelabsApiToken.get_api_key: Config auth type = '{config_auth_type}'")
+
         if username and access_key:
-            # Use AuthHeaderFactory for RFC-compliant Basic auth encoding
+            # Use AuthHeaderFactory for RFC-compliant encoding
             auth_header = AuthHeaderFactory.create_basic(username, access_key)
             logger.debug(
                 f"SaucelabsApiToken.get_api_key: Found credentials from "
@@ -145,7 +150,7 @@ class SaucelabsApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=auth_header.header_value,
-                auth_type="basic",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 username=username,
                 email=username,
@@ -164,7 +169,7 @@ class SaucelabsApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="basic",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 username=username,
                 email=username,

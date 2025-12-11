@@ -147,14 +147,18 @@ class SonarApiToken(BaseApiToken):
         Get Sonar API token from environment with fallbacks.
 
         Checks multiple environment variable names commonly used for
-        Sonar tokens.
+        Sonar tokens. Respects the api_auth_type from config.
 
         Returns:
-            ApiKeyResult configured for Sonar Bearer authentication
+            ApiKeyResult configured for the auth type in config
         """
         logger.debug("SonarApiToken.get_api_key: Starting API key resolution")
 
         api_key, source_var = self._lookup_with_fallbacks()
+
+        # Get configured auth type from YAML config
+        config_auth_type = self.get_auth_type()
+        logger.debug(f"SonarApiToken.get_api_key: Config auth type = '{config_auth_type}'")
 
         if api_key:
             logger.debug(
@@ -163,7 +167,7 @@ class SonarApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=api_key,
-                auth_type="bearer",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 email=None,
                 raw_api_key=api_key,
@@ -178,7 +182,7 @@ class SonarApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="bearer",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 email=None,
                 raw_api_key=None,

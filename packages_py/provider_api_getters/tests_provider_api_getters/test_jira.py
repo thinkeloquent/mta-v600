@@ -67,41 +67,50 @@ class TestJiraApiToken:
         assert result is None
         assert "'JIRA_EMAIL' is not set" in caplog.text
 
-    # _encode_basic_auth tests
-    def test_encode_basic_auth_valid(self, jira_token, caplog):
-        """Test _encode_basic_auth with valid inputs."""
+    # _encode_auth tests
+    def test_encode_auth_basic_type(self, jira_token, caplog):
+        """Test _encode_auth with basic auth type."""
         with caplog.at_level(logging.DEBUG):
-            result = jira_token._encode_basic_auth("user@test.com", "api_token")
+            result = jira_token._encode_auth("user@test.com", "api_token", "basic_email_token")
 
         # Verify encoding
         expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
         assert result == f"Basic {expected}"
         assert "Encoding credentials" in caplog.text
-        assert f"length={len(expected)}" in caplog.text
 
-    def test_encode_basic_auth_empty_email(self, jira_token, caplog):
-        """Test _encode_basic_auth with empty email raises error."""
+    def test_encode_auth_bearer_type(self, jira_token, caplog):
+        """Test _encode_auth with bearer auth type."""
+        with caplog.at_level(logging.DEBUG):
+            result = jira_token._encode_auth("user@test.com", "api_token", "bearer_email_token")
+
+        # Verify encoding - Bearer with base64-encoded credentials
+        expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+        assert result == f"Bearer {expected}"
+        assert "Encoding credentials" in caplog.text
+
+    def test_encode_auth_empty_email_raises(self, jira_token, caplog):
+        """Test _encode_auth with empty email raises error."""
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError) as exc_info:
-                jira_token._encode_basic_auth("", "token")
+                jira_token._encode_auth("", "token", "basic_email_token")
 
         assert "Both email and token are required" in str(exc_info.value)
         assert "email_empty=True" in caplog.text
 
-    def test_encode_basic_auth_empty_token(self, jira_token, caplog):
-        """Test _encode_basic_auth with empty token raises error."""
+    def test_encode_auth_empty_token_raises(self, jira_token, caplog):
+        """Test _encode_auth with empty token raises error."""
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError) as exc_info:
-                jira_token._encode_basic_auth("user@test.com", "")
+                jira_token._encode_auth("user@test.com", "", "basic_email_token")
 
         assert "Both email and token are required" in str(exc_info.value)
         assert "token_empty=True" in caplog.text
 
-    def test_encode_basic_auth_both_empty(self, jira_token, caplog):
-        """Test _encode_basic_auth with both empty raises error."""
+    def test_encode_auth_both_empty_raises(self, jira_token, caplog):
+        """Test _encode_auth with both empty raises error."""
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError):
-                jira_token._encode_basic_auth("", "")
+                jira_token._encode_auth("", "", "basic_email_token")
 
         assert "email_empty=True, token_empty=True" in caplog.text
 
@@ -116,7 +125,7 @@ class TestJiraApiToken:
 
         assert result.api_key is not None
         assert result.api_key.startswith("Basic ")
-        assert result.auth_type == "basic"
+        assert result.auth_type == "basic_email_token"
         assert result.header_name == "Authorization"
         assert result.username == "user@company.com"
         assert result.has_credentials is True
@@ -124,7 +133,7 @@ class TestJiraApiToken:
         # Verify logs
         assert "has_token=True, has_email=True" in caplog.text
         assert "Both email and token found" in caplog.text
-        assert "Successfully created Basic Auth result" in caplog.text
+        assert "Successfully created auth result" in caplog.text
 
     def test_get_api_key_token_only(self, jira_token, clean_env, caplog):
         """Branch 2: Token present but email missing."""
@@ -135,7 +144,7 @@ class TestJiraApiToken:
             result = jira_token.get_api_key()
 
         assert result.api_key is None
-        assert result.auth_type == "basic"
+        assert result.auth_type == "basic_email_token"
         assert result.username is None
         assert result.has_credentials is False
 
@@ -152,7 +161,7 @@ class TestJiraApiToken:
             result = jira_token.get_api_key()
 
         assert result.api_key is None
-        assert result.auth_type == "basic"
+        assert result.auth_type == "basic_email_token"
         assert result.username == "user@company.com"
         assert result.has_credentials is False
 
@@ -168,7 +177,7 @@ class TestJiraApiToken:
             result = jira_token.get_api_key()
 
         assert result.api_key is None
-        assert result.auth_type == "basic"
+        assert result.auth_type == "basic_email_token"
         assert result.username is None
         assert result.has_credentials is False
 
@@ -270,7 +279,7 @@ class TestJiraApiTokenEdgeCases:
             JIRA_EMAIL="user@test.com"
         )
 
-        config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN"}}}
+        config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "basic_email_token"}}}
         mock_store = MockConfigStore(config)
         jira_token = JiraApiToken(config_store=mock_store)
 

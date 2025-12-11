@@ -94,32 +94,51 @@ class JiraApiToken(BaseApiToken):
 
         return email
 
-    def _encode_basic_auth(self, email: str, token: str) -> str:
+    def _encode_auth(self, email: str, token: str, auth_type: str) -> str:
         """
-        Encode email and token for Basic Authentication.
+        Encode email and token based on configured auth type.
 
         Uses AuthHeaderFactory for RFC-compliant encoding.
 
         Args:
             email: The email address
             token: The API token
+            auth_type: Auth type from config (basic_email_token, bearer_email_token, etc.)
 
         Returns:
-            Base64-encoded credentials string with 'Basic ' prefix
+            Encoded credentials string with appropriate prefix ('Basic ' or 'Bearer ')
         """
-        logger.debug("JiraApiToken._encode_basic_auth: Encoding credentials via AuthHeaderFactory")
+        logger.debug(f"JiraApiToken._encode_auth: Encoding credentials via AuthHeaderFactory, auth_type='{auth_type}'")
 
         if not email or not token:
             logger.error(
-                "JiraApiToken._encode_basic_auth: "
+                "JiraApiToken._encode_auth: "
                 f"Invalid inputs - email_empty={not email}, token_empty={not token}"
             )
-            raise ValueError("Both email and token are required for Basic Auth encoding")
+            raise ValueError("Both email and token are required for auth encoding")
 
-        auth_header = AuthHeaderFactory.create_basic(email, token)
+        # Determine encoding based on auth type
+        bearer_types = {
+            "bearer", "bearer_email_token", "bearer_email_password",
+            "bearer_username_token", "bearer_username_password",
+            "bearer_oauth", "bearer_jwt",
+        }
+
+        if auth_type in bearer_types:
+            # Bearer with base64-encoded credentials
+            auth_header = AuthHeaderFactory.create_bearer_with_credentials(email, token)
+            logger.debug(
+                f"JiraApiToken._encode_auth: Using Bearer encoding for auth_type='{auth_type}'"
+            )
+        else:
+            # Default to Basic auth (basic, basic_email_token, etc.)
+            auth_header = AuthHeaderFactory.create_basic(email, token)
+            logger.debug(
+                f"JiraApiToken._encode_auth: Using Basic encoding for auth_type='{auth_type}'"
+            )
 
         logger.debug(
-            f"JiraApiToken._encode_basic_auth: "
+            f"JiraApiToken._encode_auth: "
             f"Encoded credentials (length={len(auth_header.header_value)})"
         )
 
@@ -127,15 +146,19 @@ class JiraApiToken(BaseApiToken):
 
     def get_api_key(self) -> ApiKeyResult:
         """
-        Get Jira API token with Basic Auth (email:token).
+        Get Jira API token with auth type from config.
 
         Returns:
-            ApiKeyResult configured for Basic Authentication
+            ApiKeyResult configured for the auth type in config
         """
         logger.debug("JiraApiToken.get_api_key: Starting API key resolution")
 
         api_token = self._lookup_env_api_key()
         email = self._get_email()
+
+        # Get configured auth type from YAML config
+        config_auth_type = self.get_auth_type()
+        logger.debug(f"JiraApiToken.get_api_key: Config auth type = '{config_auth_type}'")
 
         # Log the state of both required credentials
         logger.debug(
@@ -145,22 +168,22 @@ class JiraApiToken(BaseApiToken):
 
         if api_token and email:
             logger.debug(
-                "JiraApiToken.get_api_key: Both email and token found, "
-                "encoding Basic Auth credentials"
+                f"JiraApiToken.get_api_key: Both email and token found, "
+                f"encoding with auth_type='{config_auth_type}'"
             )
             try:
-                encoded_auth = self._encode_basic_auth(email, api_token)
+                encoded_auth = self._encode_auth(email, api_token, config_auth_type)
                 result = ApiKeyResult(
                     api_key=encoded_auth,
-                    auth_type="basic",
+                    auth_type=config_auth_type,
                     header_name="Authorization",
                     username=email,
                     email=email,
                     raw_api_key=api_token,
                 )
                 logger.debug(
-                    f"JiraApiToken.get_api_key: Successfully created Basic Auth result "
-                    f"for user '{email[:3]}***@***'"
+                    f"JiraApiToken.get_api_key: Successfully created auth result "
+                    f"for user '{email[:3]}***@***' with auth_type='{config_auth_type}'"
                 )
             except ValueError as e:
                 logger.error(
@@ -168,7 +191,7 @@ class JiraApiToken(BaseApiToken):
                 )
                 result = ApiKeyResult(
                     api_key=None,
-                    auth_type="basic",
+                    auth_type=config_auth_type,
                     header_name="Authorization",
                     username=email,
                     email=email,
@@ -181,7 +204,7 @@ class JiraApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="basic",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 username=None,
                 email=None,
@@ -194,7 +217,7 @@ class JiraApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="basic",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 username=email,
                 email=email,
@@ -207,7 +230,7 @@ class JiraApiToken(BaseApiToken):
             )
             result = ApiKeyResult(
                 api_key=None,
-                auth_type="basic",
+                auth_type=config_auth_type,
                 header_name="Authorization",
                 username=None,
                 email=None,

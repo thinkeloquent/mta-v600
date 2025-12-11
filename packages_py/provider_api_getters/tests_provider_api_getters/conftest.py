@@ -90,6 +90,7 @@ def jira_config():
                 "env_api_key": "JIRA_API_TOKEN",
                 "env_email": "JIRA_EMAIL",
                 "health_endpoint": "/rest/api/2/myself",
+                "api_auth_type": "basic_email_token",
             }
         }
     }

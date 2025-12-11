@@ -107,20 +107,29 @@ describe('JiraApiToken', () => {
     });
   });
 
-  describe('_encodeBasicAuth', () => {
-    it('should encode credentials correctly', () => {
+  describe('_encodeAuth', () => {
+    it('should encode credentials with basic auth type correctly', () => {
       const token = new JiraApiToken();
-      const encoded = token._encodeBasicAuth('user@test.com', 'api-token');
+      const encoded = token._encodeAuth('user@test.com', 'api-token', 'basic_email_token');
 
       // Base64 of 'user@test.com:api-token'
       const expected = 'Basic ' + Buffer.from('user@test.com:api-token').toString('base64');
       expect(encoded).toBe(expected);
     });
 
+    it('should encode credentials with bearer auth type correctly', () => {
+      const token = new JiraApiToken();
+      const encoded = token._encodeAuth('user@test.com', 'api-token', 'bearer_email_token');
+
+      // Base64 of 'user@test.com:api-token' with Bearer prefix
+      const expected = 'Bearer ' + Buffer.from('user@test.com:api-token').toString('base64');
+      expect(encoded).toBe(expected);
+    });
+
     it('should throw when email is empty', () => {
       const token = new JiraApiToken();
 
-      expect(() => token._encodeBasicAuth('', 'token')).toThrow(
+      expect(() => token._encodeAuth('', 'token', 'basic_email_token')).toThrow(
         'Both email and token are required'
       );
     });
@@ -128,7 +137,7 @@ describe('JiraApiToken', () => {
     it('should throw when token is empty', () => {
       const token = new JiraApiToken();
 
-      expect(() => token._encodeBasicAuth('email@test.com', '')).toThrow(
+      expect(() => token._encodeAuth('email@test.com', '', 'basic_email_token')).toThrow(
         'Both email and token are required'
       );
     });
@@ -137,7 +146,7 @@ describe('JiraApiToken', () => {
       const token = new JiraApiToken();
 
       try {
-        token._encodeBasicAuth(null, 'token');
+        token._encodeAuth(null, 'token', 'basic_email_token');
       } catch (e) {
         // Expected
       }
@@ -153,7 +162,8 @@ describe('JiraApiToken', () => {
       const mockStore = createMockStore({
         jira: {
           env_api_key: 'JIRA_API_TOKEN',
-          env_email: 'JIRA_EMAIL'
+          env_email: 'JIRA_EMAIL',
+          api_auth_type: 'basic_email_token'
         }
       });
       const token = new JiraApiToken(mockStore);
@@ -163,7 +173,7 @@ describe('JiraApiToken', () => {
       const result = token.getApiKey();
 
       expect(result.hasCredentials).toBe(true);
-      expect(result.authType).toBe('basic');
+      expect(result.authType).toBe('basic_email_token');
       expect(result.headerName).toBe('Authorization');
       expect(result.username).toBe('user@test.com');
       expect(result.apiKey).toContain('Basic ');

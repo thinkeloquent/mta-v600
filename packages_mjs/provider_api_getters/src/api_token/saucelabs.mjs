@@ -97,6 +97,10 @@ export class SaucelabsApiToken extends BaseApiToken {
     const { username, sourceVar: usernameVar } = this._lookupUsername();
     const { accessKey, sourceVar: accessKeyVar } = this._lookupAccessKey();
 
+    // Get configured auth type from YAML config
+    const configAuthType = this.getAuthType();
+    logger.debug(`SaucelabsApiToken.getApiKey: Config auth type = '${configAuthType}'`);
+
     if (username && accessKey) {
       // Use AuthHeaderFactory for RFC-compliant Basic auth encoding
       const authHeader = AuthHeaderFactory.createBasic(username, accessKey);
@@ -106,7 +110,7 @@ export class SaucelabsApiToken extends BaseApiToken {
       );
       const result = new ApiKeyResult({
         apiKey: authHeader.headerValue,
-        authType: 'basic',
+        authType: configAuthType,
         headerName: 'Authorization',
         username: username,
         email: username,
@@ -129,7 +133,7 @@ export class SaucelabsApiToken extends BaseApiToken {
       logger.warn(`SaucelabsApiToken.getApiKey: Missing credentials: ${missing.join(', ')}`);
       const result = new ApiKeyResult({
         apiKey: null,
-        authType: 'basic',
+        authType: configAuthType,
         headerName: 'Authorization',
         email: username,
         rawApiKey: accessKey,

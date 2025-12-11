@@ -111,6 +111,10 @@ export class SonarApiToken extends BaseApiToken {
 
     const { apiKey, sourceVar } = this._lookupWithFallbacks();
 
+    // Get configured auth type from YAML config
+    const configAuthType = this.getAuthType();
+    logger.debug(`SonarApiToken.getApiKey: Config auth type = '${configAuthType}'`);
+
     if (apiKey) {
       logger.debug(
         `SonarApiToken.getApiKey: Found API key from '${sourceVar}' ` +
@@ -118,7 +122,7 @@ export class SonarApiToken extends BaseApiToken {
       );
       const result = new ApiKeyResult({
         apiKey,
-        authType: 'bearer',
+        authType: configAuthType,
         headerName: 'Authorization',
         email: null,
         rawApiKey: apiKey,
@@ -137,7 +141,7 @@ export class SonarApiToken extends BaseApiToken {
       );
       const result = new ApiKeyResult({
         apiKey: null,
-        authType: 'bearer',
+        authType: configAuthType,
         headerName: 'Authorization',
         email: null,
         rawApiKey: null,

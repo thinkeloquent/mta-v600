@@ -75,7 +75,8 @@ providers:
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
     health_endpoint: "/rest/api/2/myself"
-    api_auth_type: "basic"           # Jira uses Basic auth with email:token
+    # api_auth_type: "bearer_email_token"
+    api_auth_type: "basic_email_token"         # Jira Cloud uses Basic auth with email:token
     token_resolver: "static"
     # Default HTTP headers
     headers:
