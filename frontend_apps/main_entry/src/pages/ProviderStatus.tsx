@@ -64,13 +64,19 @@ function StatusBadge({ status, loading }: { status: string; loading?: boolean })
 function ProviderCard({
   provider,
   onRefresh,
+  apiUrl,
 }: {
   provider: ProviderStatus;
   onRefresh: () => void;
+  apiUrl: string;
 }) {
   const colors = provider.loading
     ? STATUS_COLORS.loading
     : STATUS_COLORS[provider.status as keyof typeof STATUS_COLORS] || STATUS_COLORS.error;
+
+  const openApiInNewTab = () => {
+    window.open(apiUrl, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div
@@ -81,26 +87,47 @@ function ProviderCard({
           <h3 className="font-semibold text-gray-900">{provider.provider}</h3>
           <StatusBadge status={provider.status} loading={provider.loading} />
         </div>
-        <button
-          onClick={onRefresh}
-          disabled={provider.loading}
-          className="text-gray-400 hover:text-gray-600 disabled:opacity-50 p-1"
-          title="Refresh"
-        >
-          <svg
-            className={`w-4 h-4 ${provider.loading ? 'animate-spin' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <div className="flex items-center gap-1">
+          <button
+            onClick={openApiInNewTab}
+            className="text-gray-400 hover:text-blue-600 p-1"
+            title="Open API endpoint"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={onRefresh}
+            disabled={provider.loading}
+            className="text-gray-400 hover:text-gray-600 disabled:opacity-50 p-1"
+            title="Refresh"
+          >
+            <svg
+              className={`w-4 h-4 ${provider.loading ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {provider.latency_ms !== null && (
@@ -334,6 +361,7 @@ export function ProviderStatus() {
               key={provider.provider}
               provider={provider}
               onRefresh={() => checkProvider(provider.provider)}
+              apiUrl={`${HEALTHZ_API}/${provider.provider}`}
             />
           ))}
         </div>

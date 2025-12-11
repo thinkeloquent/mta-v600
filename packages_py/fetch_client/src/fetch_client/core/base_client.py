@@ -146,11 +146,11 @@ class AsyncFetchClient:
         # Pretty print response
         status_color = "green" if 200 <= response.status_code < 300 else "red"
         response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
-        print_panel(response_info, title="[bold blue]Response[/bold blue]")
+        print_panel(response_info, title=f"[bold blue]Response[/bold blue] ({url})")
         console.print("[bold]Headers:[/bold]", dict(response_headers))
         if data:
             body_str = _format_body(data)
-            print_syntax_panel(body_str, lexer="json", title="[bold]Response Body[/bold]")
+            print_syntax_panel(body_str, lexer="json", title=f"[bold]Response Body[/bold] (URL: {url})")
 
         return FetchResponse(
             status=response.status_code,
@@ -339,11 +339,11 @@ class SyncFetchClient:
         # Pretty print response
         status_color = "green" if 200 <= response.status_code < 300 else "red"
         response_info = f"[bold {status_color}]{response.status_code}[/bold {status_color}] {response.reason_phrase or ''}"
-        print_panel(response_info, title="[bold blue]Response[/bold blue]")
+        print_panel(response_info, title=f"[bold blue]Response[/bold blue] ({url})")
         console.print("[bold]Headers:[/bold]", dict(response_headers))
         if data:
             body_str = _format_body(data)
-            print_syntax_panel(body_str, lexer="json", title="[bold]Response Body[/bold]")
+            print_syntax_panel(body_str, lexer="json", title=f"[bold]Response Body[/bold] (URL: {url})")
 
         return FetchResponse(
             status=response.status_code,
