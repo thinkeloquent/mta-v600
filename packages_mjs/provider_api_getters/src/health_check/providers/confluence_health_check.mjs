@@ -107,8 +107,8 @@ export async function checkConfluenceHealth() {
     proxy: networkConfig.proxyUrl,
   });
 
-  // Make health check request
-  const healthEndpoint = '/rest/api/user/current';
+  // Make health check request - use provider's configured health endpoint
+  const healthEndpoint = provider.healthEndpoint;
   console.log('\n[Request]');
   console.log(`  GET ${baseUrl}${healthEndpoint}`);
 

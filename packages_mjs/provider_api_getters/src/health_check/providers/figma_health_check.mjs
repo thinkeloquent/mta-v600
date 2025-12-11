@@ -84,7 +84,7 @@ export async function checkFigmaHealth() {
   });
 
   // Make health check request
-  const healthEndpoint = '/v1/me';
+  const healthEndpoint = '/me';
   console.log('\n[Request]');
   console.log(`  GET ${baseUrl}${healthEndpoint}`);
 

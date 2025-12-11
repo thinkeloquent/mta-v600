@@ -147,6 +147,47 @@ class RedisApiToken(BaseApiToken):
 
         return url
 
+    def get_connection_config(self) -> dict:
+        """
+        Get Redis connection configuration as a dictionary.
+
+        Returns individual connection parameters parsed from environment
+        variables or defaults.
+
+        Returns:
+            Dictionary with host, port, db, username, password, use_tls
+        """
+        logger.debug("RedisApiToken.get_connection_config: Getting connection config")
+
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        password = os.getenv("REDIS_PASSWORD")
+        db = int(os.getenv("REDIS_DB", "0"))
+        username = os.getenv("REDIS_USERNAME")
+
+        # Determine if TLS should be used
+        redis_tls = os.getenv("REDIS_TLS", "").lower() in ("true", "1", "yes")
+        tls_ports = {25061, 6380}  # Common TLS ports
+        use_tls = redis_tls or port in tls_ports
+
+        config = {
+            "host": host,
+            "port": port,
+            "db": db,
+            "username": username,
+            "password": password,
+            "use_tls": use_tls,
+        }
+
+        logger.debug(
+            f"RedisApiToken.get_connection_config: Config - "
+            f"host={host}, port={port}, db={db}, "
+            f"username={username is not None}, password={'***' if password else None}, "
+            f"use_tls={use_tls}"
+        )
+
+        return config
+
     def get_sync_client(self) -> Optional[Any]:
         """
         Get sync Redis client.

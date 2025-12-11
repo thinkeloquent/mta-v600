@@ -119,8 +119,8 @@ export async function checkJiraHealth() {
     proxy: networkConfig.proxyUrl,
   });
 
-  // Make health check request
-  const healthEndpoint = "/myself";
+  // Make health check request - use provider's configured health endpoint
+  const healthEndpoint = provider.healthEndpoint;
   console.log("\n[Request]");
   console.log(`  GET ${baseUrl}${healthEndpoint}`);
 

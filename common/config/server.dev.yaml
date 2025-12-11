@@ -70,13 +70,12 @@ providers:
     env_owner: "GITHUB_OWNER"
     env_repo: "GITHUB_REPO"
   jira:
-    # NOTE: ENV swapped for testing - JIRA_BASE_URL points to Confluence API
-    # JIRA_BASE_URL="https://scrumfox.atlassian.net/wiki/rest/api"
+    # JIRA_BASE_URL includes /wiki/rest/api path (Confluence-style)
     base_url: null
     env_base_url: "JIRA_BASE_URL"
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
-    health_endpoint: "/user/current"           # Confluence endpoint (ENV swapped)
+    health_endpoint: "/user/current"           # Confluence REST API user endpoint
     api_auth_type: "basic_email_token"         # Jira Cloud uses Basic auth with email:token
     token_resolver: "static"
     # Default HTTP headers

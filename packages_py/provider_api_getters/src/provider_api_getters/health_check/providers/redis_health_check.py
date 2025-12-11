@@ -2,7 +2,8 @@
 """
 Redis Health Check - Standalone debugging script
 
-Run directly: python redis_health_check.py
+Run directly: python -m provider_api_getters.health_check.providers.redis_health_check
+Or from project root: python packages_py/provider_api_getters/src/provider_api_getters/health_check/providers/redis_health_check.py
 
 Uses:
 - static_config for YAML configuration
@@ -11,12 +12,30 @@ Uses:
 """
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 # ============================================================
-# Provider API getter (relative import to avoid circular dependency)
+# Handle both direct execution and module import
 # ============================================================
-from ...api_token import RedisApiToken
+if __name__ == "__main__":
+    # Add src directory to path for direct execution
+    _src_dir = Path(__file__).parent.parent.parent.parent
+    if str(_src_dir) not in sys.path:
+        sys.path.insert(0, str(_src_dir))
+    from provider_api_getters.api_token import RedisApiToken
+else:
+    # Relative import when used as module
+    from ...api_token import RedisApiToken
+
+
+def _mask_url(url: str) -> str:
+    """Mask password in Redis URL for safe logging."""
+    if not url:
+        return "<none>"
+    import re
+    # Match redis[s]://[user:pass@]host:port/db - mask the password part
+    return re.sub(r'(://[^:]*:)[^@]+(@)', r'\1****\2', url)
 
 
 async def check_redis_health(config: dict = None) -> dict:
@@ -41,47 +60,33 @@ async def check_redis_health(config: dict = None) -> dict:
     # Initialize provider from config
     provider = RedisApiToken(config)
     api_key_result = provider.get_api_key()
-    connection_config = provider.get_connection_config()
+    connection_url = provider.get_connection_url()
 
     # Debug output
     print(f"\n[Config]")
-    print(f"  Host: {connection_config.get('host', 'N/A')}")
-    print(f"  Port: {connection_config.get('port', 'N/A')}")
-    print(f"  Database: {connection_config.get('db', 'N/A')}")
-    print(f"  Username: {connection_config.get('username', 'N/A')}")
+    print(f"  Connection URL: {_mask_url(connection_url)}")
     print(f"  Has credentials: {api_key_result.has_credentials}")
     print(f"  Is placeholder: {api_key_result.is_placeholder}")
 
-    # Redis may not require credentials (depending on config)
-    # We'll attempt connection regardless
+    if not connection_url:
+        print("\n[ERROR] No connection URL configured")
+        return {"success": False, "error": "No connection URL"}
 
     # Try to import redis
     try:
-        import redis.asyncio as redis
+        import redis.asyncio as aioredis
     except ImportError:
         print("\n[ERROR] redis not installed")
         print("  Install with: pip install redis")
         return {"success": False, "error": "redis not installed"}
 
-    # Build connection parameters
-    host = connection_config.get("host", "localhost")
-    port = connection_config.get("port", 6379)
-    db = connection_config.get("db", 0)
-    username = connection_config.get("username")
-    password = api_key_result.api_key if api_key_result.has_credentials else None
-
     print(f"\n[Connecting]")
-    auth_str = f"{username}:****@" if username else ("****@" if password else "")
-    print(f"  redis://{auth_str}{host}:{port}/{db}")
+    print(f"  URL: {_mask_url(connection_url)}")
 
     try:
-        # Create async Redis client
-        client = redis.Redis(
-            host=host,
-            port=port,
-            db=db,
-            username=username,
-            password=password,
+        # Create async Redis client from URL (handles TLS automatically via rediss://)
+        client = aioredis.from_url(
+            connection_url,
             decode_responses=True,
             socket_timeout=10,
         )
@@ -105,27 +110,25 @@ async def check_redis_health(config: dict = None) -> dict:
             "success": True,
             "message": "Connected to Redis",
             "data": {
-                "host": host,
-                "port": port,
-                "db": db,
+                "connection_url": _mask_url(connection_url),
                 "redis_version": info.get("redis_version"),
                 "uptime_days": info.get("uptime_in_days"),
             },
         }
 
-    except redis.AuthenticationError as e:
+    except aioredis.AuthenticationError as e:
         print(f"\n[Authentication Error]")
         print(f"  {e}")
         return {
             "success": False,
             "error": "Authentication failed",
         }
-    except redis.ConnectionError as e:
+    except aioredis.ConnectionError as e:
         print(f"\n[Connection Error]")
         print(f"  {e}")
         return {
             "success": False,
-            "error": f"Cannot connect to {host}:{port}",
+            "error": f"Cannot connect: {e}",
         }
     except Exception as e:
         print(f"\n[Exception]")

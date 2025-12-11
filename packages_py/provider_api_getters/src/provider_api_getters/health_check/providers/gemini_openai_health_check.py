@@ -2,7 +2,8 @@
 """
 Gemini/OpenAI Health Check - Standalone debugging script
 
-Run directly: python gemini_openai_health_check.py
+Run directly: python -m provider_api_getters.health_check.providers.gemini_openai_health_check
+Or from project root: python packages_py/provider_api_getters/src/provider_api_getters/health_check/providers/gemini_openai_health_check.py
 
 This checks the Gemini API using OpenAI-compatible endpoints.
 
@@ -13,12 +14,21 @@ Uses:
 """
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 # ============================================================
-# Provider API getter (relative import to avoid circular dependency)
+# Handle both direct execution and module import
 # ============================================================
-from ...api_token import GeminiOpenAIApiToken
+if __name__ == "__main__":
+    # Add src directory to path for direct execution
+    _src_dir = Path(__file__).parent.parent.parent.parent
+    if str(_src_dir) not in sys.path:
+        sys.path.insert(0, str(_src_dir))
+    from provider_api_getters.api_token import GeminiOpenAIApiToken
+else:
+    # Relative import when used as module
+    from ...api_token import GeminiOpenAIApiToken
 
 # ============================================================
 # Fetch client with dispatcher

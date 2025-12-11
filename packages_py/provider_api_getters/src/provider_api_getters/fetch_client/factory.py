@@ -344,11 +344,11 @@ class ProviderClientFactory:
             api_key_masked = mask_sensitive(api_key_result.api_key)
 
             # Determine auth handling strategy:
-            # - "custom" and "x-api-key": User provides raw value, pass as-is (no encoding)
-            # - Everything else (basic, basic_*, bearer, bearer_*): Provider computes full
-            #   header value in api_key (e.g., "Basic base64(email:token)"), use type="custom"
-            #   so fetch_client passes it through without adding another prefix
+            # - "custom", "x-api-key": Pass raw value as-is with custom header
+            # - "bearer", "bearer_*": Pass raw token, let fetch_client add "Bearer " prefix
+            # - "basic", "basic_*": Provider pre-computes "Basic base64(...)", pass as custom
             raw_passthrough_types = {"custom", "x-api-key"}
+            bearer_types = auth_type == "bearer" or auth_type.startswith("bearer_")
 
             if auth_type in raw_passthrough_types:
                 # User provides raw value - pass through as-is with specified header
@@ -366,8 +366,22 @@ class ProviderClientFactory:
                     "header_name": header_name,
                     "raw_api_key": api_key_masked,
                 })
+            elif bearer_types:
+                # Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
+                logger.debug(
+                    f"ProviderClientFactory.get_client: Using bearer auth with "
+                    f"header={header_name}, key={api_key_masked}"
+                )
+                auth_config = AuthConfig(
+                    type="bearer",
+                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
+                )
+                console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
+                    "type": "bearer",
+                    "raw_api_key": api_key_masked,
+                })
             else:
-                # Provider computed the full header value (e.g., "Basic base64(email:token)")
+                # Provider pre-computed the full header value (e.g., "Basic base64(email:token)")
                 # Use type="custom" so fetch_client doesn't add another prefix
                 logger.debug(
                     f"ProviderClientFactory.get_client: Using computed {auth_type} auth with "

@@ -1591,6 +1591,52 @@ class BaseApiToken(ABC):
 
         return headers_config
 
+    def get_network_config(self) -> Dict[str, Any]:
+        """
+        Get provider-specific network/proxy configuration.
+
+        Reads from provider YAML config fields:
+        - proxy_url: Proxy URL for requests
+        - ca_bundle: CA bundle path for SSL verification
+        - cert: Client certificate path
+        - cert_verify: SSL certificate verification flag (defaults to True)
+        - agent_proxy.http_proxy: HTTP proxy for agent
+        - agent_proxy.https_proxy: HTTPS proxy for agent
+
+        Returns:
+            Dictionary with network configuration values
+        """
+        logger.debug(
+            f"{self.__class__.__name__}.get_network_config: Getting network configuration"
+        )
+
+        provider_config = self._get_provider_config()
+
+        # Get agent_proxy nested config
+        agent_proxy = provider_config.get("agent_proxy", {}) or {}
+
+        config = {
+            "proxy_url": provider_config.get("proxy_url"),
+            "ca_bundle": provider_config.get("ca_bundle"),
+            "cert": provider_config.get("cert"),
+            "cert_verify": provider_config.get("cert_verify", True),
+            "agent_proxy": {
+                "http_proxy": agent_proxy.get("http_proxy"),
+                "https_proxy": agent_proxy.get("https_proxy"),
+            },
+        }
+
+        logger.debug(
+            f"{self.__class__.__name__}.get_network_config: Resolved config - "
+            f"proxy_url={config['proxy_url']}, "
+            f"ca_bundle={config['ca_bundle']}, "
+            f"cert={config['cert']}, "
+            f"cert_verify={config['cert_verify']}, "
+            f"agent_proxy={config['agent_proxy']}"
+        )
+
+        return config
+
     def validate(self) -> Dict[str, Any]:
         """
         Validate the provider configuration.

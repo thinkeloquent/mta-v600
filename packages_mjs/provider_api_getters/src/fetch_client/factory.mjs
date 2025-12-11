@@ -237,11 +237,11 @@ export class ProviderClientFactory {
       const headerName = apiToken.getHeaderName();
 
       // Determine auth handling strategy:
-      // - "custom" and "x-api-key": User provides raw value, pass as-is (no encoding)
-      // - Everything else (basic, basic_*, bearer, bearer_*): Provider computes full
-      //   header value in apiKey (e.g., "Basic base64(email:token)"), use type="custom"
-      //   so fetch_client passes it through without adding another prefix
+      // - "custom", "x-api-key": Pass raw value as-is with custom header
+      // - "bearer", "bearer_*": Pass raw token, let fetch_client add "Bearer " prefix
+      // - "basic", "basic_*": Provider pre-computes "Basic base64(...)", pass as custom
       const rawPassthroughTypes = new Set(['custom', 'x-api-key']);
+      const isBearerType = authType === 'bearer' || authType.startsWith('bearer_');
 
       if (rawPassthroughTypes.has(authType)) {
         // User provides raw value - pass through as-is with specified header
@@ -250,8 +250,14 @@ export class ProviderClientFactory {
           rawApiKey: apiKeyResult.rawApiKey || apiKeyResult.apiKey,
           headerName: headerName,
         };
+      } else if (isBearerType) {
+        // Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
+        auth = {
+          type: 'bearer',
+          rawApiKey: apiKeyResult.rawApiKey || apiKeyResult.apiKey,
+        };
       } else {
-        // Provider computed the full header value (e.g., "Basic base64(email:token)")
+        // Provider pre-computed the full header value (e.g., "Basic base64(email:token)")
         // Use type="custom" so fetch_client doesn't add another prefix
         auth = {
           type: 'custom',
