@@ -13,6 +13,8 @@ import asyncio
 import json
 from pathlib import Path
 
+LOG_PREFIX = f"[AUTH:{__file__}]"
+
 # ============================================================
 # Provider API getter (relative import to avoid circular dependency)
 # ============================================================
@@ -67,7 +69,7 @@ async def check_jira_health(config: dict = None) -> dict:
     print(f"  Email: {api_key_result.email or 'N/A'}")
 
     # AUTH TRACING: Log the credential values from provider
-    print(f"\n[AUTH TRACE - Provider Output]")
+    print(f"\n{LOG_PREFIX} [Provider Output]")
     print(f"  api_key_result.api_key (pre-encoded): {mask_value(api_key_result.api_key)}")
     print(f"  api_key_result.raw_api_key (unencoded): {mask_value(api_key_result.raw_api_key)}")
     print(f"  api_key_result.email: {api_key_result.email or 'N/A'}")
@@ -89,7 +91,7 @@ async def check_jira_health(config: dict = None) -> dict:
     print(f"  Auth type: {api_key_result.auth_type}")
 
     # AUTH TRACING: Log what we're passing to fetch-client
-    print(f"\n[AUTH TRACE - Passing to fetch-client]")
+    print(f"\n{LOG_PREFIX} [Passing to fetch-client]")
     print(f"  auth.type: {api_key_result.auth_type}")
     print(f"  auth.raw_api_key: {mask_value(api_key_result.raw_api_key)}")
     print(f"  auth.email: {api_key_result.email or 'N/A'}")
