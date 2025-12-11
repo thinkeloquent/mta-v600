@@ -553,10 +553,14 @@ class AuthHeaderFactory:
         Create an auth header from an existing ApiKeyResult.
 
         Bridge method for integrating with existing provider implementations.
+        Supports all extended auth types:
+        - Basic family: basic, basic_email_token, basic_token, basic_email
+        - Bearer family: bearer, bearer_oauth, bearer_jwt, bearer_*_token, bearer_*_password
+        - Custom: x-api-key, custom, custom_header
 
         Args:
             api_key_result: ApiKeyResult instance with api_key, auth_type,
-                           header_name, and optional username
+                           header_name, and optional username/email
 
         Returns:
             AuthHeader instance
@@ -571,34 +575,94 @@ class AuthHeaderFactory:
         auth_type = api_key_result.auth_type
         header_name = getattr(api_key_result, "header_name", None)
         username = getattr(api_key_result, "username", None)
+        email = getattr(api_key_result, "email", None)
+        raw_api_key = getattr(api_key_result, "raw_api_key", None)
 
-        if auth_type == "bearer":
-            return AuthHeaderFactory.create_bearer(api_key)
+        # Define auth type families
+        basic_types = {"basic", "basic_email_token", "basic_token", "basic_email"}
+        bearer_types = {
+            "bearer", "bearer_oauth", "bearer_jwt",
+            "bearer_username_token", "bearer_username_password",
+            "bearer_email_token", "bearer_email_password",
+        }
 
-        elif auth_type == "basic":
-            if not username:
-                logger.warning(
-                    "AuthHeaderFactory.from_api_key_result: Basic auth without username, "
-                    "falling back to Bearer"
+        # === Basic Auth Family ===
+        if auth_type in basic_types:
+            # If api_key is already "Basic <encoded>", use it directly
+            if api_key and api_key.startswith("Basic "):
+                logger.debug(
+                    f"AuthHeaderFactory.from_api_key_result: api_key is pre-encoded Basic auth"
                 )
-                return AuthHeaderFactory.create_bearer(api_key)
-            return AuthHeaderFactory.create_basic(username, api_key)
+                return AuthHeader(
+                    header_name="Authorization",
+                    header_value=api_key,
+                    scheme=AuthScheme.BASIC_USER_PASS,
+                )
 
-        elif auth_type == "x-api-key":
-            return AuthHeaderFactory.create_api_key(api_key, header_name or "X-Api-Key")
+            # Otherwise, encode from raw credentials
+            identifier = email or username
+            if not identifier:
+                logger.warning(
+                    f"AuthHeaderFactory.from_api_key_result: {auth_type} auth without "
+                    f"identifier (email/username), falling back to Bearer"
+                )
+                return AuthHeaderFactory.create_bearer(api_key or raw_api_key or "")
 
-        elif auth_type == "custom":
+            secret = raw_api_key or api_key or ""
+            return AuthHeaderFactory.create_basic(identifier, secret)
+
+        # === Bearer Auth Family ===
+        if auth_type in bearer_types:
+            # If api_key is already "Bearer <value>", use it directly
+            if api_key and api_key.startswith("Bearer "):
+                logger.debug(
+                    f"AuthHeaderFactory.from_api_key_result: api_key is pre-encoded Bearer auth"
+                )
+                return AuthHeader(
+                    header_name="Authorization",
+                    header_value=api_key,
+                    scheme=AuthScheme.BEARER_PAT,
+                )
+
+            # For bearer with credentials that need base64 encoding
+            if auth_type in (
+                "bearer_username_token", "bearer_username_password",
+                "bearer_email_token", "bearer_email_password",
+            ):
+                identifier = email if "email" in auth_type else username
+                secret = raw_api_key or api_key or ""
+                if identifier and secret:
+                    # Encode as Bearer base64(identifier:secret)
+                    import base64
+                    credentials = f"{identifier}:{secret}"
+                    encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                    return AuthHeader(
+                        header_name="Authorization",
+                        header_value=f"Bearer {encoded}",
+                        scheme=AuthScheme.BEARER_PAT,
+                    )
+
+            # Default bearer - use token as-is
+            token = api_key or raw_api_key or ""
+            return AuthHeaderFactory.create_bearer(token)
+
+        # === X-API-Key ===
+        if auth_type == "x-api-key":
+            return AuthHeaderFactory.create_api_key(api_key or raw_api_key or "", header_name or "X-Api-Key")
+
+        # === Custom Header ===
+        if auth_type in ("custom", "custom_header"):
             if not header_name:
                 logger.warning(
                     "AuthHeaderFactory.from_api_key_result: Custom auth without header_name, "
                     "using X-Custom-Token"
                 )
-                return AuthHeaderFactory.create_custom("X-Custom-Token", api_key)
-            return AuthHeaderFactory.create_custom(header_name, api_key)
+                return AuthHeaderFactory.create_custom("X-Custom-Token", api_key or raw_api_key or "")
+            return AuthHeaderFactory.create_custom(header_name, api_key or raw_api_key or "")
 
-        else:
-            logger.warning(
-                f"AuthHeaderFactory.from_api_key_result: Unknown auth_type '{auth_type}', "
-                "defaulting to Bearer"
-            )
-            return AuthHeaderFactory.create_bearer(api_key)
+        # === Unknown - default to Bearer ===
+        logger.warning(
+            f"AuthHeaderFactory.from_api_key_result: Unknown auth_type '{auth_type}', "
+            "defaulting to Bearer"
+        )
+        return AuthHeaderFactory.create_bearer(api_key or raw_api_key or "")

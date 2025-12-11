@@ -285,25 +285,59 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
     - If api_key already starts with "Basic " or "Bearer ", return as-is
     - This prevents malformed headers like "Bearer Basic <base64>" when
       pre-encoded values are passed through
+
+    Logs encoding method with masked input/output for debugging.
     """
     import base64
+    import logging
+
+    logger = logging.getLogger("fetch_client.config")
+
+    def mask_value(val: str) -> str:
+        """Mask value for logging, showing first 10 chars."""
+        return _mask_sensitive(val, 10)
 
     # Guard: if api_key already has a scheme prefix, return as-is to prevent double-encoding
     # This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
     if api_key and (api_key.startswith("Basic ") or api_key.startswith("Bearer ")):
+        logger.info(
+            f"[AUTH] format_auth_header_value: Pre-encoded value detected "
+            f"(starts with scheme prefix), returning as-is: {mask_value(api_key)}"
+        )
         return api_key
 
     def encode_basic(identifier: str, secret: str) -> str:
         """Encode credentials as base64 for Basic auth."""
         credentials = f"{identifier}:{secret}"
         encoded = base64.b64encode(credentials.encode()).decode()
-        return f"Basic {encoded}"
+        result = f"Basic {encoded}"
+        logger.info(
+            f"[AUTH] format_auth_header_value: Encoding Basic auth - "
+            f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
+            f"output={mask_value(result)}"
+        )
+        return result
 
     def encode_bearer_base64(identifier: str, secret: str) -> str:
         """Encode credentials as base64 for Bearer auth."""
         credentials = f"{identifier}:{secret}"
         encoded = base64.b64encode(credentials.encode()).decode()
-        return f"Bearer {encoded}"
+        result = f"Bearer {encoded}"
+        logger.info(
+            f"[AUTH] format_auth_header_value: Encoding Bearer base64 - "
+            f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
+            f"output={mask_value(result)}"
+        )
+        return result
+
+    def bearer_token(token: str) -> str:
+        """Format Bearer token header."""
+        result = f"Bearer {token}"
+        logger.info(
+            f"[AUTH] format_auth_header_value: Bearer token - "
+            f"input={mask_value(token)} -> output={mask_value(result)}"
+        )
+        return result
 
     # === Basic Auth Family ===
     if auth.type == "basic":
@@ -334,11 +368,11 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
             return encode_bearer_base64(identifier, secret)
         else:
             # No identifier → use api_key as-is (PAT, OAuth, JWT)
-            return f"Bearer {api_key}"
+            return bearer_token(api_key)
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
         # Explicit bearer types - always use api_key as-is
-        return f"Bearer {api_key}"
+        return bearer_token(api_key)
 
     elif auth.type == "bearer_username_token":
         # Explicit: username + api_key (token)
@@ -358,9 +392,17 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
 
     # === Custom/API Key ===
     elif auth.type == "x-api-key":
+        logger.info(
+            f"[AUTH] format_auth_header_value: x-api-key - "
+            f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
+        )
         return api_key
 
     elif auth.type in ("custom", "custom_header"):
+        logger.info(
+            f"[AUTH] format_auth_header_value: {auth.type} - "
+            f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
+        )
         return api_key
 
     # === HMAC (stub) ===
@@ -368,6 +410,10 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         # HMAC requires separate handling with AuthConfigHMAC
         raise ValueError("hmac auth type requires AuthConfigHMAC class (not yet implemented)")
 
+    logger.warning(
+        f"[AUTH] format_auth_header_value: Unknown auth type '{auth.type}', "
+        f"returning api_key as-is"
+    )
     return api_key
 
 

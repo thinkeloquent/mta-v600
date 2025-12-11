@@ -90,8 +90,8 @@ providers:
     env_api_key: "CONFLUENCE_API_TOKEN"
     env_email: "CONFLUENCE_EMAIL"
     health_endpoint: "/rest/api/user/current"  # base_url already has /wiki
-    # bearer_email_token
-    api_auth_type: "basic" # Confluence uses Basic auth with email:token
+    # Confluence Cloud uses Basic auth with email:token format
+    api_auth_type: "basic_email_token"
     token_resolver: "static"
     # Default HTTP headers for API requests
     headers:

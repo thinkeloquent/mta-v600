@@ -1112,10 +1112,10 @@ class BaseApiToken(ABC):
         Get the header name for auth.
 
         Resolution based on auth type:
-        - bearer: Authorization
+        - bearer/bearer_*: Authorization
+        - basic/basic_*: Authorization
         - x-api-key: X-Api-Key
-        - basic: Authorization
-        - custom: Subclass default
+        - custom/custom_header: custom header name from config or default
 
         Returns:
             Header name string
@@ -1124,11 +1124,25 @@ class BaseApiToken(ABC):
 
         auth_type = self.get_auth_type()
 
-        if auth_type in ("bearer", "basic"):
+        # Basic auth family - all use Authorization header
+        basic_types = {"basic", "basic_email_token", "basic_token", "basic_email"}
+
+        # Bearer auth family - all use Authorization header
+        bearer_types = {
+            "bearer", "bearer_oauth", "bearer_jwt",
+            "bearer_username_token", "bearer_username_password",
+            "bearer_email_token", "bearer_email_password",
+        }
+
+        if auth_type in basic_types or auth_type in bearer_types:
             header_name = "Authorization"
         elif auth_type == "x-api-key":
             header_name = "X-Api-Key"
-        else:  # custom, connection_string, etc.
+        elif auth_type in ("custom", "custom_header"):
+            # Use custom header name from config or fall back to default
+            custom_header = self._get_custom_header_name()
+            header_name = custom_header or self._default_header_name
+        else:  # connection_string, hmac, etc.
             header_name = self._default_header_name
 
         logger.debug(
@@ -1136,6 +1150,262 @@ class BaseApiToken(ABC):
             f"header_name='{header_name}'"
         )
         return header_name
+
+    def compute_auth_header_value(
+        self,
+        raw_api_key: Optional[str] = None,
+        email: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Compute the formatted auth header value based on auth type.
+
+        This method handles all auth type variants:
+        - basic: Base64(identifier:secret) where identifier is email OR username
+        - basic_email_token: Base64(email:token)
+        - basic_token: Base64(username:token)
+        - basic_email: Base64(email:password)
+        - bearer: Token as-is OR Base64(identifier:secret) if identifier provided
+        - bearer_email_token: Bearer Base64(email:token)
+        - bearer_username_token: Bearer Base64(username:token)
+        - bearer_email_password: Bearer Base64(email:password)
+        - bearer_username_password: Bearer Base64(username:password)
+        - bearer_oauth, bearer_jwt: Bearer <token>
+        - x-api-key, custom, custom_header: Token as-is
+
+        Logs the encoding method with masked input/output for debugging.
+
+        Args:
+            raw_api_key: The raw API key/token
+            email: Email address (for basic_email_token, bearer_email_token, etc.)
+            username: Username (for basic_token, bearer_username_token, etc.)
+            password: Password (for basic_email, bearer_email_password, etc.)
+
+        Returns:
+            Formatted auth header value or None if credentials are insufficient
+        """
+        import base64
+
+        auth_type = self.get_auth_type()
+        class_name = self.__class__.__name__
+
+        logger.debug(
+            f"{class_name}.compute_auth_header_value: Computing header for auth_type='{auth_type}'"
+        )
+
+        def mask_value(val: Optional[str]) -> str:
+            """Mask value for logging, showing first 10 chars."""
+            return _mask_sensitive(val, 10)
+
+        def encode_basic(identifier: str, secret: str) -> str:
+            """Encode credentials as Basic auth header."""
+            credentials = f"{identifier}:{secret}"
+            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+            result = f"Basic {encoded}"
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"Encoding Basic auth - identifier={mask_value(identifier)}, "
+                f"secret={mask_value(secret)} -> output={mask_value(result)}"
+            )
+            return result
+
+        def encode_bearer_base64(identifier: str, secret: str) -> str:
+            """Encode credentials as Bearer auth header with base64."""
+            credentials = f"{identifier}:{secret}"
+            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+            result = f"Bearer {encoded}"
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"Encoding Bearer base64 - identifier={mask_value(identifier)}, "
+                f"secret={mask_value(secret)} -> output={mask_value(result)}"
+            )
+            return result
+
+        def bearer_token(token: str) -> str:
+            """Format Bearer token header."""
+            result = f"Bearer {token}"
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"Bearer token - input={mask_value(token)} -> output={mask_value(result)}"
+            )
+            return result
+
+        # Guard: if raw_api_key already has scheme prefix, return as-is
+        if raw_api_key and (raw_api_key.startswith("Basic ") or raw_api_key.startswith("Bearer ")):
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"Pre-encoded value detected (starts with scheme prefix), returning as-is: "
+                f"{mask_value(raw_api_key)}"
+            )
+            return raw_api_key
+
+        # === Basic Auth Family ===
+        if auth_type == "basic":
+            # Auto-compute: detect identifier (email or username) and secret (password or token)
+            identifier = email or username
+            secret = password or raw_api_key
+            if not identifier or not secret:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"basic auth requires identifier AND secret, got "
+                    f"identifier={identifier is not None}, secret={secret is not None}"
+                )
+                return None
+            return encode_basic(identifier, secret)
+
+        if auth_type == "basic_email_token":
+            if not email or not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"basic_email_token requires email AND rawApiKey, got "
+                    f"email={email is not None}, rawApiKey={raw_api_key is not None}"
+                )
+                return None
+            return encode_basic(email, raw_api_key)
+
+        if auth_type == "basic_token":
+            if not username or not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"basic_token requires username AND rawApiKey, got "
+                    f"username={username is not None}, rawApiKey={raw_api_key is not None}"
+                )
+                return None
+            return encode_basic(username, raw_api_key)
+
+        if auth_type == "basic_email":
+            if not email or not password:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"basic_email requires email AND password, got "
+                    f"email={email is not None}, password={password is not None}"
+                )
+                return None
+            return encode_basic(email, password)
+
+        # === Bearer Auth Family ===
+        if auth_type == "bearer":
+            # Auto-compute: detect if credentials need base64 encoding
+            identifier = email or username
+            if identifier:
+                # Has identifier → encode as base64(identifier:secret)
+                secret = password or raw_api_key
+                if not secret:
+                    logger.warning(
+                        f"[AUTH] {class_name}.compute_auth_header_value: "
+                        f"bearer with identifier requires secret, got secret=None"
+                    )
+                    return None
+                return encode_bearer_base64(identifier, secret)
+            elif raw_api_key:
+                # No identifier → use raw_api_key as-is (PAT, OAuth, JWT)
+                return bearer_token(raw_api_key)
+            else:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"bearer auth requires rawApiKey OR (identifier AND secret)"
+                )
+                return None
+
+        if auth_type in ("bearer_oauth", "bearer_jwt"):
+            if not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"{auth_type} requires rawApiKey"
+                )
+                return None
+            return bearer_token(raw_api_key)
+
+        if auth_type == "bearer_username_token":
+            if not username or not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"bearer_username_token requires username AND rawApiKey, got "
+                    f"username={username is not None}, rawApiKey={raw_api_key is not None}"
+                )
+                return None
+            return encode_bearer_base64(username, raw_api_key)
+
+        if auth_type == "bearer_username_password":
+            if not username or not password:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"bearer_username_password requires username AND password, got "
+                    f"username={username is not None}, password={password is not None}"
+                )
+                return None
+            return encode_bearer_base64(username, password)
+
+        if auth_type == "bearer_email_token":
+            if not email or not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"bearer_email_token requires email AND rawApiKey, got "
+                    f"email={email is not None}, rawApiKey={raw_api_key is not None}"
+                )
+                return None
+            return encode_bearer_base64(email, raw_api_key)
+
+        if auth_type == "bearer_email_password":
+            if not email or not password:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"bearer_email_password requires email AND password, got "
+                    f"email={email is not None}, password={password is not None}"
+                )
+                return None
+            return encode_bearer_base64(email, password)
+
+        # === Custom/API Key ===
+        if auth_type == "x-api-key":
+            if not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"x-api-key requires rawApiKey"
+                )
+                return None
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"x-api-key - input={mask_value(raw_api_key)} -> output={mask_value(raw_api_key)}"
+            )
+            return raw_api_key
+
+        if auth_type in ("custom", "custom_header"):
+            if not raw_api_key:
+                logger.warning(
+                    f"[AUTH] {class_name}.compute_auth_header_value: "
+                    f"{auth_type} requires rawApiKey"
+                )
+                return None
+            logger.info(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"{auth_type} - input={mask_value(raw_api_key)} -> output={mask_value(raw_api_key)}"
+            )
+            return raw_api_key
+
+        # === HMAC (stub) ===
+        if auth_type == "hmac":
+            logger.warning(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"hmac auth type not yet implemented"
+            )
+            return None
+
+        # === Connection string (no header) ===
+        if auth_type == "connection_string":
+            logger.debug(
+                f"[AUTH] {class_name}.compute_auth_header_value: "
+                f"connection_string does not use auth headers"
+            )
+            return None
+
+        # Unknown auth type - fall back to raw_api_key
+        logger.warning(
+            f"[AUTH] {class_name}.compute_auth_header_value: "
+            f"Unknown auth_type '{auth_type}', returning rawApiKey as-is"
+        )
+        return raw_api_key
 
     def get_token_resolver_type(self) -> str:
         """

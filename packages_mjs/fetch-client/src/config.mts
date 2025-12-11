@@ -228,6 +228,15 @@ export function getComputedApiKey(auth: AuthConfig): string | undefined {
 }
 
 /**
+ * Mask sensitive value for logging, showing first 10 chars.
+ */
+function maskValue(val: string): string {
+  if (!val) return '<empty>';
+  if (val.length <= 10) return '*'.repeat(val.length);
+  return val.substring(0, 10) + '*'.repeat(val.length - 10);
+}
+
+/**
  * Format auth header value based on auth type
  *
  * Auto-compute defaults:
@@ -238,11 +247,17 @@ export function getComputedApiKey(auth: AuthConfig): string | undefined {
  * - If apiKey already starts with "Basic " or "Bearer ", return as-is
  * - This prevents malformed headers like "Bearer Basic <base64>" when
  *   pre-encoded values are passed through
+ *
+ * Logs encoding method with masked input/output for debugging.
  */
 export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string {
   // Guard: if apiKey already has a scheme prefix, return as-is to prevent double-encoding
   // This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
   if (apiKey && (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer '))) {
+    console.log(
+      `[AUTH] formatAuthHeaderValue: Pre-encoded value detected (starts with scheme prefix), ` +
+      `returning as-is: ${maskValue(apiKey)}`
+    );
     return apiKey;
   }
 
@@ -252,7 +267,12 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   function encodeBasic(identifier: string, secret: string): string {
     const credentials = `${identifier}:${secret}`;
     const encoded = Buffer.from(credentials).toString('base64');
-    return `Basic ${encoded}`;
+    const result = `Basic ${encoded}`;
+    console.log(
+      `[AUTH] formatAuthHeaderValue: Encoding Basic auth - ` +
+      `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
+    );
+    return result;
   }
 
   /**
@@ -261,7 +281,24 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   function encodeBearerBase64(identifier: string, secret: string): string {
     const credentials = `${identifier}:${secret}`;
     const encoded = Buffer.from(credentials).toString('base64');
-    return `Bearer ${encoded}`;
+    const result = `Bearer ${encoded}`;
+    console.log(
+      `[AUTH] formatAuthHeaderValue: Encoding Bearer base64 - ` +
+      `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
+    );
+    return result;
+  }
+
+  /**
+   * Format Bearer token header
+   */
+  function bearerToken(token: string): string {
+    const result = `Bearer ${token}`;
+    console.log(
+      `[AUTH] formatAuthHeaderValue: Bearer token - ` +
+      `input=${maskValue(token)} -> output=${maskValue(result)}`
+    );
+    return result;
   }
 
   // === Basic Auth Family ===
@@ -297,13 +334,13 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
       return encodeBearerBase64(identifier, secret);
     } else {
       // No identifier → use apiKey as-is (PAT, OAuth, JWT)
-      return `Bearer ${apiKey}`;
+      return bearerToken(apiKey);
     }
   }
 
   if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
     // Explicit bearer types - always use apiKey as-is
-    return `Bearer ${apiKey}`;
+    return bearerToken(apiKey);
   }
 
   if (auth.type === 'bearer_username_token') {
@@ -328,10 +365,18 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
 
   // === Custom/API Key ===
   if (auth.type === 'x-api-key') {
+    console.log(
+      `[AUTH] formatAuthHeaderValue: x-api-key - ` +
+      `input=${maskValue(apiKey)} -> output=${maskValue(apiKey)}`
+    );
     return apiKey;
   }
 
   if (auth.type === 'custom' || auth.type === 'custom_header') {
+    console.log(
+      `[AUTH] formatAuthHeaderValue: ${auth.type} - ` +
+      `input=${maskValue(apiKey)} -> output=${maskValue(apiKey)}`
+    );
     return apiKey;
   }
 
@@ -341,6 +386,9 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
     throw new Error('hmac auth type requires AuthConfigHMAC class (not yet implemented)');
   }
 
+  console.warn(
+    `[AUTH] formatAuthHeaderValue: Unknown auth type '${auth.type}', returning apiKey as-is`
+  );
   return apiKey;
 }
 
