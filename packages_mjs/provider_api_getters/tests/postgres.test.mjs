@@ -14,6 +14,8 @@ function setupConsoleSpy() {
     debug: jest.spyOn(console, 'debug').mockImplementation(() => {}),
     warn: jest.spyOn(console, 'warn').mockImplementation(() => {}),
     error: jest.spyOn(console, 'error').mockImplementation(() => {}),
+    info: jest.spyOn(console, 'info').mockImplementation(() => {}),
+    log: jest.spyOn(console, 'log').mockImplementation(() => {}),
   };
 }
 
@@ -78,8 +80,8 @@ describe('PostgresApiToken', () => {
       const url = token._buildConnectionUrl();
 
       expect(url).toBeNull();
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Missing required components')
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Missing required env vars')
       );
     });
 
@@ -110,8 +112,9 @@ describe('PostgresApiToken', () => {
       const url = token._buildConnectionUrl();
 
       expect(url).toBe('postgresql://testuser@localhost:5432/testdb');
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Built URL without password')
+      // Now logged as WARNING using logger.warn
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('URL built WITHOUT password')
       );
     });
 
@@ -126,7 +129,7 @@ describe('PostgresApiToken', () => {
 
       expect(url).toBe('postgresql://testuser:secretpass@localhost:5432/testdb');
       expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Built URL with password')
+        expect.stringContaining('URL built with password')
       );
     });
 
@@ -148,10 +151,11 @@ describe('PostgresApiToken', () => {
 
       token._buildConnectionUrl();
 
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
+      // Missing env vars are logged at WARN level
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
         expect.stringContaining('POSTGRES_USER')
       );
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
         expect.stringContaining('POSTGRES_DB')
       );
     });
@@ -165,8 +169,9 @@ describe('PostgresApiToken', () => {
       const url = token.getConnectionUrl();
 
       expect(url).toBe('postgresql://user:pass@host:5432/db');
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining("Found URL in env var 'DATABASE_URL'")
+      // logger.info uses console.log
+      expect(consoleSpy.log).toHaveBeenCalledWith(
+        expect.stringContaining("SUCCESS - Found URL in env var 'DATABASE_URL'")
       );
     });
 
@@ -189,8 +194,9 @@ describe('PostgresApiToken', () => {
       const url = token.getConnectionUrl();
 
       expect(url).toBe('postgresql://user@localhost:5432/db');
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('attempting to build from components')
+      // Log message now at INFO level using logger.info
+      expect(consoleSpy.log).toHaveBeenCalledWith(
+        expect.stringContaining('SUCCESS - Built URL')
       );
     });
 
@@ -200,8 +206,9 @@ describe('PostgresApiToken', () => {
       const url = token.getConnectionUrl();
 
       expect(url).toBeNull();
-      expect(consoleSpy.warn).toHaveBeenCalledWith(
-        expect.stringContaining('No connection URL available')
+      // Error is logged at ERROR level using logger.error
+      expect(consoleSpy.error).toHaveBeenCalledWith(
+        expect.stringContaining('FAILED - No connection URL available')
       );
     });
   });
@@ -233,7 +240,8 @@ describe('PostgresApiToken', () => {
 
       token.getApiKey();
 
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
+      // Result is logged at INFO level using logger.info
+      expect(consoleSpy.log).toHaveBeenCalledWith(
         expect.stringContaining('hasCredentials=true')
       );
     });

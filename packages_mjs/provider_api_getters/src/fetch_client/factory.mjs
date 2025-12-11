@@ -236,16 +236,28 @@ export class ProviderClientFactory {
       const authType = apiToken.getAuthType();
       const headerName = apiToken.getHeaderName();
 
-      if (authType === 'basic' || authType === 'x-api-key' || authType === 'custom') {
+      // Determine if auth type uses pre-encoded credentials
+      // Pre-encoded types have the full header value in apiKey (e.g., "Basic base64(email:token)")
+      // These include: basic, basic_*, bearer_email_*, bearer_username_*, x-api-key, custom
+      const preEncodedTypes = new Set(['basic', 'x-api-key', 'custom']);
+      const isPreEncoded =
+        preEncodedTypes.has(authType) ||
+        authType.startsWith('basic_') ||
+        authType.startsWith('bearer_email_') ||
+        authType.startsWith('bearer_username_');
+
+      if (isPreEncoded) {
+        // For pre-encoded auth, use the fully computed apiKey (e.g., "Basic <base64>")
         auth = {
           type: 'custom',
           rawApiKey: apiKeyResult.apiKey,
           headerName: headerName,
         };
       } else {
+        // Simple bearer auth - uses raw token, fetch_client prepends "Bearer "
         auth = {
           type: 'bearer',
-          rawApiKey: apiKeyResult.apiKey,
+          rawApiKey: apiKeyResult.rawApiKey || apiKeyResult.apiKey,
         };
       }
       logger.info({ providerName, authType, headerName }, 'Auth config created');

@@ -72,7 +72,7 @@ class TestPostgresApiToken:
             result = postgres_token._build_connection_url()
 
         assert result == "postgresql://testuser:testpass@localhost:5432/testdb"
-        assert "Required components present" in caplog.text
+        assert "All required components present" in caplog.text
         assert "Built URL" in caplog.text
 
     def test_build_connection_url_without_password(self, postgres_token, clean_env, caplog):
@@ -113,7 +113,7 @@ class TestPostgresApiToken:
             result = postgres_token._build_connection_url()
 
         assert result is None
-        assert "Missing required components" in caplog.text
+        assert "Missing required env vars" in caplog.text
         assert "POSTGRES_HOST" in caplog.text
 
     def test_build_connection_url_missing_user(self, postgres_token, clean_env, caplog):
@@ -222,7 +222,7 @@ class TestPostgresApiToken:
         # Note: empty header_name gets defaulted to "Authorization" in ApiKeyResult
         assert result.header_name == "Authorization"
         assert result.has_credentials is True
-        assert "Found connection URL" in caplog.text
+        assert "SUCCESS - Found URL in env var" in caplog.text
 
     def test_get_api_key_without_url(self, postgres_token, clean_env, caplog):
         """Test get_api_key when no URL available."""
