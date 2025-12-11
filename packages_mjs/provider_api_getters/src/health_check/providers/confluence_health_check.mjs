@@ -41,35 +41,10 @@ import { resolveAuthConfig, getAuthTypeCategory } from '../../utils/authResolver
 // ============================================================
 import { createClientWithDispatcher } from '@internal/fetch-client';
 
-/**
- * Print a section header.
- * @param {string} title - Section title
- */
-function printSection(title) {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`Step: ${title}`);
-  console.log('='.repeat(60));
-}
-
-/**
- * Print JSON data with indentation.
- * @param {Object} data - Data to print
- */
-function printJson(data) {
-  console.log(JSON.stringify(data, null, 2));
-}
-
-/**
- * Mask sensitive values for logging.
- * @param {string} value - Value to mask
- * @param {number} showChars - Characters to show before masking
- * @returns {string} Masked value
- */
-function maskSensitive(value, showChars = 10) {
-  if (!value) return '<none>';
-  if (value.length <= showChars) return '*'.repeat(value.length);
-  return value.substring(0, showChars) + '***';
-}
+// ============================================================
+// Console print utilities
+// ============================================================
+import { printSection, printJson, maskSensitive } from '@internal/console-print';
 
 /**
  * Confluence Health Check - Explicit 7-step building block pattern.

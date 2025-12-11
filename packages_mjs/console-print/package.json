@@ -1,0 +1,52 @@
+{
+  "name": "@internal/console-print",
+  "version": "1.0.0",
+  "description": "Console printing utilities with optional chalk support - falls back to standard console if chalk unavailable",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./printer": {
+      "import": "./dist/printer.mjs",
+      "default": "./dist/printer.mjs"
+    }
+  },
+  "files": [
+    "dist/**/*.mjs"
+  ],
+  "scripts": {
+    "build": "mkdir -p dist && cp -r src/* dist/",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --passWithNoTests",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --passWithNoTests --coverage"
+  },
+  "keywords": [
+    "mta",
+    "console",
+    "print",
+    "logging",
+    "chalk",
+    "esm",
+    "mjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "picocolors": "^1.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.24.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^22.10.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0"
+  }
+}
