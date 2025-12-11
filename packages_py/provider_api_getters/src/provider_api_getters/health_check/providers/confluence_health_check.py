@@ -49,6 +49,14 @@ async def check_confluence_health(config: dict = None) -> dict:
     network_config = provider.get_network_config()
     base_url = provider.get_base_url()
 
+    # Mask function for sensitive values
+    def mask_value(val):
+        if not val:
+            return "<empty>"
+        if len(val) <= 10:
+            return "*" * len(val)
+        return val[:10] + "*" * (len(val) - 10)
+
     # Debug output
     print(f"\n[Config]")
     print(f"  Base URL: {base_url}")
@@ -57,6 +65,13 @@ async def check_confluence_health(config: dict = None) -> dict:
     print(f"  Auth type: {api_key_result.auth_type}")
     print(f"  Header name: {api_key_result.header_name}")
     print(f"  Email: {api_key_result.email or 'N/A'}")
+
+    # AUTH TRACING: Log the credential values from provider
+    print(f"\n[AUTH TRACE - Provider Output]")
+    print(f"  api_key_result.api_key (pre-encoded): {mask_value(api_key_result.api_key)}")
+    print(f"  api_key_result.raw_api_key (unencoded): {mask_value(api_key_result.raw_api_key)}")
+    print(f"  api_key_result.email: {api_key_result.email or 'N/A'}")
+    print(f"  api_key_result.auth_type: {api_key_result.auth_type}")
     print(f"\n[Network Config]")
     print(f"  Proxy URL: {network_config.get('proxy_url') or 'None'}")
     print(f"  Cert verify: {network_config.get('cert_verify')}")
@@ -72,6 +87,13 @@ async def check_confluence_health(config: dict = None) -> dict:
     # Create client with dispatcher (handles proxy, SSL, auth)
     print(f"\n[Creating Client]")
     print(f"  Auth type: {api_key_result.auth_type}")
+
+    # AUTH TRACING: Log what we're passing to fetch-client
+    print(f"\n[AUTH TRACE - Passing to fetch-client]")
+    print(f"  auth.type: {api_key_result.auth_type}")
+    print(f"  auth.raw_api_key: {mask_value(api_key_result.raw_api_key)}")
+    print(f"  auth.email: {api_key_result.email or 'N/A'}")
+    print(f"  auth.header_name: {api_key_result.header_name}")
 
     client = create_client_with_dispatcher(
         base_url=base_url,
