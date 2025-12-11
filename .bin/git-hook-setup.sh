@@ -133,8 +133,9 @@ HOOK_SECRETS
 # =============================================================================
 # This updates the COMMIT file with the current HEAD hash (which becomes the
 # parent of the new commit). The COMMIT file is auto-staged.
+# Location: common/config/COMMIT (alongside YAML config files)
 
-COMMIT_FILE="${ROOT_DIR}/COMMIT"
+COMMIT_FILE="${ROOT_DIR}/common/config/COMMIT"
 
 # Get current HEAD hash (this will be the parent of the new commit)
 PARENT_HASH="$(git rev-parse HEAD 2>/dev/null || echo 'initial')"

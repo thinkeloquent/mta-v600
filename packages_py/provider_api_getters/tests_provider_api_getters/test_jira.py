@@ -32,13 +32,46 @@ class TestJiraApiToken:
         assert jira_token.provider_name == "jira"
 
     # Health endpoint tests
-    def test_health_endpoint(self, jira_token, caplog):
-        """Test health_endpoint returns /myself."""
+    def test_health_endpoint_from_config(self, jira_token, caplog):
+        """Test health_endpoint returns value from config."""
         with caplog.at_level(logging.DEBUG):
             endpoint = jira_token.health_endpoint
 
+        # Value comes from jira_config fixture which sets health_endpoint: "/myself"
         assert endpoint == "/myself"
-        assert "Returning /myself" in caplog.text
+
+    def test_health_endpoint_custom_from_config(self, clean_env, caplog):
+        """Test health_endpoint returns custom value from config."""
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    "health_endpoint": "/user/current",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        endpoint = jira_token.health_endpoint
+        assert endpoint == "/user/current"
+
+    def test_health_endpoint_default_when_not_in_config(self, clean_env):
+        """Test health_endpoint returns default when not in config."""
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    # No health_endpoint specified
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        endpoint = jira_token.health_endpoint
+        # BaseApiToken returns "/" as default when health_endpoint not specified
+        assert endpoint == "/"
 
     # Default env var constants
     def test_default_constants(self):
@@ -339,3 +372,242 @@ class TestJiraApiTokenEdgeCases:
         # Verify email is masked
         assert "user@company.com" not in caplog.text
         assert "use***@***" in caplog.text
+
+
+class TestJiraApiTokenAuthTypes:
+    """Comprehensive auth type encoding tests."""
+
+    # Basic auth type family tests
+    class TestBasicAuthTypes:
+        """Tests for Basic auth type family."""
+
+        def test_encode_auth_basic(self, clean_env):
+            """Test 'basic' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "basic"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "api_token", "basic")
+
+            expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+            assert result == f"Basic {expected}"
+
+        def test_encode_auth_basic_email_token(self, clean_env):
+            """Test 'basic_email_token' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "basic_email_token"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "api_token", "basic_email_token")
+
+            expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+            assert result == f"Basic {expected}"
+
+        def test_encode_auth_basic_email_password(self, clean_env):
+            """Test 'basic_email_password' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "basic_email_password"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "password123", "basic_email_password")
+
+            expected = base64.b64encode(b"user@test.com:password123").decode("utf-8")
+            assert result == f"Basic {expected}"
+
+        def test_encode_auth_basic_username_token(self, clean_env):
+            """Test 'basic_username_token' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "basic_username_token"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("username", "api_token", "basic_username_token")
+
+            expected = base64.b64encode(b"username:api_token").decode("utf-8")
+            assert result == f"Basic {expected}"
+
+        def test_encode_auth_unknown_defaults_to_basic(self, clean_env, caplog):
+            """Test unknown auth type defaults to Basic encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            with caplog.at_level(logging.DEBUG):
+                result = jira_token._encode_auth("user@test.com", "api_token", "unknown_type")
+
+            expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+            assert result == f"Basic {expected}"
+            assert "Using Basic encoding for auth_type='unknown_type'" in caplog.text
+
+    # Bearer auth type family tests
+    class TestBearerAuthTypes:
+        """Tests for Bearer auth type family."""
+
+        def test_encode_auth_bearer(self, clean_env):
+            """Test 'bearer' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "api_token", "bearer")
+
+            expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_email_token(self, clean_env):
+            """Test 'bearer_email_token' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_email_token"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "api_token", "bearer_email_token")
+
+            expected = base64.b64encode(b"user@test.com:api_token").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_email_password(self, clean_env):
+            """Test 'bearer_email_password' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_email_password"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("user@test.com", "password123", "bearer_email_password")
+
+            expected = base64.b64encode(b"user@test.com:password123").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_username_token(self, clean_env):
+            """Test 'bearer_username_token' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_username_token"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("username", "api_token", "bearer_username_token")
+
+            expected = base64.b64encode(b"username:api_token").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_username_password(self, clean_env):
+            """Test 'bearer_username_password' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_username_password"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("username", "password123", "bearer_username_password")
+
+            expected = base64.b64encode(b"username:password123").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_oauth(self, clean_env):
+            """Test 'bearer_oauth' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_oauth"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("client_id", "oauth_token", "bearer_oauth")
+
+            expected = base64.b64encode(b"client_id:oauth_token").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+        def test_encode_auth_bearer_jwt(self, clean_env):
+            """Test 'bearer_jwt' auth type encoding."""
+            config = {"providers": {"jira": {"env_api_key": "JIRA_API_TOKEN", "api_auth_type": "bearer_jwt"}}}
+            mock_store = MockConfigStore(config)
+            jira_token = JiraApiToken(config_store=mock_store)
+
+            result = jira_token._encode_auth("issuer", "jwt_token", "bearer_jwt")
+
+            expected = base64.b64encode(b"issuer:jwt_token").decode("utf-8")
+            assert result == f"Bearer {expected}"
+
+
+class TestJiraApiTokenAuthTypeIntegration:
+    """Integration tests for auth type through getApiKey flow."""
+
+    def test_get_api_key_produces_basic_header(self, clean_env, caplog):
+        """Test getApiKey produces Basic header when config has basic_email_token."""
+        clean_env(JIRA_API_TOKEN="secret-token", JIRA_EMAIL="user@test.com")
+
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    "env_email": "JIRA_EMAIL",
+                    "api_auth_type": "basic_email_token",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        with caplog.at_level(logging.DEBUG):
+            result = jira_token.get_api_key()
+
+        assert result.api_key.startswith("Basic ")
+        assert result.auth_type == "basic_email_token"
+        assert "encoding with auth_type='basic_email_token'" in caplog.text
+
+    def test_get_api_key_produces_bearer_header(self, clean_env, caplog):
+        """Test getApiKey produces Bearer header when config has bearer_email_token."""
+        clean_env(JIRA_API_TOKEN="secret-token", JIRA_EMAIL="user@test.com")
+
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    "env_email": "JIRA_EMAIL",
+                    "api_auth_type": "bearer_email_token",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        with caplog.at_level(logging.DEBUG):
+            result = jira_token.get_api_key()
+
+        assert result.api_key.startswith("Bearer ")
+        assert result.auth_type == "bearer_email_token"
+        assert "encoding with auth_type='bearer_email_token'" in caplog.text
+
+    def test_get_api_key_preserves_raw_api_key(self, clean_env):
+        """Test getApiKey preserves rawApiKey separate from encoded apiKey."""
+        clean_env(JIRA_API_TOKEN="raw-secret-token", JIRA_EMAIL="user@test.com")
+
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    "env_email": "JIRA_EMAIL",
+                    "api_auth_type": "basic_email_token",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        result = jira_token.get_api_key()
+
+        assert result.raw_api_key == "raw-secret-token"
+        assert result.api_key != result.raw_api_key
+        assert result.api_key.startswith("Basic ")
+
+    def test_get_api_key_returns_auth_type_even_when_missing_credentials(self, clean_env):
+        """Test getApiKey returns correct auth type even when credentials missing."""
+        # No env vars set
+
+        config = {
+            "providers": {
+                "jira": {
+                    "env_api_key": "JIRA_API_TOKEN",
+                    "env_email": "JIRA_EMAIL",
+                    "api_auth_type": "bearer_oauth",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        jira_token = JiraApiToken(config_store=mock_store)
+
+        result = jira_token.get_api_key()
+
+        assert result.api_key is None
+        assert result.auth_type == "bearer_oauth"

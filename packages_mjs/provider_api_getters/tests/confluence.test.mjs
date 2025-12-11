@@ -62,13 +62,29 @@ describe('ConfluenceApiToken', () => {
       expect(token.providerName).toBe('confluence');
     });
 
-    it('should return correct health endpoint', () => {
-      // Note: base_url already includes /wiki, so health endpoint is just /rest/api/user/current
-      const token = new ConfluenceApiToken();
+    it('should return health endpoint from config', () => {
+      const mockStore = createMockStore({
+        confluence: { health_endpoint: '/rest/api/user/current' },
+      });
+      const token = new ConfluenceApiToken(mockStore);
       expect(token.healthEndpoint).toBe('/rest/api/user/current');
-      expect(consoleSpy.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Returning /rest/api/user/current')
-      );
+    });
+
+    it('should return custom health endpoint from config', () => {
+      const mockStore = createMockStore({
+        confluence: { health_endpoint: '/myself' },
+      });
+      const token = new ConfluenceApiToken(mockStore);
+      expect(token.healthEndpoint).toBe('/myself');
+    });
+
+    it('should return default when health endpoint not in config', () => {
+      const mockStore = createMockStore({
+        confluence: {},
+      });
+      const token = new ConfluenceApiToken(mockStore);
+      // BaseApiToken returns "/" as default when health_endpoint not specified
+      expect(token.healthEndpoint).toBe('/');
     });
   });
 

@@ -51,16 +51,46 @@ class TestConfluenceApiToken:
         assert confluence_token.provider_name == "confluence"
 
     # Health endpoint tests
-    def test_health_endpoint(self, confluence_token, caplog):
-        """Test health_endpoint returns correct path.
-
-        Note: base_url already includes /wiki, so health_endpoint is just /rest/api/user/current
-        """
+    def test_health_endpoint_from_config(self, confluence_token, caplog):
+        """Test health_endpoint returns value from config."""
         with caplog.at_level(logging.DEBUG):
             endpoint = confluence_token.health_endpoint
 
+        # Value comes from confluence_config fixture which sets health_endpoint: "/user/current"
+        assert endpoint == "/user/current"
+
+    def test_health_endpoint_custom_from_config(self, clean_env, caplog):
+        """Test health_endpoint returns custom value from config."""
+        config = {
+            "providers": {
+                "confluence": {
+                    "env_api_key": "CONFLUENCE_API_TOKEN",
+                    "health_endpoint": "/rest/api/user/current",
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        confluence_token = ConfluenceApiToken(config_store=mock_store)
+
+        endpoint = confluence_token.health_endpoint
         assert endpoint == "/rest/api/user/current"
-        assert "Returning /rest/api/user/current" in caplog.text
+
+    def test_health_endpoint_default_when_not_in_config(self, clean_env):
+        """Test health_endpoint returns default when not in config."""
+        config = {
+            "providers": {
+                "confluence": {
+                    "env_api_key": "CONFLUENCE_API_TOKEN",
+                    # No health_endpoint specified
+                }
+            }
+        }
+        mock_store = MockConfigStore(config)
+        confluence_token = ConfluenceApiToken(config_store=mock_store)
+
+        endpoint = confluence_token.health_endpoint
+        # BaseApiToken returns "/" as default when health_endpoint not specified
+        assert endpoint == "/"
 
     # Default constants tests
     def test_default_constants(self):

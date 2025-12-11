@@ -75,7 +75,29 @@ import healthStatusRoutesPlugin from "./routes/health_status.mjs";
 // Build parameters (set by CI/CD or Makefile)
 const BUILD_ID = process.env.BUILD_ID || "local";
 const BUILD_VERSION = process.env.BUILD_VERSION || "0.0.0-dev";
-const GIT_COMMIT = process.env.GIT_COMMIT || "unknown";
+
+// Get git commit hash - prefer env var, fallback to reading from COMMIT file
+import fs from "fs";
+
+function getGitCommit() {
+  // First check environment variable (set by CI/CD)
+  if (process.env.GIT_COMMIT) {
+    return process.env.GIT_COMMIT;
+  }
+  // Try to read from COMMIT file in common/config
+  try {
+    const commitFile = path.resolve(__dirname, "..", "..", "..", "common", "config", "COMMIT");
+    if (fs.existsSync(commitFile)) {
+      const commit = fs.readFileSync(commitFile, "utf-8").trim();
+      return commit || "unknown";
+    }
+  } catch (err) {
+    // File not found or read error
+  }
+  return "unknown";
+}
+
+const GIT_COMMIT = getGitCommit();
 
 // Parse command line arguments
 const args = process.argv.slice(2).reduce((acc, arg) => {
