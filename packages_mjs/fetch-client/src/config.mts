@@ -1,12 +1,17 @@
 /**
  * Configuration utilities for @internal/fetch-client
  */
+import { fileURLToPath } from 'url';
 import type {
   ClientConfig,
   AuthConfig,
   TimeoutConfig,
   Serializer,
 } from './types.mjs';
+
+// Get current file path for logging
+const __filename = fileURLToPath(import.meta.url);
+const LOG_PREFIX = `[AUTH:${__filename}]`;
 
 /**
  * Default timeout values in milliseconds
@@ -255,7 +260,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   // This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
   if (apiKey && (apiKey.startsWith('Basic ') || apiKey.startsWith('Bearer '))) {
     console.log(
-      `[AUTH] formatAuthHeaderValue: Pre-encoded value detected (starts with scheme prefix), ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: Pre-encoded value detected (starts with scheme prefix), ` +
       `returning as-is: ${maskValue(apiKey)}`
     );
     return apiKey;
@@ -269,7 +274,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
     const encoded = Buffer.from(credentials).toString('base64');
     const result = `Basic ${encoded}`;
     console.log(
-      `[AUTH] formatAuthHeaderValue: Encoding Basic auth - ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: Encoding Basic auth - ` +
       `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
     );
     return result;
@@ -283,7 +288,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
     const encoded = Buffer.from(credentials).toString('base64');
     const result = `Bearer ${encoded}`;
     console.log(
-      `[AUTH] formatAuthHeaderValue: Encoding Bearer base64 - ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: Encoding Bearer base64 - ` +
       `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
     );
     return result;
@@ -295,7 +300,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   function bearerToken(token: string): string {
     const result = `Bearer ${token}`;
     console.log(
-      `[AUTH] formatAuthHeaderValue: Bearer token - ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: Bearer token - ` +
       `input=${maskValue(token)} -> output=${maskValue(result)}`
     );
     return result;
@@ -366,7 +371,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   // === Custom/API Key ===
   if (auth.type === 'x-api-key') {
     console.log(
-      `[AUTH] formatAuthHeaderValue: x-api-key - ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: x-api-key - ` +
       `input=${maskValue(apiKey)} -> output=${maskValue(apiKey)}`
     );
     return apiKey;
@@ -374,7 +379,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
 
   if (auth.type === 'custom' || auth.type === 'custom_header') {
     console.log(
-      `[AUTH] formatAuthHeaderValue: ${auth.type} - ` +
+      `${LOG_PREFIX} formatAuthHeaderValue: ${auth.type} - ` +
       `input=${maskValue(apiKey)} -> output=${maskValue(apiKey)}`
     );
     return apiKey;
@@ -387,7 +392,7 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
   }
 
   console.warn(
-    `[AUTH] formatAuthHeaderValue: Unknown auth type '${auth.type}', returning apiKey as-is`
+    `${LOG_PREFIX} formatAuthHeaderValue: Unknown auth type '${auth.type}', returning apiKey as-is`
   );
   return apiKey;
 }

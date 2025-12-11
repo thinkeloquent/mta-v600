@@ -21,6 +21,7 @@ from ...api_token import PostgresApiToken
 
 
 async def check_postgres_health(config: dict = None) -> dict:
+    print(f"\n{'='*20} Starting PostgreSQL Health Check {'='*20}\n")    
     """
     Check PostgreSQL connectivity using native asyncpg client.
 

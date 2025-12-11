@@ -8,6 +8,8 @@ import json
 
 from .types import AuthType, RequestContext
 
+LOG_PREFIX = f"[AUTH:{__file__}]"
+
 
 def _mask_sensitive(value: Optional[str], visible_chars: int = 10) -> str:
     """Mask sensitive value for safe logging."""
@@ -301,7 +303,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
     # This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
     if api_key and (api_key.startswith("Basic ") or api_key.startswith("Bearer ")):
         logger.info(
-            f"[AUTH] format_auth_header_value: Pre-encoded value detected "
+            f"{LOG_PREFIX} format_auth_header_value: Pre-encoded value detected "
             f"(starts with scheme prefix), returning as-is: {mask_value(api_key)}"
         )
         return api_key
@@ -312,7 +314,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         encoded = base64.b64encode(credentials.encode()).decode()
         result = f"Basic {encoded}"
         logger.info(
-            f"[AUTH] format_auth_header_value: Encoding Basic auth - "
+            f"{LOG_PREFIX} format_auth_header_value: Encoding Basic auth - "
             f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
             f"output={mask_value(result)}"
         )
@@ -324,7 +326,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         encoded = base64.b64encode(credentials.encode()).decode()
         result = f"Bearer {encoded}"
         logger.info(
-            f"[AUTH] format_auth_header_value: Encoding Bearer base64 - "
+            f"{LOG_PREFIX} format_auth_header_value: Encoding Bearer base64 - "
             f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
             f"output={mask_value(result)}"
         )
@@ -334,7 +336,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         """Format Bearer token header."""
         result = f"Bearer {token}"
         logger.info(
-            f"[AUTH] format_auth_header_value: Bearer token - "
+            f"{LOG_PREFIX} format_auth_header_value: Bearer token - "
             f"input={mask_value(token)} -> output={mask_value(result)}"
         )
         return result
@@ -393,14 +395,14 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
     # === Custom/API Key ===
     elif auth.type == "x-api-key":
         logger.info(
-            f"[AUTH] format_auth_header_value: x-api-key - "
+            f"{LOG_PREFIX} format_auth_header_value: x-api-key - "
             f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
         )
         return api_key
 
     elif auth.type in ("custom", "custom_header"):
         logger.info(
-            f"[AUTH] format_auth_header_value: {auth.type} - "
+            f"{LOG_PREFIX} format_auth_header_value: {auth.type} - "
             f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
         )
         return api_key
@@ -411,7 +413,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         raise ValueError("hmac auth type requires AuthConfigHMAC class (not yet implemented)")
 
     logger.warning(
-        f"[AUTH] format_auth_header_value: Unknown auth type '{auth.type}', "
+        f"{LOG_PREFIX} format_auth_header_value: Unknown auth type '{auth.type}', "
         f"returning api_key as-is"
     )
     return api_key

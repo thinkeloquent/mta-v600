@@ -161,11 +161,23 @@ export class PostgresApiToken extends BaseApiToken {
       const sslConfig = providerConfig?.ssl;
       const sslMode = process.env.POSTGRES_SSLMODE || 'require';
 
+      // Check if SSL should be disabled via environment variables
+      // SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
+      const sslCertVerify = process.env.SSL_CERT_VERIFY || '';
+      const nodeTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED || '';
+      const disableSslByEnv = sslCertVerify === '0' || nodeTls === '0';
+
       // Build dialectOptions for SSL
       // For Sequelize, SSL config must be inside dialectOptions.ssl
       const dialectOptions = {};
 
-      if (sslMode === 'disable') {
+      if (disableSslByEnv) {
+        dialectOptions.ssl = false;
+        logger.debug(
+          `PostgresApiToken.getClient: SSL disabled via env var ` +
+          `(SSL_CERT_VERIFY=${sslCertVerify || 'not set'}, NODE_TLS_REJECT_UNAUTHORIZED=${nodeTls || 'not set'})`
+        );
+      } else if (sslMode === 'disable') {
         dialectOptions.ssl = false;
         logger.debug('PostgresApiToken.getClient: SSL disabled via POSTGRES_SSLMODE');
       } else if (sslConfig) {

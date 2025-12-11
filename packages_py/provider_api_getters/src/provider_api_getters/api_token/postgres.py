@@ -169,10 +169,15 @@ class PostgresApiToken(BaseApiToken):
 
     def _get_ssl_context(self) -> Any:
         """
-        Get SSL context based on POSTGRES_SSLMODE.
+        Get SSL context based on POSTGRES_SSLMODE and SSL_CERT_VERIFY.
 
         asyncpg doesn't parse ?sslmode= from URLs, so we need to
         pass ssl parameter explicitly.
+
+        SSL is disabled when:
+        - SSL_CERT_VERIFY=0
+        - NODE_TLS_REJECT_UNAUTHORIZED=0
+        - POSTGRES_SSLMODE=disable
 
         Returns:
             ssl.SSLContext for 'require' (no cert verification)
@@ -181,6 +186,17 @@ class PostgresApiToken(BaseApiToken):
             "prefer" for prefer mode
         """
         import ssl
+
+        # Check if SSL should be disabled via environment variables
+        # SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
+        ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
+        node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
+        if ssl_cert_verify == "0" or node_tls == "0":
+            logger.debug(
+                f"PostgresApiToken._get_ssl_context: SSL disabled via env var "
+                f"(SSL_CERT_VERIFY={ssl_cert_verify!r}, NODE_TLS_REJECT_UNAUTHORIZED={node_tls!r})"
+            )
+            return False
 
         sslmode = os.getenv("POSTGRES_SSLMODE")
         if not sslmode:

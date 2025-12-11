@@ -14,6 +14,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const LOG_PREFIX = `[AUTH:${__filename}]`;
 const PROJECT_ROOT = path.resolve(
   __dirname,
   "..",
@@ -73,7 +74,7 @@ export async function checkJiraHealth() {
   console.log(`  Email: ${apiKeyResult.email || "N/A"}`);
 
   // AUTH TRACING: Log the credential values from provider
-  console.log("\n[AUTH TRACE - Provider Output]");
+  console.log(`\n${LOG_PREFIX} [Provider Output]`);
   console.log(`  apiKeyResult.apiKey (pre-encoded): ${maskValue(apiKeyResult.apiKey)}`);
   console.log(`  apiKeyResult.rawApiKey (unencoded): ${maskValue(apiKeyResult.rawApiKey)}`);
   console.log(`  apiKeyResult.email: ${apiKeyResult.email || "N/A"}`);
@@ -97,7 +98,7 @@ export async function checkJiraHealth() {
   console.log(`  Auth type: ${apiKeyResult.authType}`);
 
   // AUTH TRACING: Log what we're passing to fetch-client
-  console.log("\n[AUTH TRACE - Passing to fetch-client]");
+  console.log(`\n${LOG_PREFIX} [Passing to fetch-client]`);
   console.log(`  auth.type: ${apiKeyResult.authType}`);
   console.log(`  auth.rawApiKey: ${maskValue(apiKeyResult.rawApiKey)}`);
   console.log(`  auth.email: ${apiKeyResult.email || "N/A"}`);
