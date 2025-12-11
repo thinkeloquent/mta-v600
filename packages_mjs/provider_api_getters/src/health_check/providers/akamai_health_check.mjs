@@ -77,7 +77,7 @@ export async function checkAkamaiHealth() {
     baseUrl,
     auth: {
       type: apiKeyResult.authType,
-      rawApiKey: apiKeyResult.apiKey,
+      rawApiKey: apiKeyResult.rawApiKey,  // Use raw unencoded token
       headerName: apiKeyResult.headerName,
     },
     headers: {

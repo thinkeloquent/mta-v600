@@ -89,7 +89,7 @@ def jira_config():
                 "base_url": None,
                 "env_api_key": "JIRA_API_TOKEN",
                 "env_email": "JIRA_EMAIL",
-                "health_endpoint": "/rest/api/2/myself",
+                "health_endpoint": "/myself",
                 "api_auth_type": "basic_email_token",
             }
         }
@@ -113,13 +113,13 @@ def full_providers_config():
                 "base_url": None,
                 "env_api_key": "JIRA_API_TOKEN",
                 "env_email": "JIRA_EMAIL",
-                "health_endpoint": "/rest/api/2/myself",
+                "health_endpoint": "/myself",
             },
             "confluence": {
                 "base_url": None,
                 "env_api_key": "CONFLUENCE_API_TOKEN",
                 "env_email": "CONFLUENCE_EMAIL",
-                "health_endpoint": "/wiki/rest/api/user/current",
+                "health_endpoint": "/user/current",
             },
             "gemini": {
                 "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",

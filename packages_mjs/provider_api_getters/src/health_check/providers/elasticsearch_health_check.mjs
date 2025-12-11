@@ -74,7 +74,7 @@ export async function checkElasticsearchHealth() {
     baseUrl,
     auth: {
       type: apiKeyResult.authType,
-      rawApiKey: apiKeyResult.apiKey,
+      rawApiKey: apiKeyResult.rawApiKey,  // Use raw unencoded token
       username: apiKeyResult.username,
       headerName: apiKeyResult.headerName,
     },

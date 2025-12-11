@@ -4,7 +4,7 @@ Jira API - Python Client Integration Test
 
 Authentication: Basic (email:api_token)
 Base URL: https://{company}.atlassian.net
-Health Endpoint: GET /rest/api/2/myself
+Health Endpoint: GET /myself
 
 Uses internal packages:
   - fetch_proxy_dispatcher: Environment-aware proxy configuration
@@ -120,7 +120,7 @@ async def get_myself() -> dict[str, Any]:
     )
 
     async with client:
-        response = await client.get("/rest/api/2/myself")
+        response = await client.get("/myself")
 
         print(f"Status: {response['status']}")
         print(f"Response: {json.dumps(response['data'], indent=2)}")
@@ -149,7 +149,7 @@ async def list_projects() -> dict[str, Any]:
     )
 
     async with client:
-        response = await client.get("/rest/api/2/project")
+        response = await client.get("/project")
 
         print(f"Status: {response['status']}")
         if response["ok"] and isinstance(response["data"], list):
@@ -184,7 +184,7 @@ async def search_issues(jql: str) -> dict[str, Any]:
 
     async with client:
         response = await client.get(
-            "/rest/api/2/search",
+            "/search",
             params={"jql": jql, "maxResults": 10},
         )
 
@@ -220,7 +220,7 @@ async def get_issue(issue_key: str) -> dict[str, Any]:
     )
 
     async with client:
-        response = await client.get(f"/rest/api/2/issue/{issue_key}")
+        response = await client.get(f"/issue/{issue_key}")
 
         print(f"Status: {response['status']}")
         print(f"Response: {json.dumps(response['data'], indent=2)}")

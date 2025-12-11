@@ -74,7 +74,7 @@ export async function checkConfluenceHealth() {
     baseUrl,
     auth: {
       type: apiKeyResult.authType,
-      rawApiKey: apiKeyResult.apiKey,
+      rawApiKey: apiKeyResult.rawApiKey,  // Use raw unencoded token, not pre-encoded apiKey
       email: apiKeyResult.email,
       headerName: apiKeyResult.headerName,
     },

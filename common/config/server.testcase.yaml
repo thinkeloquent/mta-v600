@@ -33,7 +33,7 @@ providers:
     base_url: "https://jira.internal.company.com"
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
-    health_endpoint: "/rest/api/2/myself"
+    health_endpoint: "/myself"
     api_auth_type: "basic"
     token_resolver: "static"
     overwrite_root_config:

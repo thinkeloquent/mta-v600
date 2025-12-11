@@ -33,7 +33,7 @@ class TestConfluenceApiToken:
                     "base_url": None,
                     "env_api_key": "CONFLUENCE_API_TOKEN",
                     "env_email": "CONFLUENCE_EMAIL",
-                    "health_endpoint": "/wiki/rest/api/user/current",
+                    "health_endpoint": "/user/current",
                     "api_auth_type": "basic_email_token",
                 }
             }

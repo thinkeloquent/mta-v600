@@ -70,12 +70,13 @@ providers:
     env_owner: "GITHUB_OWNER"
     env_repo: "GITHUB_REPO"
   jira:
-    base_url: null  # Set per-tenant or via JIRA_BASE_URL
+    # Base URL includes API path: JIRA_BASE_URL="https://domain.atlassian.net/rest/api/2"
+    # Full URL = base_url + health_endpoint
+    base_url: null
     env_base_url: "JIRA_BASE_URL"
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
-    health_endpoint: "/rest/api/2/myself"
-    # api_auth_type: "bearer_email_token"
+    health_endpoint: "/myself"
     api_auth_type: "basic_email_token"         # Jira Cloud uses Basic auth with email:token
     token_resolver: "static"
     # Default HTTP headers
@@ -86,14 +87,14 @@ providers:
     env_project_key: "JIRA_PROJECT_KEY"
     env_board_id: "JIRA_BOARD_ID"
   confluence:
-    base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL (includes /wiki)
-    env_base_url: "CONFLUENCE_BASE_URL"  # Environment variable for base URL
+    # Base URL includes API path: CONFLUENCE_BASE_URL="https://domain.atlassian.net/wiki/rest/api"
+    # Full URL = base_url + health_endpoint
+    base_url: null
+    env_base_url: "CONFLUENCE_BASE_URL"
     env_api_key: "CONFLUENCE_API_TOKEN"
     env_email: "CONFLUENCE_EMAIL"
-    health_endpoint: "/rest/api/user/current"  # base_url already has /wiki
-    # Confluence Cloud uses Basic auth with email:token format
-    # api_auth_type: "bearer_email_token"
-    api_auth_type: "basic_email_token"
+    health_endpoint: "/user/current"
+    api_auth_type: "basic_email_token"         # Confluence Cloud uses Basic auth with email:token
     token_resolver: "static"
     # Default HTTP headers for API requests
     headers:

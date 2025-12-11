@@ -29,7 +29,7 @@ class JiraApiToken(BaseApiToken):
         providers.jira.base_url: null (set via JIRA_BASE_URL)
         providers.jira.env_api_key: "JIRA_API_TOKEN"
         providers.jira.env_email: "JIRA_EMAIL"
-        providers.jira.health_endpoint: "/rest/api/2/myself"
+        providers.jira.health_endpoint: "/myself"
 
     Environment Variables:
         JIRA_API_TOKEN: API token from Atlassian account settings
@@ -47,11 +47,11 @@ class JiraApiToken(BaseApiToken):
         """
         Return the health check endpoint for Jira.
 
-        The /rest/api/2/myself endpoint returns the current user's information
+        The /myself endpoint returns the current user's information
         and is a reliable way to verify token validity.
         """
-        logger.debug("JiraApiToken.health_endpoint: Returning /rest/api/2/myself")
-        return "/rest/api/2/myself"
+        logger.debug("JiraApiToken.health_endpoint: Returning /myself")
+        return "/myself"
 
     def _get_email(self) -> Optional[str]:
         """

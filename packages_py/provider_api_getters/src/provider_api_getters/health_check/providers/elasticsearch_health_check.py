@@ -73,7 +73,7 @@ async def check_elasticsearch_health(config: dict = None) -> dict:
     if api_key_result.has_credentials and not api_key_result.is_placeholder:
         auth = AuthConfig(
             type=api_key_result.auth_type,
-            raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
+            raw_api_key=api_key_result.raw_api_key,  # Use raw unencoded token
             username=api_key_result.username,
             header_name=api_key_result.header_name,
         )

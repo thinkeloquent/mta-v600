@@ -33,12 +33,12 @@ class TestJiraApiToken:
 
     # Health endpoint tests
     def test_health_endpoint(self, jira_token, caplog):
-        """Test health_endpoint returns /rest/api/2/myself."""
+        """Test health_endpoint returns /myself."""
         with caplog.at_level(logging.DEBUG):
             endpoint = jira_token.health_endpoint
 
-        assert endpoint == "/rest/api/2/myself"
-        assert "Returning /rest/api/2/myself" in caplog.text
+        assert endpoint == "/myself"
+        assert "Returning /myself" in caplog.text
 
     # Default env var constants
     def test_default_constants(self):

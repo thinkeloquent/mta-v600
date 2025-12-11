@@ -3,8 +3,8 @@
  *
  * Jira Cloud uses Basic Authentication with email:api_token format.
  */
-import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
-import { AuthHeaderFactory } from './auth_header_factory.mjs';
+import { BaseApiToken, ApiKeyResult, maskSensitive } from "./base.mjs";
+import { AuthHeaderFactory } from "./auth_header_factory.mjs";
 
 // Simple logger
 const logger = {
@@ -14,17 +14,17 @@ const logger = {
 };
 
 // Default environment variable names
-const DEFAULT_EMAIL_ENV_VAR = 'JIRA_EMAIL';
-const DEFAULT_BASE_URL_ENV_VAR = 'JIRA_BASE_URL';
+const DEFAULT_EMAIL_ENV_VAR = "JIRA_EMAIL";
+const DEFAULT_BASE_URL_ENV_VAR = "JIRA_BASE_URL";
 
 export class JiraApiToken extends BaseApiToken {
   get providerName() {
-    return 'jira';
+    return "jira";
   }
 
   get healthEndpoint() {
-    logger.debug('JiraApiToken.healthEndpoint: Returning /rest/api/2/myself');
-    return '/rest/api/2/myself';
+    logger.debug("JiraApiToken.healthEndpoint: Returning /myself");
+    return "/myself";
   }
 
   /**
@@ -34,15 +34,14 @@ export class JiraApiToken extends BaseApiToken {
    * @returns {string|null}
    */
   _getEmail() {
-    logger.debug('JiraApiToken._getEmail: Getting email from environment');
+    logger.debug("JiraApiToken._getEmail: Getting email from environment");
 
     // Try base class lookup (from env_email in config)
     let email = this._lookupEmail();
 
     if (email) {
-      const maskedEmail = email.length > 3
-        ? `${email.substring(0, 3)}***@***`
-        : '***@***';
+      const maskedEmail =
+        email.length > 3 ? `${email.substring(0, 3)}***@***` : "***@***";
       logger.debug(
         `JiraApiToken._getEmail: Found email via base class lookup: '${maskedEmail}' (masked)`
       );
@@ -52,17 +51,16 @@ export class JiraApiToken extends BaseApiToken {
     // Fall back to default env var if not in config
     logger.debug(
       `JiraApiToken._getEmail: Base class lookup returned null, ` +
-      `trying default env var '${DEFAULT_EMAIL_ENV_VAR}'`
+        `trying default env var '${DEFAULT_EMAIL_ENV_VAR}'`
     );
     email = process.env[DEFAULT_EMAIL_ENV_VAR] || null;
 
     if (email) {
-      const maskedEmail = email.length > 3
-        ? `${email.substring(0, 3)}***@***`
-        : '***@***';
+      const maskedEmail =
+        email.length > 3 ? `${email.substring(0, 3)}***@***` : "***@***";
       logger.debug(
         `JiraApiToken._getEmail: Found email in default env var ` +
-        `'${DEFAULT_EMAIL_ENV_VAR}': '${maskedEmail}' (masked)`
+          `'${DEFAULT_EMAIL_ENV_VAR}': '${maskedEmail}' (masked)`
       );
     } else {
       logger.debug(
@@ -82,32 +80,42 @@ export class JiraApiToken extends BaseApiToken {
    * @returns {string}
    */
   _encodeAuth(email, token, authType) {
-    logger.debug(`JiraApiToken._encodeAuth: Encoding credentials via AuthHeaderFactory, authType='${authType}'`);
+    logger.debug(
+      `JiraApiToken._encodeAuth: Encoding credentials via AuthHeaderFactory, authType='${authType}'`
+    );
 
     if (!email || !token) {
       logger.error(
         `JiraApiToken._encodeAuth: Invalid inputs - ` +
-        `emailEmpty=${!email}, tokenEmpty=${!token}`
+          `emailEmpty=${!email}, tokenEmpty=${!token}`
       );
-      throw new Error('Both email and token are required for auth encoding');
+      throw new Error("Both email and token are required for auth encoding");
     }
 
     // Determine encoding based on auth type
     const bearerTypes = new Set([
-      'bearer', 'bearer_email_token', 'bearer_email_password',
-      'bearer_username_token', 'bearer_username_password',
-      'bearer_oauth', 'bearer_jwt',
+      "bearer",
+      "bearer_email_token",
+      "bearer_email_password",
+      "bearer_username_token",
+      "bearer_username_password",
+      "bearer_oauth",
+      "bearer_jwt",
     ]);
 
     let authHeader;
     if (bearerTypes.has(authType)) {
       // Bearer with base64-encoded credentials
       authHeader = AuthHeaderFactory.createBearerWithCredentials(email, token);
-      logger.debug(`JiraApiToken._encodeAuth: Using Bearer encoding for authType='${authType}'`);
+      logger.debug(
+        `JiraApiToken._encodeAuth: Using Bearer encoding for authType='${authType}'`
+      );
     } else {
       // Default to Basic auth (basic, basic_email_token, etc.)
       authHeader = AuthHeaderFactory.createBasic(email, token);
-      logger.debug(`JiraApiToken._encodeAuth: Using Basic encoding for authType='${authType}'`);
+      logger.debug(
+        `JiraApiToken._encodeAuth: Using Basic encoding for authType='${authType}'`
+      );
     }
 
     logger.debug(
@@ -118,19 +126,21 @@ export class JiraApiToken extends BaseApiToken {
   }
 
   getApiKey() {
-    logger.debug('JiraApiToken.getApiKey: Starting API key resolution');
+    logger.debug("JiraApiToken.getApiKey: Starting API key resolution");
 
     const apiToken = this._lookupEnvApiKey();
     const email = this._getEmail();
 
     // Get configured auth type from YAML config
     const configAuthType = this.getAuthType();
-    logger.debug(`JiraApiToken.getApiKey: Config auth type = '${configAuthType}'`);
+    logger.debug(
+      `JiraApiToken.getApiKey: Config auth type = '${configAuthType}'`
+    );
 
     // Log the state of both required credentials
     logger.debug(
       `JiraApiToken.getApiKey: Credential state - ` +
-      `hasToken=${apiToken !== null}, hasEmail=${email !== null}`
+        `hasToken=${apiToken !== null}, hasEmail=${email !== null}`
     );
 
     let result;
@@ -141,13 +151,12 @@ export class JiraApiToken extends BaseApiToken {
       );
       try {
         const encodedAuth = this._encodeAuth(email, apiToken, configAuthType);
-        const maskedEmail = email.length > 3
-          ? `${email.substring(0, 3)}***@***`
-          : '***@***';
+        const maskedEmail =
+          email.length > 3 ? `${email.substring(0, 3)}***@***` : "***@***";
         result = new ApiKeyResult({
           apiKey: encodedAuth,
           authType: configAuthType,
-          headerName: 'Authorization',
+          headerName: "Authorization",
           username: email,
           email: email,
           rawApiKey: apiToken,
@@ -156,11 +165,13 @@ export class JiraApiToken extends BaseApiToken {
           `JiraApiToken.getApiKey: Successfully created auth result for user '${maskedEmail}' with authType='${configAuthType}'`
         );
       } catch (e) {
-        logger.error(`JiraApiToken.getApiKey: Failed to encode credentials: ${e.message}`);
+        logger.error(
+          `JiraApiToken.getApiKey: Failed to encode credentials: ${e.message}`
+        );
         result = new ApiKeyResult({
           apiKey: null,
           authType: configAuthType,
-          headerName: 'Authorization',
+          headerName: "Authorization",
           username: email,
           email: email,
           rawApiKey: apiToken,
@@ -168,39 +179,39 @@ export class JiraApiToken extends BaseApiToken {
       }
     } else if (apiToken && !email) {
       logger.warn(
-        'JiraApiToken.getApiKey: API token found but email is missing. ' +
-        'Set JIRA_EMAIL environment variable.'
+        "JiraApiToken.getApiKey: API token found but email is missing. " +
+          "Set JIRA_EMAIL environment variable."
       );
       result = new ApiKeyResult({
         apiKey: null,
         authType: configAuthType,
-        headerName: 'Authorization',
+        headerName: "Authorization",
         username: null,
         email: null,
         rawApiKey: apiToken,
       });
     } else if (email && !apiToken) {
       logger.warn(
-        'JiraApiToken.getApiKey: Email found but API token is missing. ' +
-        'Set JIRA_API_TOKEN environment variable.'
+        "JiraApiToken.getApiKey: Email found but API token is missing. " +
+          "Set JIRA_API_TOKEN environment variable."
       );
       result = new ApiKeyResult({
         apiKey: null,
         authType: configAuthType,
-        headerName: 'Authorization',
+        headerName: "Authorization",
         username: email,
         email: email,
         rawApiKey: null,
       });
     } else {
       logger.warn(
-        'JiraApiToken.getApiKey: Neither email nor token found. ' +
-        'Set both JIRA_EMAIL and JIRA_API_TOKEN environment variables.'
+        "JiraApiToken.getApiKey: Neither email nor token found. " +
+          "Set both JIRA_EMAIL and JIRA_API_TOKEN environment variables."
       );
       result = new ApiKeyResult({
         apiKey: null,
         authType: configAuthType,
-        headerName: 'Authorization',
+        headerName: "Authorization",
         username: null,
         email: null,
         rawApiKey: null,
@@ -214,13 +225,15 @@ export class JiraApiToken extends BaseApiToken {
   }
 
   getBaseUrl() {
-    logger.debug('JiraApiToken.getBaseUrl: Getting base URL');
+    logger.debug("JiraApiToken.getBaseUrl: Getting base URL");
 
     // First try the standard config resolution
     const baseUrl = super.getBaseUrl();
 
     if (baseUrl) {
-      logger.debug(`JiraApiToken.getBaseUrl: Found base URL from config: '${baseUrl}'`);
+      logger.debug(
+        `JiraApiToken.getBaseUrl: Found base URL from config: '${baseUrl}'`
+      );
       return baseUrl;
     }
 
@@ -231,11 +244,13 @@ export class JiraApiToken extends BaseApiToken {
     const envBaseUrl = process.env[DEFAULT_BASE_URL_ENV_VAR] || null;
 
     if (envBaseUrl) {
-      logger.debug(`JiraApiToken.getBaseUrl: Found base URL from env var: '${envBaseUrl}'`);
+      logger.debug(
+        `JiraApiToken.getBaseUrl: Found base URL from env var: '${envBaseUrl}'`
+      );
     } else {
       logger.warn(
         `JiraApiToken.getBaseUrl: No base URL configured. ` +
-        `Set ${DEFAULT_BASE_URL_ENV_VAR} environment variable.`
+          `Set ${DEFAULT_BASE_URL_ENV_VAR} environment variable.`
       );
     }
 

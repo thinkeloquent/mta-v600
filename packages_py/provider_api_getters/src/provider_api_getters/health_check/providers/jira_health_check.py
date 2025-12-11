@@ -77,7 +77,7 @@ async def check_jira_health(config: dict = None) -> dict:
         base_url=base_url,
         auth=AuthConfig(
             type=api_key_result.auth_type,
-            raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
+            raw_api_key=api_key_result.raw_api_key,  # Use raw unencoded token
             email=api_key_result.email,
             header_name=api_key_result.header_name,
         ),
@@ -89,7 +89,7 @@ async def check_jira_health(config: dict = None) -> dict:
     )
 
     # Make health check request
-    health_endpoint = "/rest/api/2/myself"
+    health_endpoint = "/myself"
     print(f"\n[Request]")
     print(f"  GET {base_url}{health_endpoint}")
 

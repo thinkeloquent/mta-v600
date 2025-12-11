@@ -35,7 +35,7 @@ class ConfluenceApiToken(BaseApiToken):
         providers.confluence.base_url: null (set via CONFLUENCE_BASE_URL)
         providers.confluence.env_api_key: "CONFLUENCE_API_TOKEN"
         providers.confluence.env_email: "CONFLUENCE_EMAIL"
-        providers.confluence.health_endpoint: "/wiki/rest/api/user/current"
+        providers.confluence.health_endpoint: "/user/current"
 
     Environment Variables:
         CONFLUENCE_API_TOKEN: API token from Atlassian account settings

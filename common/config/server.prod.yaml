@@ -33,12 +33,12 @@ providers:
     base_url: null  # Set per-tenant or via JIRA_BASE_URL
     env_api_key: "JIRA_API_TOKEN"
     env_email: "JIRA_EMAIL"
-    health_endpoint: "/rest/api/2/myself"
+    health_endpoint: "/myself"
   confluence:
     base_url: null  # Set per-tenant or via CONFLUENCE_BASE_URL
     env_api_key: "CONFLUENCE_API_TOKEN"
     env_email: "CONFLUENCE_EMAIL"
-    health_endpoint: "/wiki/rest/api/user/current"
+    health_endpoint: "/user/current"
   # Database providers
   postgres:
     env_connection_url: "DATABASE_URL"
