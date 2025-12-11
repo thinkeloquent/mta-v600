@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Redis Health Check - Standalone debugging script
+Redis Health Check - Standalone debugging script with explicit 7-step pattern.
+
+Flow: YamlConfig -> ProviderConfig -> ConnectionConfig -> ClientConfig -> Connect -> Query -> Response
 
 Run directly: python -m provider_api_getters.health_check.providers.redis_health_check
 Or from project root: python packages_py/provider_api_getters/src/provider_api_getters/health_check/providers/redis_health_check.py
@@ -13,6 +15,7 @@ Uses:
 import asyncio
 import json
 import sys
+import time
 from pathlib import Path
 
 # ============================================================
@@ -29,114 +32,324 @@ else:
     from ...api_token import RedisApiToken
 
 
-def _mask_url(url: str) -> str:
-    """Mask password in Redis URL for safe logging."""
-    if not url:
+def print_section(title: str) -> None:
+    """Print a section header."""
+    print(f"\n{'=' * 60}")
+    print(f"Step: {title}")
+    print("=" * 60)
+
+
+def print_json(data: dict) -> None:
+    """Print JSON data with indentation."""
+    print(json.dumps(data, indent=2, default=str))
+
+
+def mask_sensitive(value: str, show_chars: int = 4) -> str:
+    """Mask sensitive values for logging."""
+    if not value:
         return "<none>"
-    import re
-    # Match redis[s]://[user:pass@]host:port/db - mask the password part
-    return re.sub(r'(://[^:]*:)[^@]+(@)', r'\1****\2', url)
+    if len(value) <= show_chars:
+        return "*" * len(value)
+    return value[:show_chars] + "***"
 
 
 async def check_redis_health(config: dict = None) -> dict:
     """
-    Check Redis connectivity using native redis-py client.
+    Redis Health Check - Explicit 7-step building block pattern.
+
+    Flow: YamlConfig -> ProviderConfig -> ConnectionConfig -> ClientConfig -> Connect -> Query -> Response
+
+    This pattern is identical across:
+    - FastAPI endpoints
+    - Fastify endpoints
+    - Standalone scripts (this file)
+    - CLI tools
+    - SDKs
 
     Args:
-        config: Configuration dict (if None, loads from static_config)
+        config: Configuration store (if None, uses staticConfig)
 
     Returns:
-        dict: Health check result with success status and data/error
+        dict: Health check result with success status, data/error, and configUsed metadata
     """
-    # Load config if not provided
+    # ============================================================
+    # Step 1: YAML CONFIG LOADING
+    # ============================================================
+    print_section("1. YAML CONFIG LOADING")
+
     if config is None:
         from static_config import config as static_config
         config = static_config
 
-    print("=" * 60)
-    print("REDIS HEALTH CHECK")
-    print("=" * 60)
+    config_source = config.get("_source", "unknown")
+    print(f"  Loaded from: {config_source}")
 
-    # Initialize provider from config
+    # ============================================================
+    # Step 2: PROVIDER CONFIG EXTRACTION
+    # ============================================================
+    print_section("2. PROVIDER CONFIG EXTRACTION")
+
     provider = RedisApiToken(config)
-    api_key_result = provider.get_api_key()
-    connection_url = provider.get_connection_url()
 
-    # Debug output
-    print(f"\n[Config]")
-    print(f"  Connection URL: {_mask_url(connection_url)}")
+    provider_config = {
+        "provider_name": provider.provider_name,
+    }
+    print_json(provider_config)
+
+    # ============================================================
+    # Step 3: CONNECTION CONFIG RESOLUTION
+    # ============================================================
+    print_section("3. CONNECTION CONFIG RESOLUTION")
+
+    connection_config = provider.get_connection_config()
+    api_key_result = provider.get_api_key()
+
+    conn_config = {
+        "host": connection_config.get("host", "localhost"),
+        "port": connection_config.get("port", 6379),
+        "database": connection_config.get("database", 0),
+        "username": connection_config.get("username"),
+        "has_password": bool(api_key_result.api_key),
+    }
+    print_json(conn_config)
+
     print(f"  Has credentials: {api_key_result.has_credentials}")
     print(f"  Is placeholder: {api_key_result.is_placeholder}")
 
-    if not connection_url:
-        print("\n[ERROR] No connection URL configured")
-        return {"success": False, "error": "No connection URL"}
+    if not api_key_result.has_credentials or api_key_result.is_placeholder:
+        return {
+            "success": False,
+            "error": "Missing or placeholder credentials",
+            "config_used": {
+                "provider": provider_config,
+                "connection": conn_config,
+            },
+        }
+
+    # ============================================================
+    # Step 4: CLIENT CONFIG (redis-py options)
+    # ============================================================
+    print_section("4. CLIENT CONFIG")
 
     # Try to import redis
     try:
         import redis.asyncio as aioredis
     except ImportError:
-        print("\n[ERROR] redis not installed")
+        print("  ERROR: redis not installed")
         print("  Install with: pip install redis")
-        return {"success": False, "error": "redis not installed"}
+        return {
+            "success": False,
+            "error": "redis not installed",
+            "config_used": {
+                "provider": provider_config,
+                "connection": conn_config,
+            },
+        }
 
-    print(f"\n[Connecting]")
-    print(f"  URL: {_mask_url(connection_url)}")
+    # Build redis-py client options
+    # IMPORTANT: socket_connect_timeout and retry_on_timeout control retry behavior
+    client_config = {
+        "host": conn_config["host"],
+        "port": conn_config["port"],
+        "db": conn_config["database"],
+        "username": conn_config["username"],
+        "password": api_key_result.api_key,
+        "socket_timeout": 10,           # 10 second socket timeout
+        "socket_connect_timeout": 10,   # 10 second connection timeout
+        "retry_on_timeout": False,      # Don't retry on timeout (avoids long waits)
+        "decode_responses": True,
+    }
+
+    print(f"  Host: {client_config['host']}")
+    print(f"  Port: {client_config['port']}")
+    print(f"  Database: {client_config['db']}")
+    print(f"  Username: {client_config['username'] or 'N/A'}")
+    print(f"  Password: {mask_sensitive(client_config['password'])}")
+    print(f"  Socket timeout: {client_config['socket_timeout']}s")
+    print(f"  Connect timeout: {client_config['socket_connect_timeout']}s")
+    print(f"  Retry on timeout: {client_config['retry_on_timeout']}")
+
+    # ============================================================
+    # Step 5: CONNECT
+    # ============================================================
+    print_section("5. CONNECT")
+
+    connection_url = f"redis://{conn_config['username'] + ':****@' if conn_config['username'] else ''}{conn_config['host']}:{conn_config['port']}/{conn_config['database']}"
+    print(f"  URL: {connection_url}")
+
+    client = aioredis.Redis(**client_config)
+
+    start_time = time.perf_counter()
 
     try:
-        # Create async Redis client from URL (handles TLS automatically via rediss://)
-        client = aioredis.from_url(
-            connection_url,
-            decode_responses=True,
-            socket_timeout=10,
-        )
+        print("  Connecting...")
+        # Test connection with PING
+        await client.ping()
+        print("  Connected!")
 
-        print(f"\n[Connection Established]")
+        # ============================================================
+        # Step 6: QUERY (PING and INFO)
+        # ============================================================
+        print_section("6. QUERY")
 
-        # Run health check - PING command
+        print("  Sending PING...")
         pong = await client.ping()
+        print(f"  PING response: {pong}")
+
+        print("  Getting server info...")
         info = await client.info("server")
+        version = info.get("redis_version", "unknown")
+        print(f"  Redis version: {version}")
 
-        print(f"\n[Query Results]")
-        print(f"  PING: {pong}")
-        print(f"  Redis version: {info.get('redis_version', 'N/A')}")
-        print(f"  OS: {info.get('os', 'N/A')}")
-        print(f"  Uptime (days): {info.get('uptime_in_days', 'N/A')}")
+        latency_ms = (time.perf_counter() - start_time) * 1000
 
-        # Close connection
-        await client.aclose()
+        # ============================================================
+        # Step 7: RESPONSE HANDLING
+        # ============================================================
+        print_section("7. RESPONSE HANDLING")
+
+        print(f"  Status: connected")
+        print(f"  Latency: {latency_ms:.2f}ms")
+
+        # Build config_used for debugging
+        config_used = {
+            "provider": provider_config,
+            "connection": conn_config,
+            "client_options": {
+                "socket_timeout": client_config["socket_timeout"],
+                "socket_connect_timeout": client_config["socket_connect_timeout"],
+                "retry_on_timeout": client_config["retry_on_timeout"],
+            },
+        }
 
         return {
             "success": True,
             "message": "Connected to Redis",
             "data": {
-                "connection_url": _mask_url(connection_url),
-                "redis_version": info.get("redis_version"),
-                "uptime_days": info.get("uptime_in_days"),
+                "host": conn_config["host"],
+                "port": conn_config["port"],
+                "database": conn_config["database"],
+                "version": version,
+                "pong": pong,
             },
+            "latency_ms": latency_ms,
+            "config_used": config_used,
         }
 
     except aioredis.AuthenticationError as e:
-        print(f"\n[Authentication Error]")
-        print(f"  {e}")
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        # ============================================================
+        # Step 7: RESPONSE HANDLING (Error)
+        # ============================================================
+        print_section("7. RESPONSE HANDLING (Error)")
+
+        print(f"  Error: {e}")
+        print(f"  Latency: {latency_ms:.2f}ms")
+        print("  [Authentication Error]")
+
+        config_used = {
+            "provider": provider_config,
+            "connection": conn_config,
+            "client_options": {
+                "socket_timeout": client_config["socket_timeout"],
+                "socket_connect_timeout": client_config["socket_connect_timeout"],
+            },
+        }
+
         return {
             "success": False,
-            "error": "Authentication failed",
+            "error": "Invalid password",
+            "latency_ms": latency_ms,
+            "config_used": config_used,
         }
+
     except aioredis.ConnectionError as e:
-        print(f"\n[Connection Error]")
-        print(f"  {e}")
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        # ============================================================
+        # Step 7: RESPONSE HANDLING (Error)
+        # ============================================================
+        print_section("7. RESPONSE HANDLING (Error)")
+
+        print(f"  Error: {e}")
+        print(f"  Latency: {latency_ms:.2f}ms")
+        print("  [Connection Error]")
+
+        config_used = {
+            "provider": provider_config,
+            "connection": conn_config,
+            "client_options": {
+                "socket_timeout": client_config["socket_timeout"],
+                "socket_connect_timeout": client_config["socket_connect_timeout"],
+            },
+        }
+
         return {
             "success": False,
-            "error": f"Cannot connect: {e}",
+            "error": f"Cannot connect to {conn_config['host']}:{conn_config['port']}",
+            "latency_ms": latency_ms,
+            "config_used": config_used,
         }
+
+    except aioredis.TimeoutError as e:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        # ============================================================
+        # Step 7: RESPONSE HANDLING (Error)
+        # ============================================================
+        print_section("7. RESPONSE HANDLING (Error)")
+
+        print(f"  Error: {e}")
+        print(f"  Latency: {latency_ms:.2f}ms")
+        print("  [Timeout Error]")
+
+        config_used = {
+            "provider": provider_config,
+            "connection": conn_config,
+            "client_options": {
+                "socket_timeout": client_config["socket_timeout"],
+                "socket_connect_timeout": client_config["socket_connect_timeout"],
+            },
+        }
+
+        return {
+            "success": False,
+            "error": f"Connection timed out after {client_config['socket_connect_timeout']}s",
+            "latency_ms": latency_ms,
+            "config_used": config_used,
+        }
+
     except Exception as e:
-        print(f"\n[Exception]")
-        print(f"  {type(e).__name__}: {e}")
+        latency_ms = (time.perf_counter() - start_time) * 1000
+
+        # ============================================================
+        # Step 7: RESPONSE HANDLING (Error)
+        # ============================================================
+        print_section("7. RESPONSE HANDLING (Error)")
+
+        print(f"  Error: {e}")
+        print(f"  Latency: {latency_ms:.2f}ms")
+        print(f"  [Exception: {type(e).__name__}]")
+
+        config_used = {
+            "provider": provider_config,
+            "connection": conn_config,
+            "client_options": {
+                "socket_timeout": client_config["socket_timeout"],
+                "socket_connect_timeout": client_config["socket_connect_timeout"],
+            },
+        }
+
         return {
             "success": False,
             "error": str(e),
+            "latency_ms": latency_ms,
+            "config_used": config_used,
         }
+
+    finally:
+        await client.aclose()
 
 
 if __name__ == "__main__":
@@ -148,8 +361,14 @@ if __name__ == "__main__":
     load_yaml_config(config_dir=str(CONFIG_DIR))
 
     print("\n")
+    print("=" * 60)
+    print("REDIS HEALTH CHECK - Explicit 7-Step Pattern")
+    print("=" * 60)
+    print("Flow: YamlConfig -> Provider -> Connection -> Client -> Connect -> Query -> Response")
+
     result = asyncio.run(check_redis_health(static_config))
+
     print("\n" + "=" * 60)
-    print("RESULT")
+    print("FINAL RESULT")
     print("=" * 60)
     print(json.dumps(result, indent=2, default=str))
