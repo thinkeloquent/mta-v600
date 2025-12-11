@@ -46,6 +46,7 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "picocolors": "^1.0.0",
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0"
   },

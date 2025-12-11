@@ -5,6 +5,7 @@ This module provides health check functionality for all configured providers
 with comprehensive logging for debugging and observability.
 """
 import asyncio
+import json
 import logging
 import time
 from dataclasses import dataclass, field
@@ -17,8 +18,163 @@ from ..api_token.redis import RedisApiToken
 from ..api_token.elasticsearch import ElasticsearchApiToken
 from ..fetch_client import ProviderClientFactory
 
+# Import console_print for pretty logging
+try:
+    from console_print import print_syntax_panel
+    HAS_CONSOLE_PRINT = True
+except ImportError:
+    HAS_CONSOLE_PRINT = False
+    print_syntax_panel = None
+
 # Configure logger
 logger = logging.getLogger("provider_api_getters.health_check")
+
+
+def _mask_sensitive_header(value: str, visible_chars: int = 10) -> str:
+    """Mask sensitive header value for safe logging, showing first N chars."""
+    if not value:
+        return "<empty>"
+    if len(value) <= visible_chars:
+        return "*" * len(value)
+    return value[:visible_chars] + "*" * (len(value) - visible_chars)
+
+
+def _format_headers_for_display(headers: Dict[str, str]) -> Dict[str, str]:
+    """Format headers for display, masking sensitive values."""
+    masked = {}
+    sensitive_headers = {"authorization", "x-api-key", "x-figma-token", "cookie", "set-cookie"}
+    for key, value in headers.items():
+        if key.lower() in sensitive_headers:
+            masked[key] = _mask_sensitive_header(value)
+        else:
+            masked[key] = value
+    return masked
+
+
+def _print_health_request_panel(
+    provider_name: str,
+    method: str,
+    url: str,
+    headers: Dict[str, str],
+    auth_type: Optional[str] = None,
+) -> None:
+    """Print a pretty panel for the health check request."""
+    if not HAS_CONSOLE_PRINT or print_syntax_panel is None:
+        return
+
+    masked_headers = _format_headers_for_display(headers)
+    request_info = {
+        "provider": provider_name,
+        "method": method,
+        "url": url,
+        "auth_type": auth_type or "unknown",
+        "headers": masked_headers,
+    }
+    print_syntax_panel(
+        json.dumps(request_info, indent=2),
+        lexer="json",
+        title=f"[bold cyan]Provider Health Request → {provider_name.upper()}[/bold cyan]",
+        theme="monokai",
+        expand=False,
+    )
+
+
+def _print_proxy_config_panel(
+    provider_name: str,
+    config_used: Dict[str, Any],
+) -> None:
+    """Print a pretty panel for the proxy/network configuration used."""
+    if not HAS_CONSOLE_PRINT or print_syntax_panel is None:
+        return
+
+    # Extract relevant proxy/network config
+    proxy_config = config_used.get("proxy", {})
+    client_config = config_used.get("client", {})
+
+    config_info = {
+        "provider": provider_name,
+        "base_url": config_used.get("base_url"),
+        "auth_type": config_used.get("auth_type"),
+        "proxy": {
+            "default_environment": proxy_config.get("default_environment"),
+            "proxy_urls": proxy_config.get("proxy_urls") or "(none)",
+            "ca_bundle": proxy_config.get("ca_bundle") or "(system default)",
+            "cert": proxy_config.get("cert") or "(none)",
+            "cert_verify": proxy_config.get("cert_verify"),
+            "agent_proxy": proxy_config.get("agent_proxy") or "(none)",
+        },
+        "client": {
+            "timeout_seconds": client_config.get("timeout_seconds"),
+            "max_connections": client_config.get("max_connections"),
+        },
+        "overrides": {
+            "has_overwrite_root_config": config_used.get("has_overwrite_root_config", False),
+            "has_runtime_override": config_used.get("has_runtime_override", False),
+        },
+    }
+
+    print_syntax_panel(
+        json.dumps(config_info, indent=2, default=str),
+        lexer="json",
+        title=f"[bold magenta]Provider Config → {provider_name.upper()}[/bold magenta]",
+        theme="monokai",
+        expand=False,
+    )
+
+
+def _print_health_response_panel(
+    provider_name: str,
+    status: str,
+    status_code: int,
+    latency_ms: float,
+    response_headers: Dict[str, str],
+    response_data: Any,
+    error: Optional[str] = None,
+) -> None:
+    """Print a pretty panel for the health check response."""
+    if not HAS_CONSOLE_PRINT or print_syntax_panel is None:
+        return
+
+    # Determine status style
+    if status == "connected":
+        status_style = "[bold green]"
+        title_color = "green"
+    elif status == "error":
+        status_style = "[bold red]"
+        title_color = "red"
+    else:
+        status_style = "[bold yellow]"
+        title_color = "yellow"
+
+    # Build response info
+    masked_resp_headers = _format_headers_for_display(response_headers)
+    response_info: Dict[str, Any] = {
+        "provider": provider_name,
+        "status": status,
+        "http_status": status_code,
+        "latency_ms": round(latency_ms, 2),
+        "headers": masked_resp_headers,
+    }
+
+    # Include response data (truncated if too large)
+    if response_data is not None:
+        if isinstance(response_data, dict):
+            response_info["data"] = response_data
+        elif isinstance(response_data, str) and len(response_data) > 500:
+            response_info["data"] = response_data[:500] + "..."
+        else:
+            response_info["data"] = response_data
+
+    if error:
+        response_info["error"] = error
+
+    print_syntax_panel(
+        json.dumps(response_info, indent=2, default=str),
+        lexer="json",
+        title=f"[bold {title_color}]Provider Health Response ← {provider_name.upper()} ({status.upper()})[/bold {title_color}]",
+        theme="monokai",
+        expand=False,
+    )
 
 
 @dataclass
@@ -429,13 +585,37 @@ class ProviderHealthChecker:
 
         try:
             health_endpoint = api_token.health_endpoint
+            full_url = f"{base_url}{health_endpoint}"
+
             logger.info(
                 f"ProviderHealthChecker._check_http: Sending GET request to "
-                f"{base_url}{health_endpoint} for provider '{provider_name}'"
+                f"{full_url} for provider '{provider_name}'"
             )
             logger.debug(
                 f"ProviderHealthChecker._check_http: Auth header = {api_key_result.header_name}, "
                 f"Auth type = {api_key_result.auth_type}"
+            )
+
+            # Print proxy/network config panel
+            if config_used:
+                _print_proxy_config_panel(provider_name, config_used)
+
+            # Build request headers for display (from config + auth)
+            request_headers: Dict[str, str] = {}
+            # Get provider config headers
+            headers_config = api_token.get_headers_config() or {}
+            request_headers.update(headers_config)
+            # Add auth header
+            if api_key_result.header_name and api_key_result.api_key:
+                request_headers[api_key_result.header_name] = api_key_result.api_key
+
+            # Print request panel
+            _print_health_request_panel(
+                provider_name=provider_name,
+                method="GET",
+                url=full_url,
+                headers=request_headers,
+                auth_type=api_key_result.auth_type,
             )
 
             response = await client.get(health_endpoint)
@@ -459,6 +639,17 @@ class ProviderHealthChecker:
                 logger.info(
                     f"ProviderHealthChecker._check_http: Provider '{provider_name}' connected - {message}"
                 )
+
+                # Print response panel (success)
+                _print_health_response_panel(
+                    provider_name=provider_name,
+                    status="connected",
+                    status_code=status,
+                    latency_ms=latency_ms,
+                    response_headers=response_headers,
+                    response_data=response_data,
+                )
+
                 return ProviderConnectionResponse(
                     provider=provider_name,
                     status="connected",
@@ -471,6 +662,18 @@ class ProviderHealthChecker:
                 logger.warning(
                     f"ProviderHealthChecker._check_http: Provider '{provider_name}' returned error - {error_msg}"
                 )
+
+                # Print response panel (error)
+                _print_health_response_panel(
+                    provider_name=provider_name,
+                    status="error",
+                    status_code=status,
+                    latency_ms=latency_ms,
+                    response_headers=response_headers,
+                    response_data=response_data,
+                    error=error_msg,
+                )
+
                 return ProviderConnectionResponse(
                     provider=provider_name,
                     status="error",
@@ -484,6 +687,18 @@ class ProviderHealthChecker:
             logger.exception(
                 f"ProviderHealthChecker._check_http: Exception during health check for '{provider_name}': {e}"
             )
+
+            # Print response panel (exception)
+            _print_health_response_panel(
+                provider_name=provider_name,
+                status="error",
+                status_code=0,
+                latency_ms=latency_ms,
+                response_headers={},
+                response_data=None,
+                error=str(e),
+            )
+
             return ProviderConnectionResponse(
                 provider=provider_name,
                 status="error",
