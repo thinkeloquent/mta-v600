@@ -11,7 +11,6 @@ Uses:
 """
 import asyncio
 import json
-import os
 from pathlib import Path
 
 # ============================================================
@@ -66,28 +65,26 @@ async def check_postgres_health(config: dict = None) -> dict:
         print("  Install with: pip install asyncpg")
         return {"success": False, "error": "asyncpg not installed"}
 
-    # Build connection parameters
+    # Build connection parameters from get_connection_config()
+    # This includes proper SSL handling for asyncpg
     host = connection_config.get("host", "localhost")
     port = connection_config.get("port", 5432)
     database = connection_config.get("database", "postgres")
     username = connection_config.get("username", "postgres")
-    password = api_key_result.api_key
+    password = connection_config.get("password") or api_key_result.raw_api_key
 
-    # Check if SSL should be disabled via environment variables
-    # SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
-    ssl_cert_verify = os.environ.get("SSL_CERT_VERIFY", "")
-    node_tls = os.environ.get("NODE_TLS_REJECT_UNAUTHORIZED", "")
-    disable_ssl = ssl_cert_verify == "0" or node_tls == "0"
+    # Get SSL config from get_connection_config()
+    # asyncpg requires explicit ssl parameter (doesn't parse ?sslmode= from URLs)
+    ssl_param = connection_config.get("ssl", False)
 
     print(f"\n[Connecting]")
     print(f"  postgresql://{username}:****@{host}:{port}/{database}")
-    print(f"  SSL disabled: {disable_ssl} (SSL_CERT_VERIFY={ssl_cert_verify!r}, NODE_TLS_REJECT_UNAUTHORIZED={node_tls!r})")
+    print(f"  SSL: {ssl_param}")
 
     try:
-        # Create connection
-        # When SSL is disabled, pass ssl=False to asyncpg
-        # Otherwise, let asyncpg use default SSL behavior
-        ssl_param = False if disable_ssl else None
+        # Create connection with explicit ssl parameter
+        # asyncpg accepts: False (no SSL), True (SSL with verification),
+        # ssl.SSLContext (SSL without verification), or "prefer"
         conn = await asyncpg.connect(
             host=host,
             port=port,
