@@ -249,6 +249,51 @@ class AuthHeaderFactory:
         )
 
     @staticmethod
+    def create_bearer_with_credentials(identifier: str, secret: str) -> AuthHeader:
+        """
+        Create a Bearer auth header with base64-encoded credentials (RFC 6750).
+
+        Used for:
+        - bearer_email_token (Confluence with Bearer instead of Basic)
+        - bearer_username_token
+        - bearer_email_password
+        - bearer_username_password
+
+        Args:
+            identifier: Username or email
+            secret: Password, token, or API key
+
+        Returns:
+            AuthHeader instance
+
+        Raises:
+            ValueError: If identifier or secret is missing
+        """
+        logger.debug(
+            f"AuthHeaderFactory.create_bearer_with_credentials: Creating Bearer auth with credentials "
+            f"identifier='{_mask_user(identifier)}', secret_length={len(secret) if secret else 0}"
+        )
+
+        if not identifier or not secret:
+            logger.error("AuthHeaderFactory.create_bearer_with_credentials: Missing identifier or secret")
+            raise ValueError("Bearer with credentials requires both identifier and secret")
+
+        # Base64 encode "identifier:secret"
+        credentials = f"{identifier}:{secret}"
+        encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+
+        logger.debug(
+            f"AuthHeaderFactory.create_bearer_with_credentials: Encoded credentials "
+            f"(input_length={len(credentials)}, encoded_length={len(encoded)})"
+        )
+
+        return AuthHeader(
+            header_name="Authorization",
+            header_value=f"Bearer {encoded}",
+            scheme=AuthScheme.BEARER_PAT,
+        )
+
+    @staticmethod
     def create_api_key(key: str, header_name: Optional[str] = None) -> AuthHeader:
         """
         Create an X-Api-Key header.

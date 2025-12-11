@@ -21,12 +21,31 @@ const logger = {
 };
 
 // Valid auth types for validation
+// Extended types match fetch-client config.mts and packages_py base.py
 const VALID_AUTH_TYPES = new Set([
-  'bearer',
-  'x-api-key',
+  // Basic auth family
   'basic',
+  'basic_email_token',
+  'basic_token',
+  'basic_email',
+  // Bearer auth family
+  'bearer',
+  'bearer_oauth',
+  'bearer_jwt',
+  'bearer_username_token',
+  'bearer_username_password',
+  'bearer_email_token',
+  'bearer_email_password',
+  // Custom/API Key
+  'x-api-key',
   'custom',
+  'custom_header',
+  // HMAC (stub)
+  'hmac',
+  // Connection string (for databases)
   'connection_string',
+  // EdgeGrid (Akamai)
+  'edgegrid',
 ]);
 
 /**

@@ -223,6 +223,42 @@ export class AuthHeaderFactory {
   }
 
   /**
+   * Create a Bearer auth header with base64-encoded credentials (RFC 6750).
+   *
+   * Used for:
+   * - bearer_email_token (Confluence with Bearer instead of Basic)
+   * - bearer_username_token
+   * - bearer_email_password
+   * - bearer_username_password
+   *
+   * @param {string} identifier - Username or email
+   * @param {string} secret - Password, token, or API key
+   * @returns {AuthHeader}
+   */
+  static createBearerWithCredentials(identifier, secret) {
+    logger.debug(
+      `AuthHeaderFactory.createBearerWithCredentials: Creating Bearer auth with credentials ` +
+      `identifier='${identifier}', secretLength=${secret?.length || 0}`
+    );
+
+    if (!identifier || !secret) {
+      logger.error('AuthHeaderFactory.createBearerWithCredentials: Missing identifier or secret');
+      throw new Error('Bearer with credentials requires both identifier and secret');
+    }
+
+    // Base64 encode "identifier:secret"
+    const credentials = `${identifier}:${secret}`;
+    const encoded = Buffer.from(credentials, 'utf-8').toString('base64');
+
+    logger.debug(
+      `AuthHeaderFactory.createBearerWithCredentials: Encoded credentials ` +
+      `(inputLength=${credentials.length}, encodedLength=${encoded.length})`
+    );
+
+    return new AuthHeader('Authorization', `Bearer ${encoded}`, AUTH_SCHEMES.BEARER_PAT);
+  }
+
+  /**
    * Create an X-Api-Key header.
    *
    * Common in simpler public APIs (Google Maps, Weather APIs).

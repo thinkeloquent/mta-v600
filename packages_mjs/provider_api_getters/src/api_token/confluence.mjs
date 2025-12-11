@@ -135,27 +135,48 @@ export class ConfluenceApiToken extends BaseApiToken {
   }
 
   /**
-   * Encode email and token for Basic Authentication.
+   * Encode email and token based on configured auth type.
    * Uses AuthHeaderFactory for RFC-compliant encoding.
    * @param {string} email
    * @param {string} token
+   * @param {string} authType - Auth type from config (basic_email_token, bearer_email_token, etc.)
    * @returns {string}
    */
-  _encodeBasicAuth(email, token) {
-    logger.debug('ConfluenceApiToken._encodeBasicAuth: Encoding credentials via AuthHeaderFactory');
+  _encodeAuth(email, token, authType) {
+    logger.debug(`ConfluenceApiToken._encodeAuth: Encoding credentials via AuthHeaderFactory, authType='${authType}'`);
 
     if (!email || !token) {
       logger.error(
-        `ConfluenceApiToken._encodeBasicAuth: Invalid inputs - ` +
+        `ConfluenceApiToken._encodeAuth: Invalid inputs - ` +
         `emailEmpty=${!email}, tokenEmpty=${!token}`
       );
-      throw new Error('Both email and token are required for Basic Auth encoding');
+      throw new Error('Both email and token are required for auth encoding');
     }
 
-    const authHeader = AuthHeaderFactory.createBasic(email, token);
+    // Determine encoding based on auth type
+    const bearerTypes = new Set([
+      'bearer', 'bearer_email_token', 'bearer_email_password',
+      'bearer_username_token', 'bearer_username_password',
+      'bearer_oauth', 'bearer_jwt',
+    ]);
+
+    let authHeader;
+    if (bearerTypes.has(authType)) {
+      // Bearer with base64-encoded credentials
+      authHeader = AuthHeaderFactory.createBearerWithCredentials(email, token);
+      logger.debug(
+        `ConfluenceApiToken._encodeAuth: Using Bearer encoding for authType='${authType}'`
+      );
+    } else {
+      // Default to Basic auth (basic, basic_email_token, etc.)
+      authHeader = AuthHeaderFactory.createBasic(email, token);
+      logger.debug(
+        `ConfluenceApiToken._encodeAuth: Using Basic encoding for authType='${authType}'`
+      );
+    }
 
     logger.debug(
-      `ConfluenceApiToken._encodeBasicAuth: Encoded credentials (length=${authHeader.headerValue.length})`
+      `ConfluenceApiToken._encodeAuth: Encoded credentials (length=${authHeader.headerValue.length})`
     );
 
     return authHeader.headerValue;
@@ -167,6 +188,10 @@ export class ConfluenceApiToken extends BaseApiToken {
     const apiToken = this._lookupEnvApiKey();
     const email = this._getEmail();
 
+    // Get configured auth type from YAML config
+    const configAuthType = this.getAuthType();
+    logger.debug(`ConfluenceApiToken.getApiKey: Config auth type = '${configAuthType}'`);
+
     // Log the state of both required credentials
     logger.debug(
       `ConfluenceApiToken.getApiKey: Credential state - ` +
@@ -177,29 +202,29 @@ export class ConfluenceApiToken extends BaseApiToken {
 
     if (apiToken && email) {
       logger.debug(
-        'ConfluenceApiToken.getApiKey: Both email and token found, encoding Basic Auth credentials'
+        `ConfluenceApiToken.getApiKey: Both email and token found, encoding with authType='${configAuthType}'`
       );
       try {
-        const encodedAuth = this._encodeBasicAuth(email, apiToken);
+        const encodedAuth = this._encodeAuth(email, apiToken, configAuthType);
         const maskedEmail = email.length > 3
           ? `${email.substring(0, 3)}***@***`
           : '***@***';
         result = new ApiKeyResult({
           apiKey: encodedAuth,
-          authType: 'basic',
+          authType: configAuthType,
           headerName: 'Authorization',
           username: email,
           email: email,
           rawApiKey: apiToken,
         });
         logger.debug(
-          `ConfluenceApiToken.getApiKey: Successfully created Basic Auth result for user '${maskedEmail}'`
+          `ConfluenceApiToken.getApiKey: Successfully created auth result for user '${maskedEmail}' with authType='${configAuthType}'`
         );
       } catch (e) {
         logger.error(`ConfluenceApiToken.getApiKey: Failed to encode credentials: ${e.message}`);
         result = new ApiKeyResult({
           apiKey: null,
-          authType: 'basic',
+          authType: configAuthType,
           headerName: 'Authorization',
           username: email,
           email: email,
@@ -213,7 +238,7 @@ export class ConfluenceApiToken extends BaseApiToken {
       );
       result = new ApiKeyResult({
         apiKey: null,
-        authType: 'basic',
+        authType: configAuthType,
         headerName: 'Authorization',
         username: null,
         email: null,
@@ -226,7 +251,7 @@ export class ConfluenceApiToken extends BaseApiToken {
       );
       result = new ApiKeyResult({
         apiKey: null,
-        authType: 'basic',
+        authType: configAuthType,
         headerName: 'Authorization',
         username: email,
         email: email,
@@ -239,7 +264,7 @@ export class ConfluenceApiToken extends BaseApiToken {
       );
       result = new ApiKeyResult({
         apiKey: null,
-        authType: 'basic',
+        authType: configAuthType,
         headerName: 'Authorization',
         username: null,
         email: null,
