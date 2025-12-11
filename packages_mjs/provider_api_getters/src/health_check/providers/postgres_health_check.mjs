@@ -71,8 +71,18 @@ export async function checkPostgresHealth() {
   const username = connectionConfig.username || 'postgres';
   const password = apiKeyResult.apiKey;
 
+  // Check if SSL should be disabled via environment variables
+  // SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
+  const sslCertVerify = process.env.SSL_CERT_VERIFY || '';
+  const nodeTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED || '';
+  const disableSsl = sslCertVerify === '0' || nodeTls === '0';
+
   console.log('\n[Connecting]');
   console.log(`  postgresql://${username}:****@${host}:${port}/${database}`);
+  console.log(`  SSL disabled: ${disableSsl} (SSL_CERT_VERIFY=${sslCertVerify || 'not set'}, NODE_TLS_REJECT_UNAUTHORIZED=${nodeTls || 'not set'})`);
+
+  // Configure SSL: false = no SSL, undefined = let pg decide
+  const sslConfig = disableSsl ? false : undefined;
 
   const client = new Client({
     host,
@@ -81,6 +91,7 @@ export async function checkPostgresHealth() {
     user: username,
     password,
     connectionTimeoutMillis: 10000,
+    ssl: sslConfig,
   });
 
   try {

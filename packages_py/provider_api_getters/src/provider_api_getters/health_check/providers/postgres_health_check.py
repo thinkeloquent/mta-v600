@@ -11,6 +11,7 @@ Uses:
 """
 import asyncio
 import json
+import os
 from pathlib import Path
 
 # ============================================================
@@ -71,11 +72,21 @@ async def check_postgres_health(config: dict = None) -> dict:
     username = connection_config.get("username", "postgres")
     password = api_key_result.api_key
 
+    # Check if SSL should be disabled via environment variables
+    # SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
+    ssl_cert_verify = os.environ.get("SSL_CERT_VERIFY", "")
+    node_tls = os.environ.get("NODE_TLS_REJECT_UNAUTHORIZED", "")
+    disable_ssl = ssl_cert_verify == "0" or node_tls == "0"
+
     print(f"\n[Connecting]")
     print(f"  postgresql://{username}:****@{host}:{port}/{database}")
+    print(f"  SSL disabled: {disable_ssl} (SSL_CERT_VERIFY={ssl_cert_verify!r}, NODE_TLS_REJECT_UNAUTHORIZED={node_tls!r})")
 
     try:
         # Create connection
+        # When SSL is disabled, pass ssl=False to asyncpg
+        # Otherwise, let asyncpg use default SSL behavior
+        ssl_param = False if disable_ssl else None
         conn = await asyncpg.connect(
             host=host,
             port=port,
@@ -83,6 +94,7 @@ async def check_postgres_health(config: dict = None) -> dict:
             user=username,
             password=password,
             timeout=10,
+            ssl=ssl_param,
         )
 
         print(f"\n[Connection Established]")

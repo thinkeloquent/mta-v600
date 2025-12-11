@@ -41,6 +41,12 @@ const { PostgresApiToken, ProviderHealthChecker } = await import(
 const provider = new PostgresApiToken(staticConfig);
 const apiKeyResult = provider.getApiKey();
 
+// Check if SSL should be disabled via environment variables
+// SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0 means disable SSL
+const sslCertVerify = process.env.SSL_CERT_VERIFY || '';
+const nodeTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED || '';
+const disableSsl = sslCertVerify === '0' || nodeTls === '0';
+
 const CONFIG = {
   // From provider_api_getters or environment
   POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
@@ -52,6 +58,10 @@ const CONFIG = {
 
   // Connection URL (alternative)
   DATABASE_URL: process.env.DATABASE_URL || '',
+
+  // SSL configuration
+  // When SSL_CERT_VERIFY=0 or NODE_TLS_REJECT_UNAUTHORIZED=0, disable SSL entirely
+  DISABLE_SSL: disableSsl,
 
   // Debug
   DEBUG: !['false', '0'].includes((process.env.DEBUG || '').toLowerCase()),
@@ -90,6 +100,10 @@ async function healthCheckPg() {
   const { Pool } = pg;
 
   console.log(`Connecting to: ${CONFIG.POSTGRES_HOST}:${CONFIG.POSTGRES_PORT}/${CONFIG.POSTGRES_DB}`);
+  console.log(`SSL disabled: ${CONFIG.DISABLE_SSL} (SSL_CERT_VERIFY=${sslCertVerify || 'not set'}, NODE_TLS_REJECT_UNAUTHORIZED=${nodeTls || 'not set'})`);
+
+  // Configure SSL: false = no SSL, undefined = let pg decide
+  const sslConfig = CONFIG.DISABLE_SSL ? false : undefined;
 
   const pool = new Pool({
     host: CONFIG.POSTGRES_HOST,
@@ -97,6 +111,7 @@ async function healthCheckPg() {
     user: CONFIG.POSTGRES_USER,
     password: CONFIG.POSTGRES_PASSWORD,
     database: CONFIG.POSTGRES_DB,
+    ssl: sslConfig,
   });
 
   try {
@@ -132,12 +147,16 @@ async function sampleOperations() {
 
   const { Pool } = pg;
 
+  // Configure SSL: false = no SSL, undefined = let pg decide
+  const sslConfig = CONFIG.DISABLE_SSL ? false : undefined;
+
   const pool = new Pool({
     host: CONFIG.POSTGRES_HOST,
     port: CONFIG.POSTGRES_PORT,
     user: CONFIG.POSTGRES_USER,
     password: CONFIG.POSTGRES_PASSWORD,
     database: CONFIG.POSTGRES_DB,
+    ssl: sslConfig,
   });
 
   try {
@@ -197,6 +216,7 @@ async function main() {
   console.log(`Database: ${CONFIG.POSTGRES_DB}`);
   console.log(`User: ${CONFIG.POSTGRES_USER}`);
   console.log(`Schema: ${CONFIG.POSTGRES_SCHEMA}`);
+  console.log(`SSL Disabled: ${CONFIG.DISABLE_SSL}`);
   console.log(`Debug: ${CONFIG.DEBUG}`);
 
   await healthCheck();
