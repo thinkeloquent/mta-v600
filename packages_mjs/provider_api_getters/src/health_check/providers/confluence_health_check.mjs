@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * Confluence Health Check - Standalone debugging script
+ * Confluence Health Check - Standalone debugging script with explicit 7-step pattern.
+ *
+ * Flow: YamlConfig -> ProviderConfig -> ProxyConfig -> AuthConfig -> RequestConfig -> Fetch -> Response
  *
  * Run directly: node confluence_health_check.mjs
  *
@@ -8,13 +10,13 @@
  * - static_config for YAML configuration
  * - ConfluenceApiToken for API token resolution
  * - fetch_client for HTTP requests with proxy/auth support
+ * - authResolver for consistent auth config (SINGLE SOURCE OF TRUTH)
  */
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const LOG_PREFIX = `[AUTH:${__filename}]`;
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..', '..');
 const CONFIG_DIR = path.join(PROJECT_ROOT, 'common', 'config');
 
@@ -30,135 +32,264 @@ await loadYamlConfig({ configDir: CONFIG_DIR });
 import { ConfluenceApiToken } from '../../api_token/index.mjs';
 
 // ============================================================
+// Auth resolver (SINGLE SOURCE OF TRUTH)
+// ============================================================
+import { resolveAuthConfig, getAuthTypeCategory } from '../../utils/authResolver.mjs';
+
+// ============================================================
 // Fetch client with dispatcher
 // ============================================================
 import { createClientWithDispatcher } from '@internal/fetch-client';
 
-export async function checkConfluenceHealth() {
+/**
+ * Print a section header.
+ * @param {string} title - Section title
+ */
+function printSection(title) {
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`Step: ${title}`);
   console.log('='.repeat(60));
-  console.log('CONFLUENCE HEALTH CHECK');
-  console.log('='.repeat(60));
+}
 
-  // Initialize provider from static config
-  const provider = new ConfluenceApiToken(staticConfig);
-  const apiKeyResult = provider.getApiKey();
-  const networkConfig = provider.getNetworkConfig();
-  const baseUrl = provider.getBaseUrl();
+/**
+ * Print JSON data with indentation.
+ * @param {Object} data - Data to print
+ */
+function printJson(data) {
+  console.log(JSON.stringify(data, null, 2));
+}
 
-  // Mask function for sensitive values
-  const maskValue = (val) => {
-    if (!val) return '<empty>';
-    if (val.length <= 10) return '*'.repeat(val.length);
-    return val.substring(0, 10) + '*'.repeat(val.length - 10);
+/**
+ * Mask sensitive values for logging.
+ * @param {string} value - Value to mask
+ * @param {number} showChars - Characters to show before masking
+ * @returns {string} Masked value
+ */
+function maskSensitive(value, showChars = 10) {
+  if (!value) return '<none>';
+  if (value.length <= showChars) return '*'.repeat(value.length);
+  return value.substring(0, showChars) + '***';
+}
+
+/**
+ * Confluence Health Check - Explicit 7-step building block pattern.
+ *
+ * Flow: YamlConfig -> ProviderConfig -> ProxyConfig -> AuthConfig -> RequestConfig -> Fetch -> Response
+ *
+ * This pattern is identical across:
+ * - FastAPI endpoints
+ * - Fastify endpoints
+ * - Standalone scripts (this file)
+ * - CLI tools
+ * - SDKs
+ *
+ * @param {Object} config - Configuration store (if null, uses staticConfig)
+ * @returns {Promise<Object>} Health check result with success status, data/error, and configUsed metadata
+ */
+export async function checkConfluenceHealth(config = null) {
+  // ============================================================
+  // Step 1: YAML CONFIG LOADING
+  // ============================================================
+  printSection('1. YAML CONFIG LOADING');
+
+  if (!config) {
+    config = staticConfig;
+  }
+
+  const configSource = config._source || 'unknown';
+  console.log(`  Loaded from: ${configSource}`);
+
+  // ============================================================
+  // Step 2: PROVIDER CONFIG EXTRACTION
+  // ============================================================
+  printSection('2. PROVIDER CONFIG EXTRACTION');
+
+  const provider = new ConfluenceApiToken(config);
+
+  const providerConfig = {
+    providerName: provider.providerName,
+    baseUrl: provider.getBaseUrl(),
+    healthEndpoint: provider.healthEndpoint,
+    authType: provider.getAuthType(),
+    headerName: provider.getHeaderName(),
   };
+  printJson(providerConfig);
 
-  // Debug output
-  console.log('\n[Config]');
-  console.log(`  Base URL: ${baseUrl}`);
+  // Early exit if missing critical config
+  if (!providerConfig.baseUrl) {
+    return {
+      success: false,
+      error: 'No base URL configured',
+      configUsed: { provider: providerConfig },
+    };
+  }
+
+  // ============================================================
+  // Step 3: PROXY CONFIG RESOLUTION
+  // ============================================================
+  printSection('3. PROXY CONFIG RESOLUTION');
+
+  const networkConfig = provider.getNetworkConfig();
+
+  const proxyConfig = {
+    proxyUrl: networkConfig.proxyUrl,
+    certVerify: networkConfig.certVerify,
+    caBundle: networkConfig.caBundle,
+    agentProxy: networkConfig.agentProxy,
+  };
+  printJson(proxyConfig);
+
+  // ============================================================
+  // Step 4: AUTH CONFIG RESOLUTION (uses shared utility)
+  // ============================================================
+  printSection('4. AUTH CONFIG RESOLUTION');
+
+  const apiKeyResult = provider.getApiKey();
+
   console.log(`  Has credentials: ${apiKeyResult.hasCredentials}`);
   console.log(`  Is placeholder: ${apiKeyResult.isPlaceholder}`);
-  console.log(`  Auth type: ${apiKeyResult.authType}`);
-  console.log(`  Header name: ${apiKeyResult.headerName}`);
   console.log(`  Email: ${apiKeyResult.email || 'N/A'}`);
 
-  // AUTH TRACING: Log the credential values from provider
-  console.log(`\n${LOG_PREFIX} [Provider Output]`);
-  console.log(`  apiKeyResult.apiKey (pre-encoded): ${maskValue(apiKeyResult.apiKey)}`);
-  console.log(`  apiKeyResult.rawApiKey (unencoded): ${maskValue(apiKeyResult.rawApiKey)}`);
-  console.log(`  apiKeyResult.email: ${apiKeyResult.email || 'N/A'}`);
-  console.log(`  apiKeyResult.authType: ${apiKeyResult.authType}`);
-  console.log('\n[Network Config]');
-  console.log(`  Proxy URL: ${networkConfig.proxyUrl || 'None'}`);
-  console.log(`  Cert verify: ${networkConfig.certVerify}`);
-
   if (!apiKeyResult.hasCredentials || apiKeyResult.isPlaceholder) {
-    console.log('\n[ERROR] Missing or placeholder credentials');
-    return { success: false, error: 'Missing credentials' };
+    return {
+      success: false,
+      error: 'Missing or placeholder credentials',
+      configUsed: {
+        provider: providerConfig,
+        proxy: proxyConfig,
+      },
+    };
   }
 
-  if (!baseUrl) {
-    console.log('\n[ERROR] No base URL configured');
-    return { success: false, error: 'No base URL' };
-  }
+  // Use shared auth resolver (SINGLE SOURCE OF TRUTH)
+  const authType = provider.getAuthType();
+  const headerName = provider.getHeaderName();
+  const authConfig = resolveAuthConfig(authType, apiKeyResult, headerName);
+  const authCategory = getAuthTypeCategory(authType);
 
-  // Create client with dispatcher (handles proxy, SSL, auth)
-  console.log('\n[Creating Client]');
-  console.log(`  Auth type: ${apiKeyResult.authType}`);
+  console.log(`  Provider authType: ${authType}`);
+  console.log(`  Auth category: ${authCategory}`);
+  console.log(`  Resolved to: type=${authConfig.type}`);
+  console.log(`  Header: ${authConfig.headerName || 'Authorization'}`);
+  console.log(`  API key: ${maskSensitive(authConfig.rawApiKey)}`);
 
-  // AUTH TRACING: Log what we're passing to fetch-client
-  console.log(`\n${LOG_PREFIX} [Passing to fetch-client]`);
-  console.log(`  auth.type: ${apiKeyResult.authType}`);
-  console.log(`  auth.rawApiKey: ${maskValue(apiKeyResult.rawApiKey)}`);
-  console.log(`  auth.email: ${apiKeyResult.email || 'N/A'}`);
-  console.log(`  auth.headerName: ${apiKeyResult.headerName}`);
+  // ============================================================
+  // Step 5: REQUEST CONFIG
+  // ============================================================
+  printSection('5. REQUEST CONFIG');
+
+  const requestConfig = {
+    method: 'GET',
+    url: `${providerConfig.baseUrl}${providerConfig.healthEndpoint}`,
+    headers: provider.getHeadersConfig() || {},
+    timeout: 30000,
+  };
+
+  // Confluence-specific headers
+  requestConfig.headers = {
+    ...requestConfig.headers,
+    'Accept': 'application/json',
+  };
+
+  printJson(requestConfig);
+
+  // ============================================================
+  // Step 6: FETCH (with all configs applied)
+  // ============================================================
+  printSection('6. FETCH');
+
+  console.log('  Creating client with dispatcher...');
+  console.log(`  Base URL: ${providerConfig.baseUrl}`);
+  console.log(`  Auth type: ${authConfig.type}`);
+  console.log(`  Proxy: ${proxyConfig.proxyUrl || 'None'}`);
+  console.log(`  Verify SSL: ${proxyConfig.certVerify}`);
 
   const client = await createClientWithDispatcher({
-    baseUrl,
-    auth: {
-      type: apiKeyResult.authType,
-      rawApiKey: apiKeyResult.rawApiKey,  // Use raw unencoded token, not pre-encoded apiKey
-      email: apiKeyResult.email,
-      headerName: apiKeyResult.headerName,
-    },
-    headers: {
-      'Accept': 'application/json',
-    },
-    verify: networkConfig.certVerify,
-    proxy: networkConfig.proxyUrl,
+    baseUrl: providerConfig.baseUrl,
+    auth: authConfig,
+    headers: requestConfig.headers,
+    verify: proxyConfig.certVerify,
+    proxy: proxyConfig.proxyUrl,
   });
 
-  // Make health check request - use provider's configured health endpoint
-  const healthEndpoint = provider.healthEndpoint;
-  console.log('\n[Request]');
-  console.log(`  GET ${baseUrl}${healthEndpoint}`);
+  const startTime = performance.now();
 
+  let response;
   try {
-    const response = await client.get(healthEndpoint);
-
-    console.log('\n[Response]');
-    console.log(`  Status: ${response.status}`);
-    console.log(`  OK: ${response.ok}`);
-
-    if (response.ok) {
-      const data = response.data;
-      const displayName = data.displayName || 'N/A';
-      const username = data.username || 'N/A';
-      const email = data.email || 'N/A';
-
-      console.log('\n[User Info]');
-      console.log(`  Display Name: ${displayName}`);
-      console.log(`  Username: ${username}`);
-      console.log(`  Email: ${email}`);
-
-      return {
-        success: true,
-        message: `Connected as ${displayName}`,
-        data: {
-          displayName,
-          username,
-          email,
-        },
-      };
-    } else {
-      console.log('\n[Error Response]');
-      console.log(JSON.stringify(response.data, null, 2));
-      return {
-        success: false,
-        statusCode: response.status,
-        error: response.data,
-      };
-    }
+    console.log('\n  Sending request...');
+    console.log(`  GET ${requestConfig.url}`);
+    response = await client.get(providerConfig.healthEndpoint);
   } finally {
     await client.close?.();
+  }
+
+  const latencyMs = performance.now() - startTime;
+
+  // ============================================================
+  // Step 7: RESPONSE HANDLING
+  // ============================================================
+  printSection('7. RESPONSE HANDLING');
+
+  console.log(`  Status: ${response.status}`);
+  console.log(`  OK: ${response.ok}`);
+  console.log(`  Latency: ${latencyMs.toFixed(2)}ms`);
+
+  // Build configUsed for debugging
+  const configUsed = {
+    provider: providerConfig,
+    proxy: proxyConfig,
+    authType,
+    authCategory,
+  };
+
+  if (response.ok) {
+    const data = response.data;
+    const displayName = data.displayName || 'N/A';
+    const username = data.username || 'N/A';
+    const email = data.email || 'N/A';
+
+    console.log('\n  [User Info]');
+    console.log(`  Display Name: ${displayName}`);
+    console.log(`  Username: ${username}`);
+    console.log(`  Email: ${email}`);
+
+    return {
+      success: true,
+      message: `Connected as ${displayName}`,
+      data: {
+        displayName,
+        username,
+        email,
+      },
+      latencyMs,
+      configUsed,
+    };
+  } else {
+    console.log('\n  [Error Response]');
+    printJson(response.data);
+
+    return {
+      success: false,
+      statusCode: response.status,
+      error: response.data,
+      latencyMs,
+      configUsed,
+    };
   }
 }
 
 // Run if executed directly
 if (process.argv[1] === __filename) {
   console.log('\n');
+  console.log('='.repeat(60));
+  console.log('CONFLUENCE HEALTH CHECK - Explicit 7-Step Pattern');
+  console.log('='.repeat(60));
+  console.log('Flow: YamlConfig -> Provider -> Proxy -> Auth -> Request -> Fetch -> Response');
+
   const result = await checkConfluenceHealth();
+
   console.log('\n' + '='.repeat(60));
-  console.log('RESULT');
+  console.log('FINAL RESULT');
   console.log('='.repeat(60));
   console.log(JSON.stringify(result, null, 2));
 }

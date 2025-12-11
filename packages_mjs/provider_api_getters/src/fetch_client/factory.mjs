@@ -16,6 +16,7 @@
 import pino from 'pino';
 import { getApiTokenClass } from '../api_token/index.mjs';
 import { deepMerge } from '../utils/deep_merge.mjs';
+import { resolveAuthConfig, getAuthTypeCategory } from '../utils/authResolver.mjs';
 
 // Create pino logger with pretty printing
 const logger = pino({
@@ -236,36 +237,12 @@ export class ProviderClientFactory {
       const authType = apiToken.getAuthType();
       const headerName = apiToken.getHeaderName();
 
-      // Determine auth handling strategy:
-      // - "custom", "x-api-key": Pass raw value as-is with custom header
-      // - "bearer", "bearer_*": Pass raw token, let fetch_client add "Bearer " prefix
-      // - "basic", "basic_*": Provider pre-computes "Basic base64(...)", pass as custom
-      const rawPassthroughTypes = new Set(['custom', 'x-api-key']);
-      const isBearerType = authType === 'bearer' || authType.startsWith('bearer_');
+      // Use shared auth resolver utility (SINGLE SOURCE OF TRUTH)
+      // See: utils/authResolver.mjs for auth type interpretation logic
+      auth = resolveAuthConfig(authType, apiKeyResult, headerName);
+      const authCategory = getAuthTypeCategory(authType);
 
-      if (rawPassthroughTypes.has(authType)) {
-        // User provides raw value - pass through as-is with specified header
-        auth = {
-          type: 'custom',
-          rawApiKey: apiKeyResult.rawApiKey || apiKeyResult.apiKey,
-          headerName: headerName,
-        };
-      } else if (isBearerType) {
-        // Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
-        auth = {
-          type: 'bearer',
-          rawApiKey: apiKeyResult.rawApiKey || apiKeyResult.apiKey,
-        };
-      } else {
-        // Provider pre-computed the full header value (e.g., "Basic base64(email:token)")
-        // Use type="custom" so fetch_client doesn't add another prefix
-        auth = {
-          type: 'custom',
-          rawApiKey: apiKeyResult.apiKey,
-          headerName: headerName,
-        };
-      }
-      logger.info({ providerName, authType, headerName }, 'Auth config created');
+      logger.info({ providerName, authType, authCategory, resolvedType: auth.type }, 'Auth config created');
     }
 
     // Build client options with merged config

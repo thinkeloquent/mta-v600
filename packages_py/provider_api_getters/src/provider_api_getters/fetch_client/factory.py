@@ -15,6 +15,7 @@ from console_print import console
 from ..api_token import get_api_token_class, BaseApiToken
 from ..api_token.base import mask_sensitive
 from ..utils.deep_merge import deep_merge
+from ..utils.auth_resolver import resolve_auth_config, get_auth_type_category
 
 # Configure logger
 logger = logging.getLogger("provider_api_getters.fetch_client")
@@ -343,63 +344,28 @@ class ProviderClientFactory:
             header_name = api_token.get_header_name()
             api_key_masked = mask_sensitive(api_key_result.api_key)
 
-            # Determine auth handling strategy:
-            # - "custom", "x-api-key": Pass raw value as-is with custom header
-            # - "bearer", "bearer_*": Pass raw token, let fetch_client add "Bearer " prefix
-            # - "basic", "basic_*": Provider pre-computes "Basic base64(...)", pass as custom
-            raw_passthrough_types = {"custom", "x-api-key"}
-            bearer_types = auth_type == "bearer" or auth_type.startswith("bearer_")
+            # Use shared auth resolver utility (SINGLE SOURCE OF TRUTH)
+            # See: utils/auth_resolver.py for auth type interpretation logic
+            auth_dict = resolve_auth_config(auth_type, api_key_result, header_name)
+            auth_category = get_auth_type_category(auth_type)
 
-            if auth_type in raw_passthrough_types:
-                # User provides raw value - pass through as-is with specified header
-                logger.debug(
-                    f"ProviderClientFactory.get_client: Using raw passthrough {auth_type} auth with "
-                    f"header={header_name}, key={api_key_masked}"
-                )
-                auth_config = AuthConfig(
-                    type="custom",
-                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
-                    header_name=header_name,
-                )
-                console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
-                    "type": "custom",
-                    "header_name": header_name,
-                    "raw_api_key": api_key_masked,
-                })
-            elif bearer_types:
-                # Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
-                logger.debug(
-                    f"ProviderClientFactory.get_client: Using bearer auth with "
-                    f"header={header_name}, key={api_key_masked}"
-                )
-                auth_config = AuthConfig(
-                    type="bearer",
-                    raw_api_key=api_key_result.raw_api_key or api_key_result.api_key,
-                )
-                console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
-                    "type": "bearer",
-                    "raw_api_key": api_key_masked,
-                })
-            else:
-                # Provider pre-computed the full header value (e.g., "Basic base64(email:token)")
-                # Use type="custom" so fetch_client doesn't add another prefix
-                logger.debug(
-                    f"ProviderClientFactory.get_client: Using computed {auth_type} auth with "
-                    f"header={header_name}, key={api_key_masked}"
-                )
-                auth_config = AuthConfig(
-                    type="custom",
-                    raw_api_key=api_key_result.api_key,
-                    header_name=header_name,
-                )
-                console.print(f"[bold green]AuthConfig ({auth_type}):[/bold green]", {
-                    "type": "custom",
-                    "header_name": header_name,
-                    "raw_api_key": api_key_masked,
-                })
+            logger.debug(
+                f"ProviderClientFactory.get_client: Using {auth_category} auth ({auth_type}) with "
+                f"resolved_type={auth_dict['type']}, header={auth_dict.get('header_name', 'Authorization')}, "
+                f"key={api_key_masked}"
+            )
+
+            auth_config = AuthConfig(**auth_dict)
+
+            console.print(f"[bold green]AuthConfig ({auth_type} → {auth_category}):[/bold green]", {
+                "type": auth_dict["type"],
+                "header_name": auth_dict.get("header_name", "Authorization"),
+                "raw_api_key": api_key_masked,
+            })
+
             logger.info(
                 f"ProviderClientFactory.get_client: Auth config created "
-                f"provider={provider_name}, auth_type={auth_type}, header_name={header_name}"
+                f"provider={provider_name}, auth_type={auth_type}, category={auth_category}"
             )
         else:
             logger.warning(f"ProviderClientFactory.get_client: No API key for '{provider_name}'")
