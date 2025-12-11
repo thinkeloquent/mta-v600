@@ -123,34 +123,43 @@ describe('ConfluenceApiToken', () => {
     });
   });
 
-  describe('_encodeBasicAuth', () => {
-    it('should encode credentials correctly', () => {
+  describe('_encodeAuth', () => {
+    it('should encode credentials with Basic auth for basic_email_token type', () => {
       const token = new ConfluenceApiToken();
-      const encoded = token._encodeBasicAuth('user@test.com', 'api-token');
+      const encoded = token._encodeAuth('user@test.com', 'api-token', 'basic_email_token');
 
       const expected = 'Basic ' + Buffer.from('user@test.com:api-token').toString('base64');
+      expect(encoded).toBe(expected);
+    });
+
+    it('should encode credentials with Bearer auth for bearer_email_token type', () => {
+      const token = new ConfluenceApiToken();
+      const encoded = token._encodeAuth('user@test.com', 'api-token', 'bearer_email_token');
+
+      // Bearer with base64-encoded credentials
+      const expected = 'Bearer ' + Buffer.from('user@test.com:api-token').toString('base64');
       expect(encoded).toBe(expected);
     });
 
     it('should throw when email is null', () => {
       const token = new ConfluenceApiToken();
 
-      expect(() => token._encodeBasicAuth(null, 'token')).toThrow(
-        'Both email and token are required'
+      expect(() => token._encodeAuth(null, 'token', 'basic_email_token')).toThrow(
+        'Both email and token are required for auth encoding'
       );
     });
 
     it('should throw when token is null', () => {
       const token = new ConfluenceApiToken();
 
-      expect(() => token._encodeBasicAuth('email@test.com', null)).toThrow(
-        'Both email and token are required'
+      expect(() => token._encodeAuth('email@test.com', null, 'basic_email_token')).toThrow(
+        'Both email and token are required for auth encoding'
       );
     });
 
     it('should log encoded length', () => {
       const token = new ConfluenceApiToken();
-      token._encodeBasicAuth('user@test.com', 'token');
+      token._encodeAuth('user@test.com', 'token', 'basic_email_token');
 
       expect(consoleSpy.debug).toHaveBeenCalledWith(
         expect.stringContaining('length=')
@@ -163,7 +172,8 @@ describe('ConfluenceApiToken', () => {
       const mockStore = createMockStore({
         confluence: {
           env_api_key: 'CONFLUENCE_API_TOKEN',
-          env_email: 'CONFLUENCE_EMAIL'
+          env_email: 'CONFLUENCE_EMAIL',
+          api_auth_type: 'basic_email_token'
         }
       });
       const token = new ConfluenceApiToken(mockStore);
@@ -173,7 +183,7 @@ describe('ConfluenceApiToken', () => {
       const result = token.getApiKey();
 
       expect(result.hasCredentials).toBe(true);
-      expect(result.authType).toBe('basic');
+      expect(result.authType).toBe('basic_email_token');
       expect(result.headerName).toBe('Authorization');
       expect(result.username).toBe('user@test.com');
       expect(result.apiKey).toContain('Basic ');
@@ -236,9 +246,9 @@ describe('ConfluenceApiToken', () => {
       process.env.CONFLUENCE_EMAIL = 'user@test.com';
       process.env.CONFLUENCE_API_TOKEN = 'token';
 
-      // Mock _encodeBasicAuth to throw
-      const originalEncode = token._encodeBasicAuth.bind(token);
-      token._encodeBasicAuth = () => { throw new Error('Encoding failed'); };
+      // Mock _encodeAuth to throw
+      const originalEncode = token._encodeAuth.bind(token);
+      token._encodeAuth = () => { throw new Error('Encoding failed'); };
 
       const result = token.getApiKey();
 
@@ -248,7 +258,7 @@ describe('ConfluenceApiToken', () => {
         expect.stringContaining('Failed to encode credentials')
       );
 
-      token._encodeBasicAuth = originalEncode;
+      token._encodeAuth = originalEncode;
     });
   });
 

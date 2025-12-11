@@ -568,6 +568,145 @@ class TestAuthHeaderFactoryCreateBearer:
 
 
 # =============================================================================
+# Test AuthHeaderFactory.create_bearer_with_credentials() - Boundary & Error Handling
+# =============================================================================
+
+class TestAuthHeaderFactoryCreateBearerWithCredentials:
+    """
+    Tests for AuthHeaderFactory.create_bearer_with_credentials() method.
+
+    This method produces Bearer-prefixed tokens with base64-encoded credentials,
+    used for auth types like bearer_email_token, bearer_username_password, etc.
+
+    Coverage:
+    - Valid credential combinations
+    - Bearer vs Basic distinction (critical)
+    - Error handling (missing parameters)
+    - Log verification (observability)
+    """
+
+    def test_create_bearer_with_credentials_valid(self, caplog):
+        """Test create_bearer_with_credentials with valid identifier and secret."""
+        with caplog.at_level(logging.DEBUG):
+            header = AuthHeaderFactory.create_bearer_with_credentials(
+                "user@example.com", "token123"
+            )
+
+        assert header.header_name == "Authorization"
+        assert header.header_value.startswith("Bearer ")
+        # Critical: Must NOT start with Basic
+        assert not header.header_value.startswith("Basic ")
+        assert header.scheme == AuthScheme.BEARER_PAT
+        assert "create_bearer_with_credentials" in caplog.text
+
+    def test_create_bearer_with_credentials_email_token_format(self):
+        """Test create_bearer_with_credentials correctly encodes email:token format."""
+        header = AuthHeaderFactory.create_bearer_with_credentials(
+            "user@company.com", "api-token-12345"
+        )
+
+        # Extract encoded part and verify
+        encoded_part = header.header_value.replace("Bearer ", "")
+        decoded = base64.b64decode(encoded_part).decode("utf-8")
+        assert decoded == "user@company.com:api-token-12345"
+
+    def test_create_bearer_with_credentials_username_password_format(self):
+        """Test create_bearer_with_credentials correctly encodes username:password format."""
+        header = AuthHeaderFactory.create_bearer_with_credentials("testuser", "testpass")
+
+        encoded_part = header.header_value.replace("Bearer ", "")
+        decoded = base64.b64decode(encoded_part).decode("utf-8")
+        assert decoded == "testuser:testpass"
+
+    def test_create_bearer_with_credentials_special_characters(self):
+        """Test create_bearer_with_credentials with special characters in credentials."""
+        header = AuthHeaderFactory.create_bearer_with_credentials(
+            "user:with:colons", "pass@with!special#chars"
+        )
+
+        encoded_part = header.header_value.replace("Bearer ", "")
+        decoded = base64.b64decode(encoded_part).decode("utf-8")
+        assert decoded == "user:with:colons:pass@with!special#chars"
+
+    def test_create_bearer_with_credentials_unicode(self):
+        """Test create_bearer_with_credentials with unicode characters."""
+        header = AuthHeaderFactory.create_bearer_with_credentials("用户", "密码")
+
+        encoded_part = header.header_value.replace("Bearer ", "")
+        decoded = base64.b64decode(encoded_part).decode("utf-8")
+        assert decoded == "用户:密码"
+
+    def test_create_bearer_with_credentials_empty_identifier_raises_error(self, caplog):
+        """Test create_bearer_with_credentials with empty identifier raises ValueError."""
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(ValueError) as exc_info:
+                AuthHeaderFactory.create_bearer_with_credentials("", "secret")
+
+        assert "requires both identifier and secret" in str(exc_info.value)
+        assert "Missing identifier or secret" in caplog.text
+
+    def test_create_bearer_with_credentials_empty_secret_raises_error(self):
+        """Test create_bearer_with_credentials with empty secret raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            AuthHeaderFactory.create_bearer_with_credentials("user", "")
+
+        assert "requires both identifier and secret" in str(exc_info.value)
+
+    def test_create_bearer_with_credentials_none_identifier_raises_error(self):
+        """Test create_bearer_with_credentials with None identifier raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            AuthHeaderFactory.create_bearer_with_credentials(None, "secret")  # type: ignore
+
+        assert "requires both identifier and secret" in str(exc_info.value)
+
+    def test_create_bearer_with_credentials_none_secret_raises_error(self):
+        """Test create_bearer_with_credentials with None secret raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            AuthHeaderFactory.create_bearer_with_credentials("user", None)  # type: ignore
+
+        assert "requires both identifier and secret" in str(exc_info.value)
+
+    def test_create_bearer_with_credentials_both_empty_raises_error(self):
+        """Test create_bearer_with_credentials with both empty raises ValueError."""
+        with pytest.raises(ValueError):
+            AuthHeaderFactory.create_bearer_with_credentials("", "")
+
+    def test_create_bearer_with_credentials_logs_encoding_details(self, caplog):
+        """Test create_bearer_with_credentials logs encoding details (observability)."""
+        with caplog.at_level(logging.DEBUG):
+            AuthHeaderFactory.create_bearer_with_credentials("testuser", "testpass")
+
+        assert "Encoded credentials" in caplog.text
+        assert "input_length=" in caplog.text
+        assert "encoded_length=" in caplog.text
+
+    def test_bearer_vs_basic_distinction(self):
+        """Test that Bearer and Basic produce different prefixes for same credentials.
+
+        This is the critical distinction: bearer_email_token should produce
+        'Bearer <base64>' NOT 'Basic <base64>'.
+        """
+        identifier = "user@example.com"
+        secret = "token123"
+
+        bearer_header = AuthHeaderFactory.create_bearer_with_credentials(identifier, secret)
+        basic_header = AuthHeaderFactory.create_basic(identifier, secret)
+
+        # Both encode the same credentials
+        bearer_decoded = base64.b64decode(
+            bearer_header.header_value.replace("Bearer ", "")
+        ).decode("utf-8")
+        basic_decoded = base64.b64decode(
+            basic_header.header_value.replace("Basic ", "")
+        ).decode("utf-8")
+        assert bearer_decoded == basic_decoded
+
+        # But prefixes are different
+        assert bearer_header.header_value.startswith("Bearer ")
+        assert basic_header.header_value.startswith("Basic ")
+
+
+# =============================================================================
 # Test AuthHeaderFactory.create_api_key() - Boundary & Branch Coverage
 # =============================================================================
 
@@ -1065,16 +1204,18 @@ class TestAuthHeaderFactoryFromApiKeyResult:
     def test_from_api_key_result_basic_type_without_username_falls_back_to_bearer(
         self, mock_api_key_result, caplog
     ):
-        """Test from_api_key_result basic without username falls back to Bearer."""
+        """Test from_api_key_result basic without username/email falls back to Bearer."""
         mock_api_key_result.auth_type = "basic"
         mock_api_key_result.api_key = "api-token"
         mock_api_key_result.username = None
+        mock_api_key_result.email = None  # Must also set email=None to avoid MagicMock truthy value
+        mock_api_key_result.raw_api_key = None  # Set raw_api_key to avoid MagicMock in fallback
 
         with caplog.at_level(logging.WARNING):
             header = AuthHeaderFactory.from_api_key_result(mock_api_key_result)
 
         assert header.header_value == "Bearer api-token"
-        assert "Basic auth without username" in caplog.text
+        assert "auth without" in caplog.text
         assert "falling back to Bearer" in caplog.text
 
     def test_from_api_key_result_x_api_key_type(self, mock_api_key_result):

@@ -34,6 +34,7 @@ class TestConfluenceApiToken:
                     "env_api_key": "CONFLUENCE_API_TOKEN",
                     "env_email": "CONFLUENCE_EMAIL",
                     "health_endpoint": "/wiki/rest/api/user/current",
+                    "api_auth_type": "basic_email_token",
                 }
             }
         }
@@ -91,30 +92,39 @@ class TestConfluenceApiToken:
         # Log says "not set, trying fallback" or "Neither ... is set"
         assert "'CONFLUENCE_EMAIL' not set" in caplog.text or "Neither" in caplog.text
 
-    # _encode_basic_auth tests
-    def test_encode_basic_auth_valid(self, confluence_token, caplog):
-        """Test _encode_basic_auth with valid inputs."""
+    # _encode_auth tests
+    def test_encode_auth_valid_basic(self, confluence_token, caplog):
+        """Test _encode_auth with valid inputs for basic_email_token."""
         with caplog.at_level(logging.DEBUG):
-            result = confluence_token._encode_basic_auth("wiki@test.com", "api_token")
+            result = confluence_token._encode_auth("wiki@test.com", "api_token", "basic_email_token")
 
         expected = base64.b64encode(b"wiki@test.com:api_token").decode("utf-8")
         assert result == f"Basic {expected}"
         assert "Encoding credentials" in caplog.text
 
-    def test_encode_basic_auth_empty_email_raises(self, confluence_token, caplog):
-        """Test _encode_basic_auth with empty email raises."""
+    def test_encode_auth_valid_bearer(self, confluence_token, caplog):
+        """Test _encode_auth with valid inputs for bearer_email_token."""
+        with caplog.at_level(logging.DEBUG):
+            result = confluence_token._encode_auth("wiki@test.com", "api_token", "bearer_email_token")
+
+        expected = base64.b64encode(b"wiki@test.com:api_token").decode("utf-8")
+        assert result == f"Bearer {expected}"
+        assert "Encoding credentials" in caplog.text
+
+    def test_encode_auth_empty_email_raises(self, confluence_token, caplog):
+        """Test _encode_auth with empty email raises."""
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError) as exc_info:
-                confluence_token._encode_basic_auth("", "token")
+                confluence_token._encode_auth("", "token", "basic_email_token")
 
         assert "Both email and token are required" in str(exc_info.value)
         assert "email_empty=True" in caplog.text
 
-    def test_encode_basic_auth_empty_token_raises(self, confluence_token, caplog):
-        """Test _encode_basic_auth with empty token raises."""
+    def test_encode_auth_empty_token_raises(self, confluence_token, caplog):
+        """Test _encode_auth with empty token raises."""
         with caplog.at_level(logging.ERROR):
             with pytest.raises(ValueError):
-                confluence_token._encode_basic_auth("email@test.com", "")
+                confluence_token._encode_auth("email@test.com", "", "basic_email_token")
 
         assert "token_empty=True" in caplog.text
 
@@ -132,14 +142,14 @@ class TestConfluenceApiToken:
 
         assert result.api_key is not None
         assert result.api_key.startswith("Basic ")
-        assert result.auth_type == "basic"
+        assert result.auth_type == "basic_email_token"
         assert result.header_name == "Authorization"
         assert result.username == "wiki@company.com"
         assert result.has_credentials is True
 
         assert "has_token=True, has_email=True" in caplog.text
         assert "Both email and token found" in caplog.text
-        assert "Successfully created Basic Auth result" in caplog.text
+        assert "Successfully created auth result" in caplog.text
 
     def test_get_api_key_token_only(self, confluence_token, clean_env, caplog):
         """Branch 2: Token present but email missing."""
@@ -255,7 +265,7 @@ class TestConfluenceApiTokenEdgeCases:
             CONFLUENCE_EMAIL="user@test.com"
         )
 
-        config = {"providers": {"confluence": {"env_api_key": "CONFLUENCE_API_TOKEN"}}}
+        config = {"providers": {"confluence": {"env_api_key": "CONFLUENCE_API_TOKEN", "api_auth_type": "basic_email_token"}}}
         mock_store = MockConfigStore(config)
         confluence_token = ConfluenceApiToken(config_store=mock_store)
 
@@ -273,7 +283,7 @@ class TestConfluenceApiTokenEdgeCases:
             CONFLUENCE_EMAIL="user@test.com"
         )
 
-        config = {"providers": {"confluence": {"env_api_key": "CONFLUENCE_API_TOKEN"}}}
+        config = {"providers": {"confluence": {"env_api_key": "CONFLUENCE_API_TOKEN", "api_auth_type": "basic_email_token"}}}
         mock_store = MockConfigStore(config)
         confluence_token = ConfluenceApiToken(config_store=mock_store)
 

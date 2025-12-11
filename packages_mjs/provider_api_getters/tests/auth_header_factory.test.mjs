@@ -547,6 +547,146 @@ describe('AuthHeaderFactory.createBearer()', () => {
 });
 
 // =============================================================================
+// Test AuthHeaderFactory.createBearerWithCredentials() - Boundary & Error Handling
+// =============================================================================
+
+describe('AuthHeaderFactory.createBearerWithCredentials()', () => {
+  let consoleSpy;
+
+  beforeEach(() => {
+    consoleSpy = setupConsoleSpy();
+  });
+
+  afterEach(() => {
+    restoreConsoleSpy(consoleSpy);
+  });
+
+  describe('Valid credentials', () => {
+    it('should create Bearer header with base64-encoded credentials', () => {
+      const header = AuthHeaderFactory.createBearerWithCredentials('user@example.com', 'token123');
+
+      expect(header.headerName).toBe('Authorization');
+      expect(header.headerValue).toMatch(/^Bearer /);
+      // Verify NOT Basic prefix (critical distinction)
+      expect(header.headerValue).not.toMatch(/^Basic /);
+      expect(header.scheme).toBe(AUTH_SCHEMES.BEARER_PAT);
+    });
+
+    it('should correctly encode email:token format', () => {
+      const header = AuthHeaderFactory.createBearerWithCredentials(
+        'user@company.com',
+        'api-token-12345'
+      );
+
+      // Extract encoded part and verify
+      const encodedPart = header.headerValue.replace('Bearer ', '');
+      const decoded = Buffer.from(encodedPart, 'base64').toString('utf-8');
+      expect(decoded).toBe('user@company.com:api-token-12345');
+    });
+
+    it('should correctly encode username:password format', () => {
+      const header = AuthHeaderFactory.createBearerWithCredentials('testuser', 'testpass');
+
+      const encodedPart = header.headerValue.replace('Bearer ', '');
+      const decoded = Buffer.from(encodedPart, 'base64').toString('utf-8');
+      expect(decoded).toBe('testuser:testpass');
+    });
+
+    it('should handle special characters in credentials', () => {
+      const header = AuthHeaderFactory.createBearerWithCredentials(
+        'user:with:colons',
+        'pass@with!special#chars'
+      );
+
+      const encodedPart = header.headerValue.replace('Bearer ', '');
+      const decoded = Buffer.from(encodedPart, 'base64').toString('utf-8');
+      expect(decoded).toBe('user:with:colons:pass@with!special#chars');
+    });
+
+    it('should handle unicode credentials', () => {
+      const header = AuthHeaderFactory.createBearerWithCredentials('用户', '密码');
+
+      const encodedPart = header.headerValue.replace('Bearer ', '');
+      const decoded = Buffer.from(encodedPart, 'base64').toString('utf-8');
+      expect(decoded).toBe('用户:密码');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should throw Error for empty identifier', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials('', 'secret')).toThrow(
+        'Bearer with credentials requires both identifier and secret'
+      );
+      expectLogContains(consoleSpy.error, 'Missing identifier or secret');
+    });
+
+    it('should throw Error for empty secret', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials('user', '')).toThrow(
+        'Bearer with credentials requires both identifier and secret'
+      );
+    });
+
+    it('should throw Error for null identifier', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials(null, 'secret')).toThrow(
+        'Bearer with credentials requires both identifier and secret'
+      );
+    });
+
+    it('should throw Error for null secret', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials('user', null)).toThrow(
+        'Bearer with credentials requires both identifier and secret'
+      );
+    });
+
+    it('should throw Error for undefined identifier', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials(undefined, 'secret')).toThrow(
+        'Bearer with credentials requires both identifier and secret'
+      );
+    });
+
+    it('should throw Error for both empty', () => {
+      expect(() => AuthHeaderFactory.createBearerWithCredentials('', '')).toThrow();
+    });
+  });
+
+  describe('Log verification', () => {
+    it('should log encoding details', () => {
+      AuthHeaderFactory.createBearerWithCredentials('testuser', 'testpass');
+
+      expectLogContains(consoleSpy.debug, 'createBearerWithCredentials');
+      expectLogContains(consoleSpy.debug, 'Encoded credentials');
+      expectLogContains(consoleSpy.debug, 'inputLength=');
+      expectLogContains(consoleSpy.debug, 'encodedLength=');
+    });
+  });
+
+  describe('Bearer vs Basic distinction', () => {
+    it('should produce Bearer prefix, not Basic, even with same credentials', () => {
+      const identifier = 'user@example.com';
+      const secret = 'token123';
+
+      const bearerHeader = AuthHeaderFactory.createBearerWithCredentials(identifier, secret);
+      const basicHeader = AuthHeaderFactory.createBasic(identifier, secret);
+
+      // Both encode the same credentials
+      const bearerDecoded = Buffer.from(
+        bearerHeader.headerValue.replace('Bearer ', ''),
+        'base64'
+      ).toString('utf-8');
+      const basicDecoded = Buffer.from(
+        basicHeader.headerValue.replace('Basic ', ''),
+        'base64'
+      ).toString('utf-8');
+      expect(bearerDecoded).toBe(basicDecoded);
+
+      // But prefixes are different
+      expect(bearerHeader.headerValue).toMatch(/^Bearer /);
+      expect(basicHeader.headerValue).toMatch(/^Basic /);
+    });
+  });
+});
+
+// =============================================================================
 // Test AuthHeaderFactory.createApiKey() - Boundary & Branch Coverage
 // =============================================================================
 
