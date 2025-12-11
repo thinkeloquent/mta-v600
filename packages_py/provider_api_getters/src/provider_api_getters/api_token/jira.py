@@ -42,16 +42,8 @@ class JiraApiToken(BaseApiToken):
         """Return the provider name for Jira."""
         return "jira"
 
-    @property
-    def health_endpoint(self) -> str:
-        """
-        Return the health check endpoint for Jira.
-
-        The /myself endpoint returns the current user's information
-        and is a reliable way to verify token validity.
-        """
-        logger.debug("JiraApiToken.health_endpoint: Returning /myself")
-        return "/myself"
+    # health_endpoint is inherited from BaseApiToken which reads from config.health_endpoint
+    # Default fallback: /rest/api/2/myself (standard Jira API endpoint)
 
     def _get_email(self) -> Optional[str]:
         """

@@ -27,11 +27,8 @@ export class ConfluenceApiToken extends BaseApiToken {
     return 'confluence';
   }
 
-  get healthEndpoint() {
-    // Note: base_url already includes /wiki path
-    logger.debug('ConfluenceApiToken.healthEndpoint: Returning /rest/api/user/current');
-    return '/rest/api/user/current';
-  }
+  // healthEndpoint is inherited from BaseApiToken which reads from config.health_endpoint
+  // Default fallback: /rest/api/user/current (standard Confluence API endpoint)
 
   /**
    * Get Confluence email from environment.

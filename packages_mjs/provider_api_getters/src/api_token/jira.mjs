@@ -22,10 +22,8 @@ export class JiraApiToken extends BaseApiToken {
     return "jira";
   }
 
-  get healthEndpoint() {
-    logger.debug("JiraApiToken.healthEndpoint: Returning /myself");
-    return "/myself";
-  }
+  // healthEndpoint is inherited from BaseApiToken which reads from config.health_endpoint
+  // Default fallback: /rest/api/2/myself (standard Jira API endpoint)
 
   /**
    * Get Jira email from environment.

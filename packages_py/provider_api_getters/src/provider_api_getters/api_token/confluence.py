@@ -48,17 +48,8 @@ class ConfluenceApiToken(BaseApiToken):
         """Return the provider name for Confluence."""
         return "confluence"
 
-    @property
-    def health_endpoint(self) -> str:
-        """
-        Return the health check endpoint for Confluence.
-
-        The /rest/api/user/current endpoint returns the current user's
-        information and is a reliable way to verify token validity.
-        Note: base_url already includes /wiki path.
-        """
-        logger.debug("ConfluenceApiToken.health_endpoint: Returning /rest/api/user/current")
-        return "/rest/api/user/current"
+    # health_endpoint is inherited from BaseApiToken which reads from config.health_endpoint
+    # Default fallback: /rest/api/user/current (standard Confluence API endpoint)
 
     def _get_email(self) -> Optional[str]:
         """
