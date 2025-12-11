@@ -56,6 +56,13 @@ export async function checkJiraHealth() {
   const networkConfig = provider.getNetworkConfig();
   const baseUrl = provider.getBaseUrl();
 
+  // Mask function for sensitive values
+  const maskValue = (val) => {
+    if (!val) return "<empty>";
+    if (val.length <= 10) return "*".repeat(val.length);
+    return val.substring(0, 10) + "*".repeat(val.length - 10);
+  };
+
   // Debug output
   console.log("\n[Config]");
   console.log(`  Base URL: ${baseUrl}`);
@@ -64,6 +71,13 @@ export async function checkJiraHealth() {
   console.log(`  Auth type: ${apiKeyResult.authType}`);
   console.log(`  Header name: ${apiKeyResult.headerName}`);
   console.log(`  Email: ${apiKeyResult.email || "N/A"}`);
+
+  // AUTH TRACING: Log the credential values from provider
+  console.log("\n[AUTH TRACE - Provider Output]");
+  console.log(`  apiKeyResult.apiKey (pre-encoded): ${maskValue(apiKeyResult.apiKey)}`);
+  console.log(`  apiKeyResult.rawApiKey (unencoded): ${maskValue(apiKeyResult.rawApiKey)}`);
+  console.log(`  apiKeyResult.email: ${apiKeyResult.email || "N/A"}`);
+  console.log(`  apiKeyResult.authType: ${apiKeyResult.authType}`);
   console.log("\n[Network Config]");
   console.log(`  Proxy URL: ${networkConfig.proxyUrl || "None"}`);
   console.log(`  Cert verify: ${networkConfig.certVerify}`);
@@ -81,6 +95,13 @@ export async function checkJiraHealth() {
   // Create client with dispatcher (handles proxy, SSL, auth)
   console.log("\n[Creating Client]");
   console.log(`  Auth type: ${apiKeyResult.authType}`);
+
+  // AUTH TRACING: Log what we're passing to fetch-client
+  console.log("\n[AUTH TRACE - Passing to fetch-client]");
+  console.log(`  auth.type: ${apiKeyResult.authType}`);
+  console.log(`  auth.rawApiKey: ${maskValue(apiKeyResult.rawApiKey)}`);
+  console.log(`  auth.email: ${apiKeyResult.email || "N/A"}`);
+  console.log(`  auth.headerName: ${apiKeyResult.headerName}`);
 
   const client = await createClientWithDispatcher({
     baseUrl,

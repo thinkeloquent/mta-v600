@@ -5,6 +5,15 @@ import type { AuthConfig, RequestContext } from '../types.mjs';
 import { getComputedApiKey } from '../config.mjs';
 
 /**
+ * Mask sensitive value for logging, showing first 10 chars.
+ */
+function maskValue(val: string | undefined): string {
+  if (!val) return '<empty>';
+  if (val.length <= 10) return '*'.repeat(val.length);
+  return val.substring(0, 10) + '*'.repeat(val.length - 10);
+}
+
+/**
  * Auth handler interface
  */
 export interface AuthHandler {
@@ -23,7 +32,11 @@ export class BearerAuthHandler implements AuthHandler {
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
     if (!key) return null;
-    return { Authorization: `Bearer ${key}` };
+    const header = { Authorization: `Bearer ${key}` };
+    console.log(
+      `[AUTH] BearerAuthHandler.getHeader: apiKey=${maskValue(key)} -> Authorization=${maskValue(header.Authorization)}`
+    );
+    return header;
   }
 }
 
@@ -39,6 +52,7 @@ export class XApiKeyAuthHandler implements AuthHandler {
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
     if (!key) return null;
+    console.log(`[AUTH] XApiKeyAuthHandler.getHeader: apiKey=${maskValue(key)}`);
     return { 'x-api-key': key };
   }
 }
@@ -56,6 +70,9 @@ export class CustomAuthHandler implements AuthHandler {
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
     if (!key) return null;
+    console.log(
+      `[AUTH] CustomAuthHandler.getHeader: headerName=${this.headerName}, apiKey=${maskValue(key)}`
+    );
     return { [this.headerName]: key };
   }
 }
@@ -70,6 +87,11 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
   // Get the computed/formatted auth value based on the auth type
   const computedApiKey = getComputedApiKey(config);
 
+  console.log(
+    `[AUTH] createAuthHandler: type=${config.type}, rawApiKey=${maskValue(config.rawApiKey)}, ` +
+    `computedApiKey=${maskValue(computedApiKey)}, email=${maskValue(config.email)}, username=${maskValue(config.username)}`
+  );
+
   switch (config.type) {
     case 'bearer':
     case 'bearer_oauth':
@@ -80,9 +102,13 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
     case 'bearer_email_password':
       // Bearer types - computedApiKey already includes "Bearer " prefix
       // Use raw key since BearerAuthHandler adds "Bearer " prefix
+      console.log(
+        `[AUTH] createAuthHandler: Bearer type detected, using rawApiKey=${maskValue(config.rawApiKey)} (NOT computedApiKey)`
+      );
       return new BearerAuthHandler(config.rawApiKey, config.getApiKeyForRequest);
 
     case 'x-api-key':
+      console.log(`[AUTH] createAuthHandler: x-api-key type, using rawApiKey`);
       return new XApiKeyAuthHandler(config.rawApiKey, config.getApiKeyForRequest);
 
     case 'basic':
@@ -91,6 +117,9 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
     case 'basic_email':
       // Basic auth - return full computed value ("Basic <base64>")
       // Use CustomAuthHandler with Authorization header to pass the pre-computed value
+      console.log(
+        `[AUTH] createAuthHandler: Basic type detected, using computedApiKey=${maskValue(computedApiKey)}`
+      );
       return new CustomAuthHandler(
         'Authorization',
         computedApiKey,
@@ -99,6 +128,9 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
 
     case 'custom':
     case 'custom_header':
+      console.log(
+        `[AUTH] createAuthHandler: Custom type, headerName=${config.headerName}, using rawApiKey`
+      );
       return new CustomAuthHandler(
         config.headerName || 'Authorization',
         config.rawApiKey,
@@ -107,6 +139,9 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
 
     default:
       // Default to bearer with rawApiKey
+      console.log(
+        `[AUTH] createAuthHandler: Unknown type '${config.type}', defaulting to bearer with rawApiKey`
+      );
       return new BearerAuthHandler(config.rawApiKey, config.getApiKeyForRequest);
   }
 }

@@ -1,11 +1,23 @@
 """
 Auth handler utilities for fetch_client.
 """
+import logging
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, Optional
 
 from ..types import RequestContext
 from ..config import AuthConfig
+
+logger = logging.getLogger(__name__)
+
+
+def _mask_value(val: Optional[str]) -> str:
+    """Mask sensitive value for logging, showing first 10 chars."""
+    if not val:
+        return "<empty>"
+    if len(val) <= 10:
+        return "*" * len(val)
+    return val[:10] + "*" * (len(val) - 10)
 
 
 class AuthHandler(ABC):
@@ -39,7 +51,12 @@ class BearerAuthHandler(AuthHandler):
             key = self._api_key
         if not key:
             return None
-        return {"Authorization": f"Bearer {key}"}
+        header = {"Authorization": f"Bearer {key}"}
+        logger.debug(
+            f"[AUTH] BearerAuthHandler.get_header: api_key={_mask_value(key)} -> "
+            f"Authorization={_mask_value(header['Authorization'])}"
+        )
+        return header
 
 
 class XApiKeyAuthHandler(AuthHandler):
@@ -64,6 +81,7 @@ class XApiKeyAuthHandler(AuthHandler):
             key = self._api_key
         if not key:
             return None
+        logger.debug(f"[AUTH] XApiKeyAuthHandler.get_header: api_key={_mask_value(key)}")
         return {"x-api-key": key}
 
 
@@ -91,21 +109,39 @@ class CustomAuthHandler(AuthHandler):
             key = self._api_key
         if not key:
             return None
+        logger.debug(
+            f"[AUTH] CustomAuthHandler.get_header: header_name={self._header_name}, "
+            f"api_key={_mask_value(key)}"
+        )
         return {self._header_name: key}
 
 
 def create_auth_handler(config: AuthConfig) -> AuthHandler:
     """Create auth handler from config."""
     # Use raw_api_key (not computed api_key property) as handlers format their own headers
+    logger.debug(
+        f"[AUTH] create_auth_handler: type={config.type}, "
+        f"raw_api_key={_mask_value(config.raw_api_key)}, "
+        f"email={_mask_value(config.email)}, username={_mask_value(config.username)}"
+    )
+
     if config.type == "bearer":
+        logger.debug(f"[AUTH] create_auth_handler: Bearer type, using raw_api_key")
         return BearerAuthHandler(config.raw_api_key, config.get_api_key_for_request)
     elif config.type == "x-api-key":
+        logger.debug(f"[AUTH] create_auth_handler: x-api-key type, using raw_api_key")
         return XApiKeyAuthHandler(config.raw_api_key, config.get_api_key_for_request)
     elif config.type == "custom":
+        logger.debug(
+            f"[AUTH] create_auth_handler: Custom type, header_name={config.header_name}"
+        )
         return CustomAuthHandler(
             config.header_name or "Authorization",
             config.raw_api_key,
             config.get_api_key_for_request,
         )
     else:
+        logger.debug(
+            f"[AUTH] create_auth_handler: Unknown type '{config.type}', defaulting to bearer"
+        )
         return BearerAuthHandler(config.raw_api_key, config.get_api_key_for_request)
