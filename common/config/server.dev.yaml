@@ -7,8 +7,34 @@
 # =============================================================================
 
 providers:
-  gemini:
+  gemini_openai:
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+    paths:
+      generateContent: "/models/{model}:generateContent"
+      streamGenerateContent: "/models/{model}:streamGenerateContent"
+    model: "gemini-2.0-flash"
+    env_api_key: "GEMINI_API_KEY"
+    api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
+    token_resolver: "static"        # static (default), startup, request
+    # proxy_url: "http://localhost:8080"
+    # Provider-specific configuration overrides (optional)
+    # These are deep-merged with global proxy/client settings
+    proxy:
+      # Override proxy for this provider only
+      default_environment: "prod"
+      proxy_urls:
+        prod: "http://gemini-proxy:8080"
+      cert_verify: true
+      ca_bundle: "/path/to/custom-ca.crt"
+    client:
+      # Override timeout for this provider only
+      timeout_seconds: 120.0
+      timeout_ms: 120000
+    headers:
+      # Additional headers for this provider only
+      X-Custom-Header: "value"
+  gemini:
+    base_url: "https://generativelanguage.googleapis.com/v1beta/"
     model: "gemini-2.0-flash"
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom

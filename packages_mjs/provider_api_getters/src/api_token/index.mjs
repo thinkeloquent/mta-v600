@@ -7,7 +7,9 @@ export { FigmaApiToken } from './figma.mjs';
 export { GithubApiToken } from './github.mjs';
 export { JiraApiToken } from './jira.mjs';
 export { ConfluenceApiToken } from './confluence.mjs';
+export { GeminiApiToken } from './gemini.mjs';
 export { GeminiOpenAIApiToken } from './gemini_openai.mjs';
+export { OpenAIApiToken } from './openai.mjs';
 export { PostgresApiToken } from './postgres.mjs';
 export { RedisApiToken } from './redis.mjs';
 export { RallyApiToken } from './rally.mjs';
@@ -20,7 +22,9 @@ import { FigmaApiToken } from './figma.mjs';
 import { GithubApiToken } from './github.mjs';
 import { JiraApiToken } from './jira.mjs';
 import { ConfluenceApiToken } from './confluence.mjs';
+import { GeminiApiToken } from './gemini.mjs';
 import { GeminiOpenAIApiToken } from './gemini_openai.mjs';
+import { OpenAIApiToken } from './openai.mjs';
 import { PostgresApiToken } from './postgres.mjs';
 import { RedisApiToken } from './redis.mjs';
 import { RallyApiToken } from './rally.mjs';
@@ -37,9 +41,9 @@ export const PROVIDER_REGISTRY = {
   github: GithubApiToken,
   jira: JiraApiToken,
   confluence: ConfluenceApiToken,
-  gemini: GeminiOpenAIApiToken,
+  gemini: GeminiApiToken,
   gemini_openai: GeminiOpenAIApiToken,
-  openai: GeminiOpenAIApiToken,
+  openai: OpenAIApiToken,
   postgres: PostgresApiToken,
   redis: RedisApiToken,
   rally: RallyApiToken,
