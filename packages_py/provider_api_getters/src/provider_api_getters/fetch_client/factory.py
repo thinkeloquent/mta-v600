@@ -192,7 +192,12 @@ class ProviderClientFactory:
             timeout: Request timeout in seconds
             async_client: Create async client if True, sync client if False
         """
-        logger.debug("ProviderClientFactory._create_httpx_client: Creating httpx client")
+        import httpx
+        logger.debug(
+            f"ProviderClientFactory._create_httpx_client: Creating httpx client "
+            f"(httpx {httpx.__version__}) network_config={network_config} "
+            f"proxy_url={proxy_url} timeout={timeout} async_client={async_client}"
+        )
 
         try:
             from fetch_proxy_dispatcher import (

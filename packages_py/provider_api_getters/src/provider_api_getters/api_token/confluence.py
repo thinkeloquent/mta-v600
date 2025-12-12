@@ -178,10 +178,7 @@ class ConfluenceApiToken(BaseApiToken):
             "bearer_username_token", "bearer_username_password",
         }
 
-        # Simple bearer types that don't need credential encoding
-        simple_bearer_types = {"bearer", "bearer_oauth", "bearer_jwt"}
-
-        if auth_type in simple_bearer_types:
+        if auth_type == "bearer":
             # Plain bearer = raw token, no encoding needed
             # fetch_client will add "Bearer " prefix
             logger.debug(

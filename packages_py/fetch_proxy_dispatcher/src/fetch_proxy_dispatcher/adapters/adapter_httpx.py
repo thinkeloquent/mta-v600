@@ -176,7 +176,10 @@ class HttpxAdapter(BaseAdapter):
         logger.debug("create_sync_client: Building kwargs")
         kwargs = self._build_kwargs(config)
 
-        logger.debug("create_sync_client: Creating httpx.Client")
+        logger.debug(
+            f"create_sync_client: Creating httpx.Client({httpx.__version__}) "
+            f"kwargs={kwargs} config={config}"
+        )
         client = httpx.Client(**kwargs)
         logger.debug(f"create_sync_client: httpx.Client created successfully")
 
@@ -202,7 +205,10 @@ class HttpxAdapter(BaseAdapter):
         logger.debug("create_async_client: Building kwargs")
         kwargs = self._build_kwargs(config)
 
-        logger.debug("create_async_client: Creating httpx.AsyncClient")
+        logger.debug(
+            f"create_async_client: Creating httpx.AsyncClient({httpx.__version__}) "
+            f"kwargs={kwargs} config={config}"
+        )
         client = httpx.AsyncClient(**kwargs)
         logger.debug(f"create_async_client: httpx.AsyncClient created successfully")
 

@@ -159,11 +159,8 @@ export class ConfluenceApiToken extends BaseApiToken {
       'bearer_username_token', 'bearer_username_password',
     ]);
 
-    // Simple bearer types that don't need credential encoding
-    const simpleBearerTypes = new Set(['bearer', 'bearer_oauth', 'bearer_jwt']);
-
     let authHeader;
-    if (simpleBearerTypes.has(authType)) {
+    if (authType === "bearer") {
       // Plain bearer = raw token, no encoding needed
       // fetch_client will add "Bearer " prefix
       logger.debug(
