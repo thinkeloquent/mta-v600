@@ -16,6 +16,23 @@ from ..config import is_ssl_verify_disabled_by_env
 logger = logging.getLogger("fetch_proxy_dispatcher.adapters.httpx")
 
 
+def _parse_version(version_str: str) -> tuple:
+    """Parse version string into tuple for comparison (e.g., '0.25.2' -> (0, 25, 2))."""
+    try:
+        parts = version_str.split(".")
+        return tuple(int(p) for p in parts[:3])
+    except (ValueError, AttributeError):
+        return (0, 0, 0)
+
+
+# Check httpx version to determine proxy parameter name
+# - httpx >= 0.26.0: uses 'proxy' (string)
+# - httpx < 0.26.0: uses 'proxies' (dict)
+HTTPX_VERSION_TUPLE = _parse_version(httpx.__version__)
+HTTPX_SUPPORTS_PROXY_PARAM = HTTPX_VERSION_TUPLE >= (0, 26, 0)
+logger.debug(f"httpx version: {httpx.__version__} ({HTTPX_VERSION_TUPLE}), supports 'proxy' param: {HTTPX_SUPPORTS_PROXY_PARAM}")
+
+
 def _mask_proxy_url(url: str | None) -> str:
     """Mask proxy URL for safe logging (hide credentials if present)."""
     if not url:
@@ -72,8 +89,17 @@ class HttpxAdapter(BaseAdapter):
         }
 
         if config.proxy_url:
-            kwargs["proxy"] = config.proxy_url
-            logger.debug(f"_build_kwargs: Added proxy={_mask_proxy_url(config.proxy_url)}")
+            if HTTPX_SUPPORTS_PROXY_PARAM:
+                # httpx >= 0.26.0: use 'proxy' (string)
+                kwargs["proxy"] = config.proxy_url
+                logger.debug(f"_build_kwargs: Added proxy={_mask_proxy_url(config.proxy_url)} (httpx >= 0.26)")
+            else:
+                # httpx < 0.26.0: use 'proxies' (dict)
+                kwargs["proxies"] = {
+                    "http://": config.proxy_url,
+                    "https://": config.proxy_url,
+                }
+                logger.debug(f"_build_kwargs: Added proxies={{http://: {_mask_proxy_url(config.proxy_url)}, https://: ...}} (httpx < 0.26)")
 
         # Check environment variables for SSL verification override
         # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification
@@ -92,10 +118,12 @@ class HttpxAdapter(BaseAdapter):
             kwargs["cert"] = config.cert
             logger.debug(f"_build_kwargs: Added cert (path or tuple)")
 
+        # Log final kwargs (handle both 'proxy' and 'proxies' keys)
+        proxy_info = _mask_proxy_url(kwargs.get('proxy')) if 'proxy' in kwargs else f"proxies={bool(kwargs.get('proxies'))}"
         logger.debug(
             f"_build_kwargs: Final kwargs - timeout={kwargs['timeout']}, "
             f"follow_redirects={kwargs['follow_redirects']}, trust_env={kwargs['trust_env']}, "
-            f"proxy={_mask_proxy_url(kwargs.get('proxy'))}, verify={kwargs['verify']}, "
+            f"proxy={proxy_info}, verify={kwargs['verify']}, "
             f"cert={kwargs.get('cert') is not None}"
         )
 
