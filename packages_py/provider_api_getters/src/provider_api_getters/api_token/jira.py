@@ -165,6 +165,7 @@ class JiraApiToken(BaseApiToken):
             )
             try:
                 encoded_auth = self._encode_auth(email, api_token, config_auth_type)
+                print(f"[TRACE raw_api_key] jira.py:174 SET raw_api_key={api_token[:20] if api_token else None}...")
                 result = ApiKeyResult(
                     api_key=encoded_auth,
                     auth_type=config_auth_type,

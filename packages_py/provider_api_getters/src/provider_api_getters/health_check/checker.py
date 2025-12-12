@@ -283,6 +283,8 @@ class ProviderHealthChecker:
         logger.debug(f"ProviderHealthChecker.check: Token class found: {token_class.__name__}")
         api_token = token_class(self.config_store)
         api_key_result = api_token.get_api_key()
+        print(f"[TRACE raw_api_key] checker.py:286 GET api_key_result.raw_api_key={api_key_result.raw_api_key[:30] if api_key_result.raw_api_key else None}...")
+        print(f"[TRACE raw_api_key] checker.py:287 GET api_key_result.api_key={api_key_result.api_key[:30] if api_key_result.api_key else None}...")
         config_used = self._build_config_used(provider_name_lower, api_token)
 
         logger.debug(

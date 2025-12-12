@@ -372,8 +372,10 @@ class ProviderClientFactory:
 
             # Use shared auth resolver utility (SINGLE SOURCE OF TRUTH)
             # See: utils/auth_resolver.py for auth type interpretation logic
+            print(f"[TRACE raw_api_key] factory.py:375 BEFORE resolve_auth_config api_key_result.raw_api_key={getattr(api_key_result, 'raw_api_key', None)[:30] if getattr(api_key_result, 'raw_api_key', None) else None}...")
             auth_dict = resolve_auth_config(auth_type, api_key_result, header_name)
             auth_category = get_auth_type_category(auth_type)
+            print(f"[TRACE raw_api_key] factory.py:378 AFTER resolve_auth_config auth_dict['raw_api_key']={auth_dict.get('raw_api_key', '')[:30] if auth_dict.get('raw_api_key') else None}...")
 
             logger.debug(
                 f"ProviderClientFactory.get_client: Using {auth_category} auth ({auth_type}) with "
@@ -381,7 +383,9 @@ class ProviderClientFactory:
                 f"key={api_key_masked}"
             )
 
+            print(f"[TRACE raw_api_key] factory.py:386 BEFORE AuthConfig(**auth_dict)")
             auth_config = AuthConfig(**auth_dict)
+            print(f"[TRACE raw_api_key] factory.py:388 AFTER AuthConfig auth_config.raw_api_key={auth_config.raw_api_key[:30] if auth_config.raw_api_key else None}...")
 
             console.print(f"[bold green]AuthConfig ({auth_type} → {auth_category}):[/bold green]", {
                 "type": auth_dict["type"],

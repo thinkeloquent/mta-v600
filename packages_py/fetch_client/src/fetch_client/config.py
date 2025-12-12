@@ -81,6 +81,7 @@ class AuthConfig:
         For bearer auth: Returns "Bearer <token>" or "Bearer <base64(...)>"
         For x-api-key/custom: Returns the raw value
         """
+        print(f"[TRACE raw_api_key] config.py:85 GET self.raw_api_key={self.raw_api_key[:30] if self.raw_api_key else None}...")
         if self.raw_api_key is None:
             return None
         return format_auth_header_value(self, self.raw_api_key)
