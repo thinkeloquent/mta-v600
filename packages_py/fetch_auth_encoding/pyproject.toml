@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "fetch-auth-encoding"
+version = "0.1.0"
+description = "Fetch Auth Encoding package"
+authors = ["Your Name"]
+readme = "README.md"
+packages = [{include = "fetch_auth_encoding", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

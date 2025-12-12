@@ -280,11 +280,42 @@ importers:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.19.1)
 
+  packages_mjs/fetch-auth-config:
+    dependencies:
+      '@internal/fetch-auth-encoding':
+        specifier: workspace:*
+        version: link:../fetch-auth-encoding
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+
+  packages_mjs/fetch-auth-encoding:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+
   packages_mjs/fetch-client:
     dependencies:
       '@internal/app-static-config-yaml':
         specifier: workspace:*
         version: link:../app-static-config-yaml
+      '@internal/fetch-auth-encoding':
+        specifier: workspace:*
+        version: link:../fetch-auth-encoding
       '@internal/fetch-proxy-dispatcher':
         specifier: workspace:*
         version: link:../fetch-proxy-dispatcher
@@ -476,6 +507,22 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.1)
 
+  packages_mjs/fetch-header-config:
+    dependencies:
+      '@internal/fetch-auth-config':
+        specifier: workspace:*
+        version: link:../fetch-auth-config
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.1)(jiti@1.21.7)(tsx@4.20.6)(yaml@2.8.1)
+
   packages_mjs/fetch-proxy-dispatcher:
     dependencies:
       undici:
@@ -571,6 +618,9 @@ importers:
       '@internal/console-print':
         specifier: workspace:*
         version: link:../console-print
+      '@internal/fetch-auth-encoding':
+        specifier: workspace:*
+        version: link:../fetch-auth-encoding
       '@internal/fetch-client':
         specifier: workspace:*
         version: link:../fetch-client

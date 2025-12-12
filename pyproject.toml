@@ -28,6 +28,8 @@ cache-request = {path = "packages_py/cache_request", develop = true}
 cache-response = {path = "packages_py/cache_response", develop = true}
 connection-pool = {path = "packages_py/connection_pool", develop = true}
 console-print = {path = "packages_py/console_print", develop = true}
+fetch-auth-config = {path = "packages_py/fetch_auth_config", develop = true}
+fetch-auth-encoding = {path = "packages_py/fetch_auth_encoding", develop = true}
 fetch-client = {path = "packages_py/fetch_client", develop = true}
 fetch-compose-cache-dsn = {path = "packages_py/fetch_compose_cache_dsn", develop = true}
 fetch-compose-cache-request = {path = "packages_py/fetch_compose_cache_request", develop = true}
@@ -35,6 +37,7 @@ fetch-compose-cache-response = {path = "packages_py/fetch_compose_cache_response
 fetch-compose-connection-pool = {path = "packages_py/fetch_compose_connection_pool", develop = true}
 fetch-compose-rate-limiter = {path = "packages_py/fetch_compose_rate_limiter", develop = true}
 fetch-compose-retry = {path = "packages_py/fetch_compose_retry", develop = true}
+fetch-header-config = {path = "packages_py/fetch_header_config", develop = true}
 fetch-proxy-dispatcher = {path = "packages_py/fetch_proxy_dispatcher", develop = true}
 fetch-rate-limiter = {path = "packages_py/fetch_rate_limiter", develop = true}
 fetch-retry = {path = "packages_py/fetch_retry", develop = true}

@@ -8,6 +8,9 @@ packages = [{include = "fetch_client", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+annotated-types = "^0.7.0"
+fetch-auth-encoding = {path = "../fetch_auth_encoding", develop = true}
+console-print = {path = "../console_print", develop = true}
 # Shared dependencies - use "*" to inherit version from root pyproject.toml
 # Actual versions are pinned in constraints.txt for pip installs
 httpx = "*"

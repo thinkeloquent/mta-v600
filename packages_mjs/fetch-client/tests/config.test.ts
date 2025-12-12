@@ -360,7 +360,7 @@ describe('config', () => {
     // =========================================================================
 
     it('should handle empty apiKey for bearer', () => {
-      expect(formatAuthHeaderValue({ type: 'bearer' }, '')).toBe('Bearer ');
+      expect(() => formatAuthHeaderValue({ type: 'bearer' }, '')).toThrow('bearer requires token');
     });
 
     it('should return raw key for unknown type (default case)', () => {

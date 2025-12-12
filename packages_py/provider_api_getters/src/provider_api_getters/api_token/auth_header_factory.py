@@ -13,7 +13,7 @@ Supported auth schemes:
 - Digest (RFC 7616)
 """
 
-import base64
+from fetch_auth_encoding import encode_auth
 import hashlib
 import hmac
 import logging
@@ -199,18 +199,11 @@ class AuthHeaderFactory:
             logger.error("AuthHeaderFactory.create_basic: Missing user or secret")
             raise ValueError("Basic auth requires both user and secret")
 
-        # RFC 7617: Base64 encode "user:secret"
-        credentials = f"{user}:{secret}"
-        encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-
-        logger.debug(
-            f"AuthHeaderFactory.create_basic: Encoded credentials "
-            f"(input_length={len(credentials)}, encoded_length={len(encoded)})"
-        )
-
+        headers = encode_auth("basic", username=user, password=secret)
+        
         return AuthHeader(
             header_name="Authorization",
-            header_value=f"Basic {encoded}",
+            header_value=headers["Authorization"],
             scheme=AuthScheme.BASIC_USER_PASS,
         )
 
@@ -252,22 +245,6 @@ class AuthHeaderFactory:
     def create_bearer_with_credentials(identifier: str, secret: str) -> AuthHeader:
         """
         Create a Bearer auth header with base64-encoded credentials (RFC 6750).
-
-        Used for:
-        - bearer_email_token (Confluence with Bearer instead of Basic)
-        - bearer_username_token
-        - bearer_email_password
-        - bearer_username_password
-
-        Args:
-            identifier: Username or email
-            secret: Password, token, or API key
-
-        Returns:
-            AuthHeader instance
-
-        Raises:
-            ValueError: If identifier or secret is missing
         """
         logger.debug(
             f"AuthHeaderFactory.create_bearer_with_credentials: Creating Bearer auth with credentials "
@@ -278,18 +255,11 @@ class AuthHeaderFactory:
             logger.error("AuthHeaderFactory.create_bearer_with_credentials: Missing identifier or secret")
             raise ValueError("Bearer with credentials requires both identifier and secret")
 
-        # Base64 encode "identifier:secret"
-        credentials = f"{identifier}:{secret}"
-        encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-
-        logger.debug(
-            f"AuthHeaderFactory.create_bearer_with_credentials: Encoded credentials "
-            f"(input_length={len(credentials)}, encoded_length={len(encoded)})"
-        )
-
+        headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+        
         return AuthHeader(
             header_name="Authorization",
-            header_value=f"Bearer {encoded}",
+            header_value=headers["Authorization"],
             scheme=AuthScheme.BEARER_PAT,
         )
 
@@ -678,12 +648,10 @@ class AuthHeaderFactory:
                 secret = raw_api_key or api_key or ""
                 if identifier and secret:
                     # Encode as Bearer base64(identifier:secret)
-                    import base64
-                    credentials = f"{identifier}:{secret}"
-                    encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                    headers = encode_auth("bearer_username_password", username=identifier, password=secret)
                     return AuthHeader(
                         header_name="Authorization",
-                        header_value=f"Bearer {encoded}",
+                        header_value=headers["Authorization"],
                         scheme=AuthScheme.BEARER_PAT,
                     )
 

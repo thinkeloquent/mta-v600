@@ -1,13 +1,11 @@
 /**
  * Auth handler utilities for @internal/fetch-client
  */
-import { fileURLToPath } from 'url';
 import type { AuthConfig, RequestContext } from '../types.mjs';
 import { getComputedApiKey } from '../config.mjs';
 
 // Get current file path for logging
-const __filename = fileURLToPath(import.meta.url);
-const LOG_PREFIX = `[AUTH:${__filename}]`;
+const LOG_PREFIX = `[AUTH:auth-handler.mts]`;
 
 /**
  * Mask sensitive value for logging, showing first 10 chars.
@@ -32,7 +30,7 @@ export class BearerAuthHandler implements AuthHandler {
   constructor(
     private apiKey?: string,
     private getApiKeyForRequest?: (context: RequestContext) => string | undefined
-  ) {}
+  ) { }
 
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
@@ -52,7 +50,7 @@ export class XApiKeyAuthHandler implements AuthHandler {
   constructor(
     private apiKey?: string,
     private getApiKeyForRequest?: (context: RequestContext) => string | undefined
-  ) {}
+  ) { }
 
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
@@ -70,7 +68,7 @@ export class CustomAuthHandler implements AuthHandler {
     private headerName: string,
     private apiKey?: string,
     private getApiKeyForRequest?: (context: RequestContext) => string | undefined
-  ) {}
+  ) { }
 
   getHeader(context: RequestContext): Record<string, string> | null {
     const key = this.getApiKeyForRequest?.(context) || this.apiKey;
@@ -101,16 +99,43 @@ export function createAuthHandler(config: AuthConfig): AuthHandler {
     case 'bearer':
     case 'bearer_oauth':
     case 'bearer_jwt':
+      {
+        // Simple Bearer types (token only)
+        // If it's a generic 'bearer' with credentials (username/email), treat as complex
+        const isComplex = config.type === 'bearer' && (config.username || config.email);
+
+        if (isComplex) {
+          console.log(
+            `${LOG_PREFIX} createAuthHandler: Bearer with credentials detected, using computedApiKey=${maskValue(computedApiKey)}`
+          );
+          // Use CustomAuthHandler to pass the full "Bearer <base64>" header
+          return new CustomAuthHandler(
+            'Authorization',
+            computedApiKey,
+            config.getApiKeyForRequest
+          );
+        }
+
+        // Simple token case
+        console.log(
+          `${LOG_PREFIX} createAuthHandler: Bearer token type detected, using rawApiKey=${maskValue(config.rawApiKey)} (NOT computedApiKey)`
+        );
+        return new BearerAuthHandler(config.rawApiKey, config.getApiKeyForRequest);
+      }
+
     case 'bearer_username_token':
     case 'bearer_username_password':
     case 'bearer_email_token':
     case 'bearer_email_password':
-      // Bearer types - computedApiKey already includes "Bearer " prefix
-      // Use raw key since BearerAuthHandler adds "Bearer " prefix
+      // Complex Bearer types - return full computed value ("Bearer <base64>")
       console.log(
-        `${LOG_PREFIX} createAuthHandler: Bearer type detected, using rawApiKey=${maskValue(config.rawApiKey)} (NOT computedApiKey)`
+        `${LOG_PREFIX} createAuthHandler: Complex Bearer type detected, using computedApiKey=${maskValue(computedApiKey)}`
       );
-      return new BearerAuthHandler(config.rawApiKey, config.getApiKeyForRequest);
+      return new CustomAuthHandler(
+        'Authorization',
+        computedApiKey,
+        config.getApiKeyForRequest
+      );
 
     case 'x-api-key':
       console.log(`${LOG_PREFIX} createAuthHandler: x-api-key type, using rawApiKey`);

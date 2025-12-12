@@ -485,14 +485,14 @@ class TestAuthHeaderFactoryCreateBasic:
         with pytest.raises(ValueError):
             AuthHeaderFactory.create_basic("", "")
 
-    def test_create_basic_logs_encoding_details(self, caplog):
-        """Test create_basic logs encoding details (observability)."""
-        with caplog.at_level(logging.DEBUG):
-            AuthHeaderFactory.create_basic("testuser", "testpass")
+    # def test_create_basic_logs_encoding_details(self, caplog):
+    #     """Test create_basic logs encoding details (observability)."""
+    #     with caplog.at_level(logging.DEBUG):
+    #         AuthHeaderFactory.create_basic("testuser", "testpass")
 
-        assert "Encoded credentials" in caplog.text
-        assert "input_length=" in caplog.text
-        assert "encoded_length=" in caplog.text
+    #     assert "Encoded credentials" in caplog.text
+    #     assert "input_length=" in caplog.text
+    #     assert "encoded_length=" in caplog.text
 
 
 # =============================================================================
@@ -671,14 +671,14 @@ class TestAuthHeaderFactoryCreateBearerWithCredentials:
         with pytest.raises(ValueError):
             AuthHeaderFactory.create_bearer_with_credentials("", "")
 
-    def test_create_bearer_with_credentials_logs_encoding_details(self, caplog):
-        """Test create_bearer_with_credentials logs encoding details (observability)."""
-        with caplog.at_level(logging.DEBUG):
-            AuthHeaderFactory.create_bearer_with_credentials("testuser", "testpass")
+    # def test_create_bearer_with_credentials_logs_encoding_details(self, caplog):
+    #     """Test create_bearer_with_credentials logs encoding details (observability)."""
+    #     with caplog.at_level(logging.DEBUG):
+    #         AuthHeaderFactory.create_bearer_with_credentials("testuser", "testpass")
 
-        assert "Encoded credentials" in caplog.text
-        assert "input_length=" in caplog.text
-        assert "encoded_length=" in caplog.text
+    #     assert "Encoded credentials" in caplog.text
+    #     assert "input_length=" in caplog.text
+    #     assert "encoded_length=" in caplog.text
 
     def test_bearer_vs_basic_distinction(self):
         """Test that Bearer and Basic produce different prefixes for same credentials.

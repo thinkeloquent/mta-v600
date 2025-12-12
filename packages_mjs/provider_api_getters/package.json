@@ -46,15 +46,16 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
+    "@internal/fetch-auth-encoding": "workspace:*",
     "picocolors": "^1.0.0",
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0"
   },
   "peerDependencies": {
+    "@internal/app-static-config-yaml": "workspace:*",
     "@internal/console-print": "workspace:*",
     "@internal/fetch-client": "workspace:*",
-    "@internal/fetch-proxy-dispatcher": "workspace:*",
-    "@internal/app-static-config-yaml": "workspace:*"
+    "@internal/fetch-proxy-dispatcher": "workspace:*"
   },
   "peerDependenciesMeta": {
     "pg": {

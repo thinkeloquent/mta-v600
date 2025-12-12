@@ -373,16 +373,16 @@ class TestFormatAuthHeaderValue:
     # =========================================================================
 
     def test_empty_api_key_bearer(self):
-        """Boundary: empty api_key for bearer"""
+        """Boundary: empty api_key for bearer raises ValueError"""
         auth = AuthConfig(type="bearer")
-        assert format_auth_header_value(auth, "") == "Bearer "
+        with pytest.raises(ValueError, match="bearer requires token"):
+            format_auth_header_value(auth, "")
 
     def test_none_identifier_basic(self):
-        """Boundary: None identifier falls back to empty string"""
+        """Boundary: None identifier raises ValueError (fetch-auth-encoding requires identifier)"""
         auth = AuthConfig(type="basic_email_token", email=None, raw_api_key="token")
-        result = format_auth_header_value(auth, "token")
-        expected = self._encode_basic("", "token")
-        assert result == expected
+        with pytest.raises(ValueError):
+            format_auth_header_value(auth, "token")
 
     def test_special_characters_in_credentials(self):
         """Boundary: special characters preserved in base64 encoding"""

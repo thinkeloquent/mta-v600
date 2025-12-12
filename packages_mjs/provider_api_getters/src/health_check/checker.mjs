@@ -3,6 +3,9 @@
  */
 import { getApiTokenClass } from '../api_token/index.mjs';
 import { ProviderClientFactory } from '../fetch_client/factory.mjs';
+import { getApiTokenClass } from '../api_token/index.mjs';
+import { ProviderClientFactory } from '../fetch_client/factory.mjs';
+import { encodeAuth } from '@internal/fetch-auth-encoding';
 import pc from 'picocolors';
 
 // ============================================================================
@@ -512,8 +515,9 @@ export class ProviderHealthChecker {
 
       // Add Basic Auth header if credentials were in the URL
       if (username && password) {
-        const credentials = Buffer.from(`${username}:${password}`).toString('base64');
-        headers['Authorization'] = `Basic ${credentials}`;
+        // Use fetch-auth-encoding package
+        const auth = encodeAuth('basic', { username, password });
+        headers['Authorization'] = auth.Authorization;
       }
 
       // Print request panel (for HTTP-based elasticsearch check)

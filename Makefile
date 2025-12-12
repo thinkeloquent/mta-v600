@@ -130,6 +130,7 @@ build:
 	npm run build:log
 
 test:
+	rm -rf ./logs && mkdir ./logs
 	npm run test:log
 	make -f Makefile.pytest build-log
 	make -f Makefile.pytest test-log

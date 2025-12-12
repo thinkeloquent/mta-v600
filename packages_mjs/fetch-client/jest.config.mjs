@@ -9,6 +9,7 @@ export default {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.mjs$': '$1.mts',
     '^(\\.{1,2}/.*)\\.mts$': '$1.mts',
+    '^@internal/fetch-auth-encoding$': '<rootDir>/../fetch-auth-encoding/src/index.ts',
   },
   collectCoverageFrom: ['src/**/*.mts'],
   coverageDirectory: 'coverage',

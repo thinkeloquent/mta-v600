@@ -1,17 +1,16 @@
 /**
  * Configuration utilities for @internal/fetch-client
  */
-import { fileURLToPath } from 'url';
 import type {
   ClientConfig,
   AuthConfig,
   TimeoutConfig,
   Serializer,
 } from './types.mjs';
+import { encodeAuth } from '@internal/fetch-auth-encoding';
 
 // Get current file path for logging
-const __filename = fileURLToPath(import.meta.url);
-const LOG_PREFIX = `[AUTH:${__filename}]`;
+const LOG_PREFIX = `[AUTH:config.mts]`;
 
 /**
  * Default timeout values in milliseconds
@@ -266,67 +265,15 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
     return apiKey;
   }
 
-  /**
-   * Encode credentials as base64 for Basic auth
-   */
-  function encodeBasic(identifier: string, secret: string): string {
-    const credentials = `${identifier}:${secret}`;
-    const encoded = Buffer.from(credentials).toString('base64');
-    const result = `Basic ${encoded}`;
-    console.log(
-      `${LOG_PREFIX} formatAuthHeaderValue: Encoding Basic auth - ` +
-      `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
-    );
-    return result;
-  }
-
-  /**
-   * Encode credentials as base64 for Bearer auth
-   */
-  function encodeBearerBase64(identifier: string, secret: string): string {
-    const credentials = `${identifier}:${secret}`;
-    const encoded = Buffer.from(credentials).toString('base64');
-    const result = `Bearer ${encoded}`;
-    console.log(
-      `${LOG_PREFIX} formatAuthHeaderValue: Encoding Bearer base64 - ` +
-      `identifier=${maskValue(identifier)}, secret=${maskValue(secret)} -> output=${maskValue(result)}`
-    );
-    return result;
-  }
-
-  /**
-   * Format Bearer token header
-   */
-  function bearerToken(token: string): string {
-    const result = `Bearer ${token}`;
-    console.log(
-      `${LOG_PREFIX} formatAuthHeaderValue: Bearer token - ` +
-      `input=${maskValue(token)} -> output=${maskValue(result)}`
-    );
-    return result;
-  }
-
   // === Basic Auth Family ===
-  if (auth.type === 'basic') {
-    // Auto-compute: detect identifier (email or username) and secret (password or token)
+  if (['basic', 'basic_email_token', 'basic_token', 'basic_email'].includes(auth.type)) {
+    // Map specific types to generic Basic credentials
     const identifier = auth.email || auth.username || '';
     const secret = auth.password || apiKey;
-    return encodeBasic(identifier, secret);
-  }
 
-  if (auth.type === 'basic_email_token') {
-    // Explicit: email + apiKey (token)
-    return encodeBasic(auth.email || '', apiKey);
-  }
-
-  if (auth.type === 'basic_token') {
-    // Explicit: username + apiKey (token)
-    return encodeBasic(auth.username || '', apiKey);
-  }
-
-  if (auth.type === 'basic_email') {
-    // Explicit: email + password
-    return encodeBasic(auth.email || '', auth.password || '');
+    // Use fetch-auth-encoding
+    const headers = encodeAuth('basic', { username: identifier, password: secret });
+    return headers.Authorization;
   }
 
   // === Bearer Auth Family ===
@@ -336,36 +283,30 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
     if (identifier) {
       // Has identifier → encode as base64(identifier:secret)
       const secret = auth.password || apiKey;
-      return encodeBearerBase64(identifier, secret);
+      const headers = encodeAuth('bearer_username_password', { username: identifier, password: secret });
+      return headers.Authorization;
     } else {
       // No identifier → use apiKey as-is (PAT, OAuth, JWT)
-      return bearerToken(apiKey);
+      const headers = encodeAuth('bearer', { token: apiKey });
+      return headers.Authorization;
     }
   }
 
   if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
-    // Explicit bearer types - always use apiKey as-is
-    return bearerToken(apiKey);
+    const headers = encodeAuth('bearer', { token: apiKey });
+    return headers.Authorization;
   }
 
-  if (auth.type === 'bearer_username_token') {
-    // Explicit: username + apiKey (token)
-    return encodeBearerBase64(auth.username || '', apiKey);
-  }
-
-  if (auth.type === 'bearer_username_password') {
-    // Explicit: username + password
-    return encodeBearerBase64(auth.username || '', auth.password || '');
-  }
-
-  if (auth.type === 'bearer_email_token') {
-    // Explicit: email + apiKey (token)
-    return encodeBearerBase64(auth.email || '', apiKey);
-  }
-
-  if (auth.type === 'bearer_email_password') {
-    // Explicit: email + password
-    return encodeBearerBase64(auth.email || '', auth.password || '');
+  if ([
+    'bearer_username_token',
+    'bearer_username_password',
+    'bearer_email_token',
+    'bearer_email_password'
+  ].includes(auth.type)) {
+    const identifier = auth.email || auth.username || '';
+    const secret = auth.password || apiKey;
+    const headers = encodeAuth('bearer_username_password', { username: identifier, password: secret });
+    return headers.Authorization;
   }
 
   // === Custom/API Key ===

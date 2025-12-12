@@ -100,12 +100,22 @@ def resolve_auth_header(
         api_key = auth.raw_api_key
         logger.debug(f"resolve_auth_header: using static key: {bool(api_key)}")
 
-    if not api_key:
-        logger.debug("resolve_auth_header: no api_key found, returning None")
+    # Check if we have credentials even if api_key is missing
+    has_credentials = (
+        auth.username is not None or 
+        auth.password is not None or 
+        auth.email is not None
+    )
+
+    if not api_key and not has_credentials:
+        logger.debug("resolve_auth_header: no api_key or credentials found, returning None")
         return None
+    
+    # Use empty string for api_key if only credentials are present
+    key_to_use = api_key if api_key is not None else ""
 
     header_name = get_auth_header_name(auth)
-    header_value = format_auth_header_value(auth, api_key)
+    header_value = format_auth_header_value(auth, key_to_use)
 
     logger.debug(f"resolve_auth_header: returning header {header_name}=***")
     return {header_name: header_value}

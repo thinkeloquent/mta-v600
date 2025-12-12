@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "fetch-header-config"
+version = "0.1.0"
+description = "Fetch Header Config package"
+authors = ["Your Name"]
+readme = "README.md"
+packages = [{include = "fetch_header_config", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fetch-auth-config = {path = "../fetch_auth_config", develop = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

@@ -290,8 +290,8 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
 
     Logs encoding method with masked input/output for debugging.
     """
-    import base64
     import logging
+    from fetch_auth_encoding import encode_auth
 
     logger = logging.getLogger("fetch_client.config")
 
@@ -308,103 +308,50 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         )
         return api_key
 
-    def encode_basic(identifier: str, secret: str) -> str:
-        """Encode credentials as base64 for Basic auth."""
-        credentials = f"{identifier}:{secret}"
-        encoded = base64.b64encode(credentials.encode()).decode()
-        result = f"Basic {encoded}"
-        logger.info(
-            f"{LOG_PREFIX} format_auth_header_value: Encoding Basic auth - "
-            f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
-            f"output={mask_value(result)}"
-        )
-        return result
-
-    def encode_bearer_base64(identifier: str, secret: str) -> str:
-        """Encode credentials as base64 for Bearer auth."""
-        credentials = f"{identifier}:{secret}"
-        encoded = base64.b64encode(credentials.encode()).decode()
-        result = f"Bearer {encoded}"
-        logger.info(
-            f"{LOG_PREFIX} format_auth_header_value: Encoding Bearer base64 - "
-            f"identifier={mask_value(identifier)}, secret={mask_value(secret)} -> "
-            f"output={mask_value(result)}"
-        )
-        return result
-
-    def bearer_token(token: str) -> str:
-        """Format Bearer token header."""
-        result = f"Bearer {token}"
-        logger.info(
-            f"{LOG_PREFIX} format_auth_header_value: Bearer token - "
-            f"input={mask_value(token)} -> output={mask_value(result)}"
-        )
-        return result
-
     # === Basic Auth Family ===
-    if auth.type == "basic":
-        # Auto-compute: detect identifier (email or username) and secret (password or token)
+    if auth.type in ("basic", "basic_email_token", "basic_token", "basic_email"):
+        # Map specific types to generic Basic credentials
         identifier = auth.email or auth.username or ""
         secret = auth.password or api_key
-        return encode_basic(identifier, secret)
-
-    elif auth.type == "basic_email_token":
-        # Explicit: email + api_key (token)
-        return encode_basic(auth.email or "", api_key)
-
-    elif auth.type == "basic_token":
-        # Explicit: username + api_key (token)
-        return encode_basic(auth.username or "", api_key)
-
-    elif auth.type == "basic_email":
-        # Explicit: email + password
-        return encode_basic(auth.email or "", auth.password or "")
+        
+        # Use fetch-auth-encoding
+        headers = encode_auth("basic", username=identifier, password=secret)
+        return headers["Authorization"]
 
     # === Bearer Auth Family ===
     elif auth.type == "bearer":
         # Auto-compute: detect if credentials need base64 encoding
         identifier = auth.email or auth.username
         if identifier:
-            # Has identifier → encode as base64(identifier:secret)
-            secret = auth.password or api_key
-            return encode_bearer_base64(identifier, secret)
+             # Has identifier → encode as base64(identifier:secret)
+             secret = auth.password or api_key
+             headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+             return headers["Authorization"]
         else:
-            # No identifier → use api_key as-is (PAT, OAuth, JWT)
-            return bearer_token(api_key)
+             # No identifier → use api_key as-is (PAT, OAuth, JWT)
+             headers = encode_auth("bearer", token=api_key)
+             return headers["Authorization"]
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
-        # Explicit bearer types - always use api_key as-is
-        return bearer_token(api_key)
+         headers = encode_auth("bearer", token=api_key)
+         return headers["Authorization"]
 
-    elif auth.type == "bearer_username_token":
-        # Explicit: username + api_key (token)
-        return encode_bearer_base64(auth.username or "", api_key)
-
-    elif auth.type == "bearer_username_password":
-        # Explicit: username + password
-        return encode_bearer_base64(auth.username or "", auth.password or "")
-
-    elif auth.type == "bearer_email_token":
-        # Explicit: email + api_key (token)
-        return encode_bearer_base64(auth.email or "", api_key)
-
-    elif auth.type == "bearer_email_password":
-        # Explicit: email + password
-        return encode_bearer_base64(auth.email or "", auth.password or "")
+    elif auth.type in (
+        "bearer_username_token",
+        "bearer_username_password",
+        "bearer_email_token",
+        "bearer_email_password"
+    ):
+         identifier = auth.email or auth.username or ""
+         secret = auth.password or api_key
+         headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+         return headers["Authorization"]
 
     # === Custom/API Key ===
     elif auth.type == "x-api-key":
-        logger.info(
-            f"{LOG_PREFIX} format_auth_header_value: x-api-key - "
-            f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
-        )
         return api_key
 
     elif auth.type in ("custom", "custom_header"):
-        logger.info(
-            f"{LOG_PREFIX} format_auth_header_value: {auth.type} - "
-            f"input={mask_value(api_key)} -> output={mask_value(api_key)}"
-        )
         return api_key
 
     # === HMAC (stub) ===

@@ -1185,7 +1185,7 @@ class BaseApiToken(ABC):
         Returns:
             Formatted auth header value or None if credentials are insufficient
         """
-        import base64
+        from fetch_auth_encoding import encode_auth
 
         auth_type = self.get_auth_type()
         class_name = self.__class__.__name__
@@ -1200,9 +1200,8 @@ class BaseApiToken(ABC):
 
         def encode_basic(identifier: str, secret: str) -> str:
             """Encode credentials as Basic auth header."""
-            credentials = f"{identifier}:{secret}"
-            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-            result = f"Basic {encoded}"
+            headers = encode_auth("basic", username=identifier, password=secret)
+            result = headers["Authorization"]
             logger.info(
                 f"[AUTH] {class_name}.compute_auth_header_value: "
                 f"Encoding Basic auth - identifier={mask_value(identifier)}, "
@@ -1212,9 +1211,11 @@ class BaseApiToken(ABC):
 
         def encode_bearer_base64(identifier: str, secret: str) -> str:
             """Encode credentials as Bearer auth header with base64."""
-            credentials = f"{identifier}:{secret}"
-            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
-            result = f"Bearer {encoded}"
+            # Use 'bearer_username_password' (or similar) to get "Bearer base64(u:p)"
+            # Strategy: we want "Bearer base64(identifier:secret)"
+            # fetch_auth_encoding has 'bearer_username_password' which does exactly this.
+            headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+            result = headers["Authorization"]
             logger.info(
                 f"[AUTH] {class_name}.compute_auth_header_value: "
                 f"Encoding Bearer base64 - identifier={mask_value(identifier)}, "
@@ -1224,7 +1225,8 @@ class BaseApiToken(ABC):
 
         def bearer_token(token: str) -> str:
             """Format Bearer token header."""
-            result = f"Bearer {token}"
+            headers = encode_auth("bearer", token=token)
+            result = headers["Authorization"]
             logger.info(
                 f"[AUTH] {class_name}.compute_auth_header_value: "
                 f"Bearer token - input={mask_value(token)} -> output={mask_value(result)}"

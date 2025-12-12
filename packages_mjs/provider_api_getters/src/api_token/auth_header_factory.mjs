@@ -14,6 +14,7 @@
  */
 
 import { createHmac, createHash, randomBytes } from 'crypto';
+import { encodeAuth } from '@internal/fetch-auth-encoding';
 
 // Simple console logger for defensive programming
 const logger = {
@@ -185,16 +186,10 @@ export class AuthHeaderFactory {
       throw new Error('Basic auth requires both user and secret');
     }
 
-    // RFC 7617: Base64 encode "user:secret"
-    const credentials = `${user}:${secret}`;
-    const encoded = Buffer.from(credentials, 'utf-8').toString('base64');
+    // Use fetch-auth-encoding package
+    const headers = encodeAuth('basic', { username: user, password: secret });
 
-    logger.debug(
-      `AuthHeaderFactory.createBasic: Encoded credentials ` +
-      `(inputLength=${credentials.length}, encodedLength=${encoded.length})`
-    );
-
-    return new AuthHeader('Authorization', `Basic ${encoded}`, AUTH_SCHEMES.BASIC_USER_PASS);
+    return new AuthHeader('Authorization', headers.Authorization, AUTH_SCHEMES.BASIC_USER_PASS);
   }
 
   /**
@@ -246,16 +241,10 @@ export class AuthHeaderFactory {
       throw new Error('Bearer with credentials requires both identifier and secret');
     }
 
-    // Base64 encode "identifier:secret"
-    const credentials = `${identifier}:${secret}`;
-    const encoded = Buffer.from(credentials, 'utf-8').toString('base64');
+    // Use fetch-auth-encoding package (bearer_username_password produces "Bearer base64(u:p)")
+    const headers = encodeAuth('bearer_username_password', { username: identifier, password: secret });
 
-    logger.debug(
-      `AuthHeaderFactory.createBearerWithCredentials: Encoded credentials ` +
-      `(inputLength=${credentials.length}, encodedLength=${encoded.length})`
-    );
-
-    return new AuthHeader('Authorization', `Bearer ${encoded}`, AUTH_SCHEMES.BEARER_PAT);
+    return new AuthHeader('Authorization', headers.Authorization, AUTH_SCHEMES.BEARER_PAT);
   }
 
   /**

@@ -526,6 +526,19 @@ typing-extensions = {version = ">=4.6.0", markers = "python_version < \"3.13\""}
 test = ["pytest (>=6)"]
 
 [[package]]
+name = "fetch-auth-encoding"
+version = "0.1.0"
+description = "Fetch Auth Encoding package"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "../fetch_auth_encoding"
+
+[[package]]
 name = "fetch-client"
 version = "1.0.0"
 description = "Enterprise-grade, latency-optimized HTTP client with streaming support"
@@ -1922,4 +1935,4 @@ redis = ["redis"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "0387df9b3522ad425e0dab84d6245d7b94a9608d340f5a39f65112e1d0787a4b"
+content-hash = "65dad0da475700c27bb4e20f2066fc7a2cd28797d6a4d2e6d3ec464c194dc32a"

@@ -53,6 +53,22 @@ files = [
 ]
 
 [[package]]
+name = "console-print"
+version = "1.0.0"
+description = "Console printing with optional Rich support - falls back to standard logging if Rich unavailable"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.extras]
+rich = ["rich (>=13.0.0,<14.0.0)"]
+
+[package.source]
+type = "directory"
+url = "../console_print"
+
+[[package]]
 name = "coverage"
 version = "7.10.7"
 description = "Code coverage measurement for Python"
@@ -207,6 +223,19 @@ typing-extensions = ">=4.8.0"
 [package.extras]
 all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=3.1.5)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.18)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
 standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
+
+[[package]]
+name = "fetch-auth-encoding"
+version = "0.1.0"
+description = "Fetch Auth Encoding package"
+optional = false
+python-versions = "^3.9"
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "../fetch_auth_encoding"
 
 [[package]]
 name = "h11"
@@ -867,4 +896,4 @@ fastapi = []
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "15e653aa86732ccdaec1c290ace9a7c537550ae0a8fad90beaf288ed2f37d730"
+content-hash = "41cb9650ecf2ad130f161b6828c999664cdae4164d0dfe1c258634fff0b879c1"
