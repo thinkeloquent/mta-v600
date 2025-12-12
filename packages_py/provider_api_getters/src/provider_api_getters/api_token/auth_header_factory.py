@@ -14,6 +14,7 @@ Supported auth schemes:
 """
 
 from fetch_auth_encoding import encode_auth
+from console_print import print_auth_trace
 import hashlib
 import hmac
 import logging
@@ -34,6 +35,12 @@ def _mask_user(value: str, visible_chars: int = 3) -> str:
     if len(value) <= visible_chars:
         return "*" * len(value)
     return f"{value[:visible_chars]}***"
+
+
+def _trace_before_after(operation: str, before: str, after: str):
+    b_preview = before[:20] + "..." if len(before) > 20 else before
+    a_preview = after[:20] + "..." if len(after) > 20 else after
+    print_auth_trace(f"ENCODE {operation}", f"auth_factory '{b_preview}' -> '{a_preview}'", "")
 
 
 class AuthScheme(Enum):
@@ -200,6 +207,7 @@ class AuthHeaderFactory:
             raise ValueError("Basic auth requires both user and secret")
 
         headers = encode_auth("basic", username=user, password=secret)
+        _trace_before_after("Basic", f"{user}:{secret}", headers["Authorization"])
         
         return AuthHeader(
             header_name="Authorization",
@@ -256,6 +264,7 @@ class AuthHeaderFactory:
             raise ValueError("Bearer with credentials requires both identifier and secret")
 
         headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+        _trace_before_after("Bearer Creds", f"{identifier}:{secret}", headers["Authorization"])
         
         return AuthHeader(
             header_name="Authorization",

@@ -2,7 +2,11 @@ import base64
 from typing import Dict, Optional, Any
 
 def _base64_encode(text: str) -> str:
-    return base64.b64encode(text.encode("utf-8")).decode("utf-8")
+    original_preview = text[:20] + "..." if len(text) > 20 else text
+    encoded = base64.b64encode(text.encode("utf-8")).decode("utf-8")
+    encoded_preview = encoded[:20] + "..." if len(encoded) > 20 else encoded
+    print(f"[TRACE ENCODING] base64: '{original_preview}' -> '{encoded_preview}'")
+    return encoded
 
 def encode_auth(auth_type: str, **kwargs: Any) -> Dict[str, str]:
     """

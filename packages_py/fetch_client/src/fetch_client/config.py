@@ -313,6 +313,11 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         """Mask value for logging, showing first 10 chars."""
         return _mask_sensitive(val, 10)
 
+    def trace_before_after(operation: str, before: str, after: str):
+        b_preview = before[:20] + "..." if len(before) > 20 else before
+        a_preview = after[:20] + "..." if len(after) > 20 else after
+        print_auth_trace(f"ENCODE {operation}", f"config.py '{b_preview}' -> '{a_preview}'", "")
+
     # Guard: if api_key already has a scheme prefix, return as-is to prevent double-encoding
     # This handles cases where api_token layer returns pre-encoded values like "Basic <base64>"
     if api_key and (api_key.startswith("Basic ") or api_key.startswith("Bearer ")):
@@ -330,6 +335,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
         
         # Use fetch-auth-encoding
         headers = encode_auth("basic", username=identifier, password=secret)
+        trace_before_after("Basic", f"{identifier}:{secret}", headers["Authorization"])
         return headers["Authorization"]
 
     # === Bearer Auth Family ===
@@ -340,14 +346,17 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
              # Has identifier → encode as base64(identifier:secret)
              secret = auth.password or api_key
              headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+             trace_before_after("Bearer Creds", f"{identifier}:{secret}", headers["Authorization"])
              return headers["Authorization"]
         else:
              # No identifier → use api_key as-is (PAT, OAuth, JWT)
              headers = encode_auth("bearer", token=api_key)
+             trace_before_after("Bearer Token", api_key, headers["Authorization"])
              return headers["Authorization"]
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
          headers = encode_auth("bearer", token=api_key)
+         trace_before_after("Bearer OAuth/JWT", api_key, headers["Authorization"])
          return headers["Authorization"]
 
     elif auth.type in (
@@ -359,6 +368,7 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
          identifier = auth.email or auth.username or ""
          secret = auth.password or api_key
          headers = encode_auth("bearer_username_password", username=identifier, password=secret)
+         trace_before_after("Bearer Extended", f"{identifier}:{secret}", headers["Authorization"])
          return headers["Authorization"]
 
     # === Custom/API Key ===
