@@ -91,22 +91,32 @@ export class JiraApiToken extends BaseApiToken {
     }
 
     // Determine encoding based on auth type
-    const bearerTypes = new Set([
-      "bearer",
+    //
+    // Plain 'bearer' = raw token only (no encoding here, fetch_client adds "Bearer " prefix)
+    // bearer_*_* variants = encode credentials as base64(email:token) with Bearer prefix
+    const bearerCredentialTypes = new Set([
       "bearer_email_token",
       "bearer_email_password",
       "bearer_username_token",
       "bearer_username_password",
-      "bearer_oauth",
-      "bearer_jwt",
     ]);
 
+    // Simple bearer types that don't need credential encoding
+    const simpleBearerTypes = new Set(["bearer", "bearer_oauth", "bearer_jwt"]);
+
     let authHeader;
-    if (bearerTypes.has(authType)) {
+    if (simpleBearerTypes.has(authType)) {
+      // Plain bearer = raw token, no encoding needed
+      // fetch_client will add "Bearer " prefix
+      logger.debug(
+        `JiraApiToken._encodeAuth: Plain bearer authType='${authType}', returning raw token (no encoding)`
+      );
+      return token;
+    } else if (bearerCredentialTypes.has(authType)) {
       // Bearer with base64-encoded credentials
       authHeader = AuthHeaderFactory.createBearerWithCredentials(email, token);
       logger.debug(
-        `JiraApiToken._encodeAuth: Using Bearer encoding for authType='${authType}'`
+        `JiraApiToken._encodeAuth: Using Bearer+credentials encoding for authType='${authType}'`
       );
     } else {
       // Default to Basic auth (basic, basic_email_token, etc.)

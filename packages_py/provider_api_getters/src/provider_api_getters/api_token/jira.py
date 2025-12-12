@@ -111,17 +111,29 @@ class JiraApiToken(BaseApiToken):
             raise ValueError("Both email and token are required for auth encoding")
 
         # Determine encoding based on auth type
-        bearer_types = {
-            "bearer", "bearer_email_token", "bearer_email_password",
+        #
+        # Plain 'bearer' = raw token only (no encoding here, fetch_client adds "Bearer " prefix)
+        # bearer_*_* variants = encode credentials as base64(email:token) with Bearer prefix
+        bearer_credential_types = {
+            "bearer_email_token", "bearer_email_password",
             "bearer_username_token", "bearer_username_password",
-            "bearer_oauth", "bearer_jwt",
         }
 
-        if auth_type in bearer_types:
+        # Simple bearer types that don't need credential encoding
+        simple_bearer_types = {"bearer", "bearer_oauth", "bearer_jwt"}
+
+        if auth_type in simple_bearer_types:
+            # Plain bearer = raw token, no encoding needed
+            # fetch_client will add "Bearer " prefix
+            logger.debug(
+                f"JiraApiToken._encode_auth: Plain bearer auth_type='{auth_type}', returning raw token (no encoding)"
+            )
+            return token
+        elif auth_type in bearer_credential_types:
             # Bearer with base64-encoded credentials
             auth_header = AuthHeaderFactory.create_bearer_with_credentials(email, token)
             logger.debug(
-                f"JiraApiToken._encode_auth: Using Bearer encoding for auth_type='{auth_type}'"
+                f"JiraApiToken._encode_auth: Using Bearer+credentials encoding for auth_type='{auth_type}'"
             )
         else:
             # Default to Basic auth (basic, basic_email_token, etc.)
