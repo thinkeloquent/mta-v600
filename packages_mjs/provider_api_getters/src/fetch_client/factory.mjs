@@ -80,19 +80,24 @@ export class ProviderClientFactory {
         proxy: this._getProxyConfig(),
         client: this._getClientConfig(),
         headers: {},
-        has_overwrite_root_config: false,
+        has_provider_override: false,
         has_runtime_override: false,
       };
     }
 
-    const overwrite = apiToken.getOverwriteRootConfig() || {};
+    // Get specific overrides directly from provider config
+    // These correspond to providers.{name}.proxy, .client, .headers
+    const providerProxy = apiToken.getProxyConfig() || {};
+    const providerClient = apiToken.getClientConfig() || {};
+    const providerHeaders = apiToken.getHeadersConfig() || {};
+
     const globalProxy = this._getProxyConfig();
     const globalClient = this._getClientConfig();
 
-    // Priority: runtime_override > overwrite_root_config > global
-    let mergedProxy = deepMerge(globalProxy, overwrite.proxy || {});
-    let mergedClient = deepMerge(globalClient, overwrite.client || {});
-    let headers = { ...(overwrite.headers || {}) };
+    // Priority: runtime_override > provider_specific > global
+    let mergedProxy = deepMerge(globalProxy, providerProxy);
+    let mergedClient = deepMerge(globalClient, providerClient);
+    let headers = { ...providerHeaders };
 
     // Apply runtime override if provided
     if (runtimeOverride) {
@@ -107,11 +112,15 @@ export class ProviderClientFactory {
       }
     }
 
-    const hasOverrides = Object.keys(overwrite).length > 0;
+    const hasOverrides =
+      Object.keys(providerProxy).length > 0 ||
+      Object.keys(providerClient).length > 0 ||
+      Object.keys(providerHeaders).length > 0;
+
     if (hasOverrides) {
       logger.info(
-        { providerName, overwriteKeys: Object.keys(overwrite) },
-        'Provider-specific overwrite_root_config applied'
+        { providerName },
+        'Provider-specific overrides applied'
       );
     }
 
@@ -126,7 +135,7 @@ export class ProviderClientFactory {
       proxy: mergedProxy,
       client: mergedClient,
       headers,
-      has_overwrite_root_config: hasOverrides,
+      has_provider_override: hasOverrides,
       has_runtime_override: runtimeOverride && Object.keys(runtimeOverride).length > 0,
     };
   }

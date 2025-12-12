@@ -14,22 +14,21 @@ providers:
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
     # Provider-specific configuration overrides (optional)
-    # Overrides are deep-merged with global proxy/client settings
-    # overwrite_root_config:
-    #   proxy:
-    #     # Override proxy for this provider only
-    #     default_environment: "prod"
-    #     proxy_urls:
-    #       prod: "http://gemini-proxy:8080"
-    #     cert_verify: true
-    #     ca_bundle: "/path/to/custom-ca.crt"
-    #   client:
-    #     # Override timeout for this provider only
-    #     timeout_seconds: 120.0
-    #     timeout_ms: 120000
-    #   headers:
-    #     # Additional headers for this provider only
-    #     X-Custom-Header: "value"
+    # These are deep-merged with global proxy/client settings
+    # proxy:
+    #   # Override proxy for this provider only
+    #   default_environment: "prod"
+    #   proxy_urls:
+    #     prod: "http://gemini-proxy:8080"
+    #   cert_verify: true
+    #   ca_bundle: "/path/to/custom-ca.crt"
+    # client:
+    #   # Override timeout for this provider only
+    #   timeout_seconds: 120.0
+    #   timeout_ms: 120000
+    # headers:
+    #   # Additional headers for this provider only
+    #   X-Custom-Header: "value"
   openai:
     base_url: "https://api.openai.com/v1"
     model: "gpt-4"
@@ -164,20 +163,19 @@ providers:
   elasticsearch:
     placeholder: true
     message: "Elasticsearch integration not implemented"
-    # Example: Full overwrite_root_config for on-prem/VPN provider
-    # overwrite_root_config:
-    #   client:
-    #     timeout_seconds: 120.0
-    #     timeout_ms: 120000
-    #   proxy:
-    #     default_environment: "dev"
-    #     proxy_urls: {}
-    #     ca_bundle: null
-    #     cert: null
-    #     cert_verify: false
-    #     agent_proxy:
-    #       http_proxy: null
-    #       https_proxy: null
+    # Example: Full overrides for on-prem/VPN provider
+    # client:
+    #   timeout_seconds: 120.0
+    #   timeout_ms: 120000
+    # proxy:
+    #   default_environment: "dev"
+    #   proxy_urls: {}
+    #   ca_bundle: null
+    #   cert: null
+    #   cert_verify: false
+    #   agent_proxy:
+    #     http_proxy: null
+    #     https_proxy: null
 
 # Default provider for backward compatibility
 default_provider: "gemini"

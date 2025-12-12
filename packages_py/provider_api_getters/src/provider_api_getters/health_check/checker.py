@@ -108,7 +108,7 @@ def _print_proxy_config_panel(
             "max_connections": client_config.get("max_connections"),
         },
         "overrides": {
-            "has_overwrite_root_config": config_used.get("has_overwrite_root_config", False),
+            "has_provider_override": config_used.get("has_provider_override", False),
             "has_runtime_override": config_used.get("has_runtime_override", False),
         },
     }
@@ -259,7 +259,7 @@ class ProviderHealthChecker:
             "proxy": merged_config.get("proxy"),
             "client": merged_config.get("client"),
             "auth_type": api_token.get_auth_type() if api_token else None,
-            "has_overwrite_root_config": merged_config.get("has_overwrite_root_config", False),
+            "has_provider_override": merged_config.get("has_provider_override", False),
             "has_runtime_override": merged_config.get("has_runtime_override", False),
         }
 

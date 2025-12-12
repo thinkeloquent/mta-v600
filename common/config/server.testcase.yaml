@@ -1,9 +1,10 @@
 # Server Configuration - TEST CASES
 # Example configurations for different network scenarios
-# Use this file as a reference when setting up overwrite_root_config
+# Use this file as a reference when setting up provider-specific overrides
 
 # =============================================================================
-# Provider Configuration with overwrite_root_config Examples
+# Provider Configuration with Direct Overrides Examples
+# Keys: proxy, client, headers
 # =============================================================================
 
 providers:
@@ -15,17 +16,16 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        default_environment: "corp"
-        proxy_urls:
-          corp: "http://corporate-proxy.internal:8080"
-          prod: "http://prod-proxy.internal:8080"
-        cert_verify: true
-        ca_bundle: "/etc/ssl/certs/corporate-ca.crt"
-      client:
-        timeout_seconds: 90.0
-        timeout_ms: 90000
+    proxy:
+      default_environment: "corp"
+      proxy_urls:
+        corp: "http://corporate-proxy.internal:8080"
+        prod: "http://prod-proxy.internal:8080"
+      cert_verify: true
+      ca_bundle: "/etc/ssl/certs/corporate-ca.crt"
+    client:
+      timeout_seconds: 90.0
+      timeout_ms: 90000
 
   # TEST CASE 2: On-prem provider via VPN (no proxy, custom timeout)
   # Use when accessing on-prem services through VPN
@@ -36,17 +36,16 @@ providers:
     health_endpoint: "/myself"
     api_auth_type: "basic"
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        # No proxy needed - direct VPN access
-        proxy_urls: {}
-        agent_proxy:
-          http_proxy: null
-          https_proxy: null
-        cert_verify: false  # Self-signed cert
-      client:
-        timeout_seconds: 30.0
-        timeout_ms: 30000
+    proxy:
+      # No proxy needed - direct VPN access
+      proxy_urls: {}
+      agent_proxy:
+        http_proxy: null
+        https_proxy: null
+      cert_verify: false  # Self-signed cert
+    client:
+      timeout_seconds: 30.0
+      timeout_ms: 30000
 
   # TEST CASE 3: Provider with HTTP/HTTPS agent proxy
   # Use with SOCKS or HTTP proxy via agent settings
@@ -55,17 +54,16 @@ providers:
     env_api_key: "GITHUB_TOKEN"
     api_auth_type: "bearer"
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        agent_proxy:
-          http_proxy: "http://squid.internal:3128"
-          https_proxy: "http://squid.internal:3128"
-        cert_verify: true
-      client:
-        timeout_seconds: 45.0
-        timeout_ms: 45000
-      headers:
-        X-GitHub-Enterprise: "true"
+    proxy:
+      agent_proxy:
+        http_proxy: "http://squid.internal:3128"
+        https_proxy: "http://squid.internal:3128"
+      cert_verify: true
+    client:
+      timeout_seconds: 45.0
+      timeout_ms: 45000
+    headers:
+      X-GitHub-Enterprise: "true"
 
   # TEST CASE 4: Elasticsearch on-prem with SSL and custom CA
   # Use for on-prem Elasticsearch/OpenSearch with custom certificates
@@ -73,15 +71,14 @@ providers:
     env_connection_url: "ELASTICSEARCH_URL"
     api_auth_type: "connection_string"
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        cert_verify: true
-        ca_bundle: "/etc/ssl/certs/elasticsearch-ca.pem"
-        cert: "/etc/ssl/certs/client.pem"
-      client:
-        timeout_seconds: 120.0
-        timeout_ms: 120000
-        max_connections: 5
+    proxy:
+      cert_verify: true
+      ca_bundle: "/etc/ssl/certs/elasticsearch-ca.pem"
+      cert: "/etc/ssl/certs/client.pem"
+    client:
+      timeout_seconds: 120.0
+      timeout_ms: 120000
+      max_connections: 5
 
   # TEST CASE 5: SauceLabs via different proxies per environment
   # Use when different environments need different proxy routes
@@ -92,15 +89,14 @@ providers:
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        default_environment: "dev"
-        proxy_urls:
-          dev: "http://dev-proxy:8080"
-          qa: "http://qa-proxy:8080"
-          stage: "http://stage-proxy:8080"
-          prod: null  # No proxy in prod (direct access)
-        cert_verify: false
+    proxy:
+      default_environment: "dev"
+      proxy_urls:
+        dev: "http://dev-proxy:8080"
+        qa: "http://qa-proxy:8080"
+        stage: "http://stage-proxy:8080"
+        prod: null  # No proxy in prod (direct access)
+      cert_verify: false
 
   # TEST CASE 6: AWS services with IAM role (no proxy)
   # Use when accessing AWS services directly from within AWS
@@ -109,17 +105,16 @@ providers:
     env_api_key: "AWS_ACCESS_KEY_ID"
     api_auth_type: "custom"  # AWS uses Signature v4
     token_resolver: "static"
-    overwrite_root_config:
-      proxy:
-        # Direct access within AWS VPC
-        proxy_urls: {}
-        agent_proxy:
-          http_proxy: null
-          https_proxy: null
-        cert_verify: true
-      client:
-        timeout_seconds: 30.0
-        timeout_ms: 30000
+    proxy:
+      # Direct access within AWS VPC
+      proxy_urls: {}
+      agent_proxy:
+        http_proxy: null
+        https_proxy: null
+      cert_verify: true
+    client:
+      timeout_seconds: 30.0
+      timeout_ms: 30000
 
   # TEST CASE 7: Provider with slow responses (extended timeout)
   # Use for providers known to have slow responses
@@ -128,12 +123,11 @@ providers:
     env_api_key: "SLOW_API_KEY"
     api_auth_type: "bearer"
     token_resolver: "static"
-    overwrite_root_config:
-      client:
-        timeout_seconds: 300.0  # 5 minutes
-        timeout_ms: 300000
-        keep_alive_timeout_seconds: 30.0
-        keep_alive_timeout_ms: 30000
+    client:
+      timeout_seconds: 300.0  # 5 minutes
+      timeout_ms: 300000
+      keep_alive_timeout_seconds: 30.0
+      keep_alive_timeout_ms: 30000
 
 # =============================================================================
 # Global Client Configuration (can be overridden per-provider)

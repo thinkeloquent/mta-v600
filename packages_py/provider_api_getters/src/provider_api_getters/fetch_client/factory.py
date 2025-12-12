@@ -77,7 +77,7 @@ class ProviderClientFactory:
 
         Resolution priority (deep merge):
         1. runtime_override (if provided via POST endpoint)
-        2. providers.{name}.overwrite_root_config.* (provider-specific)
+        2. providers.{name}.proxy|client|headers (provider-specific)
         3. Global settings (proxy.*, client.*)
 
         Args:
@@ -98,18 +98,23 @@ class ProviderClientFactory:
                 "proxy": self._get_proxy_config(),
                 "client": self._get_client_config(),
                 "headers": {},
-                "has_overwrite_root_config": False,
+                "has_provider_override": False,
                 "has_runtime_override": False,
             }
 
-        overwrite = api_token.get_overwrite_root_config() or {}
+        # Get specific overrides directly from provider config
+        # These correspond to providers.{name}.proxy, .client, .headers
+        provider_proxy = api_token.get_proxy_config() or {}
+        provider_client = api_token.get_client_config() or {}
+        provider_headers = api_token.get_headers_config() or {}
+
         global_proxy = self._get_proxy_config()
         global_client = self._get_client_config()
 
-        # Priority: runtime_override > overwrite_root_config > global
-        merged_proxy = deep_merge(global_proxy, overwrite.get("proxy", {}))
-        merged_client = deep_merge(global_client, overwrite.get("client", {}))
-        headers = dict(overwrite.get("headers", {}))
+        # Priority: runtime_override > provider_specific > global
+        merged_proxy = deep_merge(global_proxy, provider_proxy)
+        merged_client = deep_merge(global_client, provider_client)
+        headers = dict(provider_headers)
 
         # Apply runtime override if provided
         if runtime_override:
@@ -120,15 +125,14 @@ class ProviderClientFactory:
             if runtime_override.get("headers"):
                 headers = {**headers, **runtime_override["headers"]}
 
-        has_overrides = len(overwrite) > 0
+        has_overrides = bool(provider_proxy or provider_client or provider_headers)
         if has_overrides:
             logger.info(
                 f"ProviderClientFactory._get_merged_config_for_provider: "
-                f"Provider '{provider_name}' has overwrite_root_config with keys: {list(overwrite.keys())}"
+                f"Provider '{provider_name}' has specific overrides"
             )
             console.print(
-                f"[bold yellow]Provider '{provider_name}' overwrite_root_config applied:[/bold yellow]",
-                list(overwrite.keys())
+                f"[bold yellow]Provider '{provider_name}' specific overrides applied[/bold yellow]"
             )
 
         has_runtime = runtime_override and len(runtime_override) > 0
@@ -146,7 +150,7 @@ class ProviderClientFactory:
             "proxy": merged_proxy,
             "client": merged_client,
             "headers": headers,
-            "has_overwrite_root_config": has_overrides,
+            "has_provider_override": has_overrides,
             "has_runtime_override": has_runtime,
         }
 
@@ -380,7 +384,7 @@ class ProviderClientFactory:
         # Apply additional headers from overwrite_config
         override_headers = merged_config.get("headers", {})
         if override_headers:
-            client_kwargs["headers"] = override_headers
+            client_kwargs["default_headers"] = override_headers
             logger.debug(
                 f"ProviderClientFactory.get_client: Applying override headers: "
                 f"{list(override_headers.keys())}"

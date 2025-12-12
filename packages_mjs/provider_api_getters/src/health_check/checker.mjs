@@ -81,8 +81,8 @@ function printPanel(title, content, borderColor = "cyan") {
 
   console.log(
     colorFn("╭" + "─".repeat(topLeft)) +
-      titlePadded +
-      colorFn("─".repeat(topRight) + "╮")
+    titlePadded +
+    colorFn("─".repeat(topRight) + "╮")
   );
   console.log(colorFn("╰" + "─".repeat(width - 2) + "╯"));
 
@@ -121,7 +121,7 @@ function printProxyConfigPanel(providerName, configUsed) {
       max_connections: clientConfig.max_connections,
     },
     overrides: {
-      has_overwrite_root_config: configUsed.has_overwrite_root_config || false,
+      has_provider_override: configUsed.has_provider_override || false,
       has_runtime_override: configUsed.has_runtime_override || false,
     },
   };
@@ -236,7 +236,7 @@ function printDatabaseConfigPanel(providerName, connectionType, configUsed) {
     proxy: configUsed.proxy || "(not applicable)",
     client: configUsed.client || {},
     overrides: {
-      has_overwrite_root_config: configUsed.has_overwrite_root_config || false,
+      has_provider_override: configUsed.has_provider_override || false,
       has_runtime_override: configUsed.has_runtime_override || false,
     },
   };
@@ -373,7 +373,7 @@ export class ProviderHealthChecker {
       proxy: mergedConfig.proxy,
       client: mergedConfig.client,
       auth_type: apiToken?.getAuthType?.() || null,
-      has_overwrite_root_config: mergedConfig.has_overwrite_root_config,
+      has_provider_override: mergedConfig.has_provider_override,
       has_runtime_override: mergedConfig.has_runtime_override,
     };
   }

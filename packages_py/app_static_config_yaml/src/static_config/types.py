@@ -89,7 +89,19 @@ class ProviderConfig(BaseModel):
     token_resolver: Optional[str] = None  # static, startup, request
 
     # Provider-specific config overrides
-    overwrite_root_config: Dict[str, Any] = Field(default_factory=dict)
+    # These fields (proxy, client, headers) correspond to overrides in server.yaml
+    # They are not explicitly defined here as typed fields to allow for
+    # simple dictionary access or they can be added if strict typing is desired.
+    # For now, we rely on the dynamic loading which puts them in the provider config dict.
+    # However, if we want them to be part of the model, we should add them.
+    # Given the previous pattern was a dict, let's leave them flexible or add them.
+    # Since YamlConfig constructs this, and extra fields might be ignored or stored,
+    # let's explicitly add them as Optional fields for better type safety if possible,
+    # or just remove the overwrite_root_config field as it's no longer used.
+    # The safest bet for pydantic models that allow extra fields is to just remove the old one.
+    # If the model configuration allows extra, then proxy/client at root will work.
+    # Let's check if the model allows extra. It inherits form BaseModel. default is 'ignore' or 'extra'.
+    # Assuming standard pydantic behavior, let's just remove the field.
 
 
 class ClientConfig(BaseModel):

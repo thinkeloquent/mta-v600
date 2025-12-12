@@ -662,7 +662,7 @@ export class BaseApiToken {
       if (registryToken) {
         logger.debug(
           `${className}.getApiKeyAsync: Found token from registry ` +
-            `(length=${registryToken.length})`
+          `(length=${registryToken.length})`
         );
         return new ApiKeyResult({
           apiKey: registryToken,
@@ -679,7 +679,7 @@ export class BaseApiToken {
     // 2. Fall back to subclass implementation (env var lookup)
     logger.debug(
       `${className}.getApiKeyAsync: No registry token, ` +
-        `falling back to getApiKey()`
+      `falling back to getApiKey()`
     );
     return this.getApiKey();
   }
@@ -723,7 +723,7 @@ export class BaseApiToken {
       if (registryToken) {
         logger.debug(
           `${className}.getApiKeyForRequestAsync: Found token from registry ` +
-            `(length=${registryToken.length})`
+          `(length=${registryToken.length})`
         );
         return new ApiKeyResult({
           apiKey: registryToken,
@@ -740,7 +740,7 @@ export class BaseApiToken {
     // 2. Fall back to subclass implementation
     logger.debug(
       `${className}.getApiKeyForRequestAsync: No registry token, ` +
-        `falling back to getApiKeyForRequest()`
+      `falling back to getApiKeyForRequest()`
     );
     return this.getApiKeyForRequest(context);
   }
@@ -921,39 +921,18 @@ export class BaseApiToken {
   }
 
   /**
-   * Get the overwrite_root_config block for this provider.
-   * This allows providers to override any root-level config (proxy, client, etc.)
-   * @returns {Object|null}
-   */
-  getOverwriteRootConfig() {
-    const className = this.constructor.name;
-    logger.debug(`${className}.getOverwriteRootConfig: Getting overwrite root config`);
-
-    const providerConfig = this._getProviderConfig();
-    const overwrite = providerConfig?.overwrite_root_config || null;
-
-    if (overwrite) {
-      logger.debug(
-        `${className}.getOverwriteRootConfig: Found overwrite_root_config with keys: ` +
-        `[${Object.keys(overwrite).join(', ')}]`
-      );
-    } else {
-      logger.debug(`${className}.getOverwriteRootConfig: No overwrite_root_config found`);
-    }
-
-    return overwrite;
-  }
-
-  /**
-   * Get provider-specific proxy configuration from overwrite_root_config.
-   * @returns {Object|null}
+   * Get provider-specific proxy configuration.
+   *
+   * @returns {Object|null} Proxy config dictionary or null if not configured
    */
   getProxyConfig() {
     const className = this.constructor.name;
-    logger.debug(`${className}.getProxyConfig: Getting proxy config from overwrite_root_config`);
+    logger.debug(
+      `${className}.getProxyConfig: Getting proxy config from provider config`
+    );
 
-    const overwrite = this.getOverwriteRootConfig();
-    const proxyConfig = overwrite?.proxy || null;
+    const providerConfig = this._getProviderConfig();
+    const proxyConfig = providerConfig?.proxy || null;
 
     if (proxyConfig) {
       logger.debug(
@@ -961,22 +940,25 @@ export class BaseApiToken {
         `[${Object.keys(proxyConfig).join(', ')}]`
       );
     } else {
-      logger.debug(`${className}.getProxyConfig: No proxy config in overwrite_root_config`);
+      logger.debug(`${className}.getProxyConfig: No proxy config in provider config`);
     }
 
     return proxyConfig;
   }
 
   /**
-   * Get provider-specific client configuration from overwrite_root_config.
-   * @returns {Object|null}
+   * Get provider-specific client configuration.
+   *
+   * @returns {Object|null} Client config dictionary or null if not configured
    */
   getClientConfig() {
     const className = this.constructor.name;
-    logger.debug(`${className}.getClientConfig: Getting client config from overwrite_root_config`);
+    logger.debug(
+      `${className}.getClientConfig: Getting client config from provider config`
+    );
 
-    const overwrite = this.getOverwriteRootConfig();
-    const clientConfig = overwrite?.client || null;
+    const providerConfig = this._getProviderConfig();
+    const clientConfig = providerConfig?.client || null;
 
     if (clientConfig) {
       logger.debug(
@@ -984,22 +966,25 @@ export class BaseApiToken {
         `[${Object.keys(clientConfig).join(', ')}]`
       );
     } else {
-      logger.debug(`${className}.getClientConfig: No client config in overwrite_root_config`);
+      logger.debug(`${className}.getClientConfig: No client config in provider config`);
     }
 
     return clientConfig;
   }
 
   /**
-   * Get provider-specific headers configuration from overwrite_root_config.
-   * @returns {Object|null}
+   * Get provider-specific headers configuration.
+   *
+   * @returns {Object|null} Headers config dictionary or null if not configured
    */
   getHeadersConfig() {
     const className = this.constructor.name;
-    logger.debug(`${className}.getHeadersConfig: Getting headers config from overwrite_root_config`);
+    logger.debug(
+      `${className}.getHeadersConfig: Getting headers config from provider config`
+    );
 
-    const overwrite = this.getOverwriteRootConfig();
-    const headersConfig = overwrite?.headers || null;
+    const providerConfig = this._getProviderConfig();
+    const headersConfig = providerConfig?.headers || null;
 
     if (headersConfig) {
       logger.debug(
@@ -1007,7 +992,7 @@ export class BaseApiToken {
         `[${Object.keys(headersConfig).join(', ')}]`
       );
     } else {
-      logger.debug(`${className}.getHeadersConfig: No headers config in overwrite_root_config`);
+      logger.debug(`${className}.getHeadersConfig: No headers config in provider config`);
     }
 
     return headersConfig;

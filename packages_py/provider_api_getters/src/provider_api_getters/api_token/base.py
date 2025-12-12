@@ -1484,45 +1484,22 @@ class BaseApiToken(ABC):
 
         return import_path
 
-    def get_overwrite_root_config(self) -> Optional[Dict[str, Any]]:
-        """
-        Get the overwrite_root_config block for this provider.
-        This allows providers to override any root-level config (proxy, client, etc.)
 
-        Returns:
-            Overwrite root config dictionary or None if not configured
-        """
-        logger.debug(f"{self.__class__.__name__}.get_overwrite_root_config: Getting overwrite root config")
-
-        provider_config = self._get_provider_config()
-        overwrite = provider_config.get("overwrite_root_config")
-
-        if overwrite:
-            logger.debug(
-                f"{self.__class__.__name__}.get_overwrite_root_config: "
-                f"Found overwrite_root_config with keys: {list(overwrite.keys())}"
-            )
-        else:
-            logger.debug(
-                f"{self.__class__.__name__}.get_overwrite_root_config: No overwrite_root_config found"
-            )
-
-        return overwrite
 
     def get_proxy_config(self) -> Optional[Dict[str, Any]]:
         """
-        Get provider-specific proxy configuration from overwrite_root_config.
+        Get provider-specific proxy configuration.
 
         Returns:
             Proxy config dictionary or None if not configured
         """
         logger.debug(
             f"{self.__class__.__name__}.get_proxy_config: "
-            "Getting proxy config from overwrite_root_config"
+            "Getting proxy config from provider config"
         )
 
-        overwrite = self.get_overwrite_root_config()
-        proxy_config = overwrite.get("proxy") if overwrite else None
+        provider_config = self._get_provider_config()
+        proxy_config = provider_config.get("proxy")
 
         if proxy_config:
             logger.debug(
@@ -1532,25 +1509,25 @@ class BaseApiToken(ABC):
         else:
             logger.debug(
                 f"{self.__class__.__name__}.get_proxy_config: "
-                "No proxy config in overwrite_root_config"
+                "No proxy config in provider config"
             )
 
         return proxy_config
 
     def get_client_config(self) -> Optional[Dict[str, Any]]:
         """
-        Get provider-specific client configuration from overwrite_root_config.
+        Get provider-specific client configuration.
 
         Returns:
             Client config dictionary or None if not configured
         """
         logger.debug(
             f"{self.__class__.__name__}.get_client_config: "
-            "Getting client config from overwrite_root_config"
+            "Getting client config from provider config"
         )
 
-        overwrite = self.get_overwrite_root_config()
-        client_config = overwrite.get("client") if overwrite else None
+        provider_config = self._get_provider_config()
+        client_config = provider_config.get("client")
 
         if client_config:
             logger.debug(
@@ -1560,25 +1537,25 @@ class BaseApiToken(ABC):
         else:
             logger.debug(
                 f"{self.__class__.__name__}.get_client_config: "
-                "No client config in overwrite_root_config"
+                "No client config in provider config"
             )
 
         return client_config
 
     def get_headers_config(self) -> Optional[Dict[str, str]]:
         """
-        Get provider-specific headers configuration from overwrite_root_config.
+        Get provider-specific headers configuration.
 
         Returns:
             Headers config dictionary or None if not configured
         """
         logger.debug(
             f"{self.__class__.__name__}.get_headers_config: "
-            "Getting headers config from overwrite_root_config"
+            "Getting headers config from provider config"
         )
 
-        overwrite = self.get_overwrite_root_config()
-        headers_config = overwrite.get("headers") if overwrite else None
+        provider_config = self._get_provider_config()
+        headers_config = provider_config.get("headers")
 
         if headers_config:
             logger.debug(
@@ -1588,7 +1565,7 @@ class BaseApiToken(ABC):
         else:
             logger.debug(
                 f"{self.__class__.__name__}.get_headers_config: "
-                "No headers config in overwrite_root_config"
+                "No headers config in provider config"
             )
 
         return headers_config
