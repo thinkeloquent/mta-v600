@@ -61,6 +61,18 @@ class AuthConfig:
     header_name: Optional[str] = None   # For custom/custom_header types
     get_api_key_for_request: Optional[Callable[[RequestContext], Optional[str]]] = None
 
+    def __post_init__(self):
+        """Validate auth config on initialization."""
+        # Detect if raw_api_key looks like a URL (common misconfiguration)
+        if self.raw_api_key and self.raw_api_key.startswith(("http://", "https://")):
+            import logging
+            logger = logging.getLogger("fetch_client.config")
+            logger.error(
+                f"AuthConfig: raw_api_key appears to be a URL (starts with http). "
+                f"This is likely a misconfiguration. Expected an API key/token, "
+                f"got: {self.raw_api_key[:30]}..."
+            )
+
     @property
     def api_key(self) -> Optional[str]:
         """Return the computed auth header value based on type.

@@ -55,6 +55,17 @@ def resolve_auth_config(
         >>> auth_dict = resolve_auth_config("bearer", api_key_result, "Authorization")
         >>> auth_config = AuthConfig(**auth_dict)
     """
+    import logging
+    logger = logging.getLogger("provider_api_getters.auth_resolver")
+
+    # Debug: Log input values to trace auth issues
+    raw_key_preview = getattr(api_key_result, "raw_api_key", None)
+    api_key_preview = getattr(api_key_result, "api_key", None)
+    logger.debug(
+        f"resolve_auth_config: auth_type='{auth_type}', header_name='{header_name}', "
+        f"raw_api_key_starts='{raw_key_preview[:20] if raw_key_preview else None}...', "
+        f"api_key_starts='{api_key_preview[:20] if api_key_preview else None}...'"
+    )
     # Category 1: Raw passthrough - value used as-is with custom header
     raw_passthrough_types = {"custom", "x-api-key"}
 
