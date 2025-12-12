@@ -4,7 +4,7 @@ httpx adapter implementation.
 Provides support for both sync (httpx.Client) and async (httpx.AsyncClient).
 """
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 import httpx
 
@@ -101,6 +101,34 @@ class HttpxAdapter(BaseAdapter):
 
         return kwargs
 
+    def _log_client_mounts(self, client: Any, client_type: str) -> None:
+        """Log the httpx client's mount configuration to verify proxy setup."""
+        try:
+            mounts = getattr(client, '_mounts', {})
+            if not mounts:
+                logger.info(f"[HTTPX {client_type}] No mounts configured (no proxy)")
+                return
+
+            for pattern, transport in mounts.items():
+                pattern_str = getattr(pattern, 'pattern', str(pattern))
+                transport_type = type(transport).__name__
+
+                # Try to extract proxy URL from transport
+                proxy_url = None
+                if hasattr(transport, '_proxy_url'):
+                    proxy_url = getattr(transport, '_proxy_url', None)
+                elif hasattr(transport, '_pool'):
+                    pool = getattr(transport, '_pool', None)
+                    if pool and hasattr(pool, '_proxy_url'):
+                        proxy_url = getattr(pool, '_proxy_url', None)
+
+                logger.info(
+                    f"[HTTPX {client_type}] Mount: pattern={pattern_str}, "
+                    f"transport={transport_type}, proxy={_mask_proxy_url(str(proxy_url) if proxy_url else None)}"
+                )
+        except Exception as e:
+            logger.debug(f"_log_client_mounts: Error inspecting mounts: {e}")
+
     def create_sync_client(self, config: ProxyConfig) -> DispatcherResult:
         """
         Create a synchronous httpx.Client.
@@ -117,6 +145,9 @@ class HttpxAdapter(BaseAdapter):
         logger.debug("create_sync_client: Creating httpx.Client")
         client = httpx.Client(**kwargs)
         logger.debug(f"create_sync_client: httpx.Client created successfully")
+
+        # Log the actual httpx client mounts/transports at INFO level for debugging
+        self._log_client_mounts(client, "Client")
 
         return DispatcherResult(
             client=client,
@@ -140,6 +171,9 @@ class HttpxAdapter(BaseAdapter):
         logger.debug("create_async_client: Creating httpx.AsyncClient")
         client = httpx.AsyncClient(**kwargs)
         logger.debug(f"create_async_client: httpx.AsyncClient created successfully")
+
+        # Log the actual httpx client mounts/transports at INFO level for debugging
+        self._log_client_mounts(client, "AsyncClient")
 
         return DispatcherResult(
             client=client,

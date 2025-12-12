@@ -13,22 +13,23 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
+    # proxy_url: "http://localhost:8080"
     # Provider-specific configuration overrides (optional)
     # These are deep-merged with global proxy/client settings
-    # proxy:
-    #   # Override proxy for this provider only
-    #   default_environment: "prod"
-    #   proxy_urls:
-    #     prod: "http://gemini-proxy:8080"
-    #   cert_verify: true
-    #   ca_bundle: "/path/to/custom-ca.crt"
-    # client:
-    #   # Override timeout for this provider only
-    #   timeout_seconds: 120.0
-    #   timeout_ms: 120000
-    # headers:
-    #   # Additional headers for this provider only
-    #   X-Custom-Header: "value"
+    proxy:
+      # Override proxy for this provider only
+      default_environment: "prod"
+      proxy_urls:
+        prod: "http://gemini-proxy:8080"
+      cert_verify: true
+      ca_bundle: "/path/to/custom-ca.crt"
+    client:
+      # Override timeout for this provider only
+      timeout_seconds: 120.0
+      timeout_ms: 120000
+    headers:
+      # Additional headers for this provider only
+      X-Custom-Header: "value"
   openai:
     base_url: "https://api.openai.com/v1"
     model: "gpt-4"
@@ -211,24 +212,27 @@ display:
 # =============================================================================
 
 # shoudld be renamed to network
-proxy:
-  # Default environment name for ProxyDispatcherFactory
-  # Used to select which proxy URL from proxy_urls to use
-  default_environment: "dev"
-  # Per-environment proxy URLs (keys are user-defined environment names)
-  # Keys can be anything: Live, STAGING, Preview, dev, qa, prod, etc.
-  proxy_urls: {}  # Empty dict = no per-env proxies configured
-  # CA bundle path (null means use system default, missing means fall through to ENV)
-  ca_bundle: null
-  # Client certificate path (null means no cert, missing means fall through to ENV)
-  cert: null
-  # SSL certificate verification (false = disable verification, true = enable)
-  # Default: false for dev/local environments behind corporate proxy
-  cert_verify: false
-  # Agent proxy settings (null means no proxy)
-  agent_proxy:
-    http_proxy: null
-    https_proxy: null
+# proxy:
+#   # Default environment name for ProxyDispatcherFactory
+#   # Used to select which proxy URL from proxy_urls to use
+#   default_environment: "dev"
+#   # Per-environment proxy URLs (keys are user-defined environment names)
+#   # Keys can be anything: Live, STAGING, Preview, dev, qa, prod, etc.
+#   proxy_urls: {
+#     "dev": "http://localhost:8080",
+#     "qa": "http://localhost:8081",
+#   }  # Empty dict = no per-env proxies configured
+#   # CA bundle path (null means use system default, missing means fall through to ENV)
+#   ca_bundle: null
+#   # Client certificate path (null means no cert, missing means fall through to ENV)
+#   cert: null
+#   # SSL certificate verification (false = disable verification, true = enable)
+#   # Default: false for dev/local environments behind corporate proxy
+#   cert_verify: false
+#   # Agent proxy settings (null means no proxy)
+#   agent_proxy:
+#     http_proxy: "http://localhost:8080"
+#     https_proxy: "http://localhost:8080"
 
 # =============================================================================
 # Services Configuration (Downstream Service Configs)

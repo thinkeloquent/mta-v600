@@ -257,8 +257,9 @@ class ProviderHealthChecker:
 
         return {
             "base_url": api_token.get_base_url() if api_token else None,
-            "proxy": merged_config.get("proxy"),
+            "network": merged_config.get("network"),  # Uses "network" key from factory
             "client": merged_config.get("client"),
+            "proxy_url": merged_config.get("proxy_url"),  # Direct proxy URL override
             "auth_type": api_token.get_auth_type() if api_token else None,
             "has_provider_override": merged_config.get("has_provider_override", False),
             "has_runtime_override": merged_config.get("has_runtime_override", False),

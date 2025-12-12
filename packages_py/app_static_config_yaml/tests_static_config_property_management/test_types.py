@@ -141,7 +141,8 @@ class TestServerConfig:
         assert server.default_provider == "gemini"
         assert isinstance(server.client, ClientConfig)
         assert isinstance(server.display, DisplayConfig)
-        assert isinstance(server.proxy, ProxyConfig)
+        # ServerConfig uses 'network' field; ProxyConfig is an alias for NetworkConfig
+        assert isinstance(server.network, ProxyConfig)
 
     def test_full_server_config(self):
         """Should create full server config."""
