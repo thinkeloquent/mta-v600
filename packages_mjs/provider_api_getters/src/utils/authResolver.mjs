@@ -60,6 +60,22 @@ export function resolveAuthConfig(authType, apiKeyResult, headerName = null) {
   if (isBearerType) {
     // Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
     const rawKey = apiKeyResult.rawApiKey || apiKeyResult.apiKey || '';
+    const computedKey = apiKeyResult.apiKey || '';
+
+    // Guard: If computedKey already starts with "Basic ", the YAML config is wrong
+    // The provider computed Basic auth but config says bearer - use the computed value
+    if (computedKey && computedKey.startsWith('Basic ')) {
+      console.warn(
+        `[AUTH] resolveAuthConfig: Config mismatch! authType='${authType}' but ` +
+        `provider computed Basic auth. Using pre-computed value instead.`
+      );
+      return {
+        type: 'custom',
+        rawApiKey: computedKey,
+        headerName: headerName || 'Authorization',
+      };
+    }
+
     return {
       type: 'bearer',
       rawApiKey: rawKey,

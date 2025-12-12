@@ -88,7 +88,23 @@ def resolve_auth_config(
     elif is_bearer_type:
         # Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
         raw_key = getattr(api_key_result, "raw_api_key", None) or getattr(api_key_result, "api_key", "")
-        print_auth_trace("RETURN (bearer)", "auth_resolver.py:91", raw_key)
+        computed_key = getattr(api_key_result, "api_key", "")
+
+        # Guard: If computed_key already starts with "Basic ", the YAML config is wrong
+        # The provider computed Basic auth but config says bearer - use the computed value
+        if computed_key and computed_key.startswith("Basic "):
+            logger.warning(
+                f"resolve_auth_config: Config mismatch! auth_type='{auth_type}' but "
+                f"provider computed Basic auth. Using pre-computed value instead."
+            )
+            print_auth_trace("RETURN (bearer->basic MISMATCH)", "auth_resolver.py:98", computed_key)
+            return {
+                "type": "custom",
+                "raw_api_key": computed_key,
+                "header_name": header_name or "Authorization",
+            }
+
+        print_auth_trace("RETURN (bearer)", "auth_resolver.py:105", raw_key)
         return {
             "type": "bearer",
             "raw_api_key": raw_key,
