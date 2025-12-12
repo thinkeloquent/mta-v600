@@ -8,7 +8,7 @@ packages = [{include = "fetch_proxy_dispatcher", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-httpx = "^0.28.0"
+httpx = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

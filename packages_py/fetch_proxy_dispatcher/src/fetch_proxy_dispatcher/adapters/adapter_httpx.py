@@ -104,28 +104,34 @@ class HttpxAdapter(BaseAdapter):
     def _log_client_mounts(self, client: Any, client_type: str) -> None:
         """Log the httpx client's mount configuration to verify proxy setup."""
         try:
-            mounts = getattr(client, '_mounts', {})
+            mounts = getattr(client, '_mounts', None)
+            if mounts is None:
+                logger.info(f"[HTTPX {client_type}] No _mounts attribute")
+                return
             if not mounts:
                 logger.info(f"[HTTPX {client_type}] No mounts configured (no proxy)")
                 return
 
             for pattern, transport in mounts.items():
-                pattern_str = getattr(pattern, 'pattern', str(pattern))
-                transport_type = type(transport).__name__
+                try:
+                    pattern_str = getattr(pattern, 'pattern', str(pattern))
+                    transport_type = type(transport).__name__
 
-                # Try to extract proxy URL from transport
-                proxy_url = None
-                if hasattr(transport, '_proxy_url'):
-                    proxy_url = getattr(transport, '_proxy_url', None)
-                elif hasattr(transport, '_pool'):
-                    pool = getattr(transport, '_pool', None)
-                    if pool and hasattr(pool, '_proxy_url'):
-                        proxy_url = getattr(pool, '_proxy_url', None)
+                    # Try to extract proxy URL from transport
+                    proxy_url = None
+                    if hasattr(transport, '_proxy_url'):
+                        proxy_url = getattr(transport, '_proxy_url', None)
+                    elif hasattr(transport, '_pool'):
+                        pool = getattr(transport, '_pool', None)
+                        if pool and hasattr(pool, '_proxy_url'):
+                            proxy_url = getattr(pool, '_proxy_url', None)
 
-                logger.info(
-                    f"[HTTPX {client_type}] Mount: pattern={pattern_str}, "
-                    f"transport={transport_type}, proxy={_mask_proxy_url(str(proxy_url) if proxy_url else None)}"
-                )
+                    logger.info(
+                        f"[HTTPX {client_type}] Mount: pattern={pattern_str}, "
+                        f"transport={transport_type}, proxy={_mask_proxy_url(str(proxy_url) if proxy_url else None)}"
+                    )
+                except Exception as inner_e:
+                    logger.debug(f"_log_client_mounts: Error inspecting mount: {inner_e}")
         except Exception as e:
             logger.debug(f"_log_client_mounts: Error inspecting mounts: {e}")
 

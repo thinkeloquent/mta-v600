@@ -130,7 +130,7 @@ function ProviderCard({
         </div>
       </div>
 
-      {provider.latency_ms !== null && (
+      {provider.latency_ms != null && (
         <div className="text-xs text-gray-500 mb-2">
           Latency: <span className="font-mono">{provider.latency_ms.toFixed(2)}ms</span>
         </div>
