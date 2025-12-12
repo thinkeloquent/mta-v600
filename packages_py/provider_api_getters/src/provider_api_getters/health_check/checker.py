@@ -20,7 +20,7 @@ from ..fetch_client import ProviderClientFactory
 
 # Import console_print for pretty logging
 try:
-    from console_print import print_syntax_panel
+    from console_print import console, print_auth_trace, print_syntax_panel
     HAS_CONSOLE_PRINT = True
 except ImportError:
     HAS_CONSOLE_PRINT = False
@@ -283,8 +283,8 @@ class ProviderHealthChecker:
         logger.debug(f"ProviderHealthChecker.check: Token class found: {token_class.__name__}")
         api_token = token_class(self.config_store)
         api_key_result = api_token.get_api_key()
-        print(f"[TRACE raw_api_key] checker.py:286 GET api_key_result.raw_api_key={api_key_result.raw_api_key[:30] if api_key_result.raw_api_key else None}...")
-        print(f"[TRACE raw_api_key] checker.py:287 GET api_key_result.api_key={api_key_result.api_key[:30] if api_key_result.api_key else None}...")
+        print_auth_trace("CHECK", "checker.py:286", api_key_result.raw_api_key if hasattr(api_key_result, 'raw_api_key') else None)
+        print_auth_trace("CHECK (computed)", "checker.py:287", api_key_result.api_key if hasattr(api_key_result, 'api_key') else None)
         config_used = self._build_config_used(provider_name_lower, api_token)
 
         logger.debug(

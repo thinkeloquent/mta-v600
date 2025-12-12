@@ -12,6 +12,7 @@ from ..config import (
     get_auth_header_name,
     format_auth_header_value,
 )
+from console_print import print_auth_trace
 
 logger = logging.getLogger("fetch_client.request_builder")
 
@@ -98,7 +99,7 @@ def resolve_auth_header(
     # Fall back to static key (use raw_api_key, not computed api_key property)
     if not api_key:
         api_key = auth.raw_api_key
-        print(f"[TRACE raw_api_key] request_builder.py:100 GET auth.raw_api_key={api_key[:30] if api_key else None}...")
+        print_auth_trace("GET auth.raw_api_key", "request_builder.py:100", api_key)
         logger.debug(f"resolve_auth_header: using static key: {bool(api_key)}")
 
     # Check if we have credentials even if api_key is missing

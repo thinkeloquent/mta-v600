@@ -7,6 +7,7 @@ Uses Basic Authentication with email:token format.
 import logging
 import os
 from typing import Optional
+from console_print import console, print_auth_trace
 
 from .base import BaseApiToken, ApiKeyResult, _mask_sensitive
 from .auth_header_factory import AuthHeaderFactory
@@ -165,7 +166,7 @@ class JiraApiToken(BaseApiToken):
             )
             try:
                 encoded_auth = self._encode_auth(email, api_token, config_auth_type)
-                print(f"[TRACE raw_api_key] jira.py:174 SET raw_api_key={api_token[:20] if api_token else None}...")
+                print_auth_trace("SET", "jira.py:174", api_token)
                 result = ApiKeyResult(
                     api_key=encoded_auth,
                     auth_type=config_auth_type,

@@ -384,6 +384,43 @@ def print_debug(
         print(f"{label} {message}")
 
 
+
+def print_auth_trace(
+    message: str,
+    file_info: str,
+    key: Optional[str] = None,
+    options_or_title: Union[str, Dict[str, Any], None] = None,
+) -> None:
+    """
+    Print an authentication trace message.
+
+    Format: [TRACE raw_api_key] {file_info} {message} {key_preview}...
+
+    Args:
+        message: Trace message
+        file_info: File context (e.g., "file.py:123")
+        key: The raw api key to preview (optional)
+        options_or_title: Title string or options dict (for compatibility)
+    """
+    key_preview = ""
+    if key:
+        visible_len = 30
+        preview = key[:visible_len] if len(key) > visible_len else key
+        key_preview = f" {preview}..." if preview else " <empty>..."
+    elif key is None:
+        key_preview = " None..."
+
+    full_message = f"{file_info} {message}{key_preview}"
+    
+    if HAS_RICH:
+        console = RichConsole()
+        # Use a distinct style for these traces to make them stand out or fade as needed
+        # User requested specific format: [TRACE raw_api_key] ...
+        console.print(f"[bold magenta][TRACE raw_api_key][/bold magenta] {full_message}")
+    else:
+        print(f"[TRACE raw_api_key] {full_message}")
+
+
 # =============================================================================
 # Table Printing
 # =============================================================================

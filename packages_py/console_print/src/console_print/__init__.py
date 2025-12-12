@@ -342,6 +342,7 @@ from console_print.printer import (
     print_warning,
     print_error,
     print_debug,
+    print_auth_trace,
 
     # Data display
     print_table,
@@ -374,6 +375,7 @@ __all__ = [
     "print_warning",
     "print_error",
     "print_debug",
+    "print_auth_trace",
 
     # Data display
     "print_table",

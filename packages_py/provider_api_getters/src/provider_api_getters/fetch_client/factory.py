@@ -11,7 +11,7 @@ and configuration issues.
 """
 import logging
 from typing import Any, Dict, Optional
-from console_print import console
+from console_print import console, print_auth_trace
 from ..api_token import get_api_token_class, BaseApiToken
 from ..api_token.base import mask_sensitive
 from ..utils.deep_merge import deep_merge
@@ -372,10 +372,10 @@ class ProviderClientFactory:
 
             # Use shared auth resolver utility (SINGLE SOURCE OF TRUTH)
             # See: utils/auth_resolver.py for auth type interpretation logic
-            print(f"[TRACE raw_api_key] factory.py:375 BEFORE resolve_auth_config api_key_result.raw_api_key={getattr(api_key_result, 'raw_api_key', None)[:30] if getattr(api_key_result, 'raw_api_key', None) else None}...")
+            print_auth_trace("BEFORE resolve_auth_config", "factory.py:375", getattr(api_key_result, 'raw_api_key', None))
             auth_dict = resolve_auth_config(auth_type, api_key_result, header_name)
             auth_category = get_auth_type_category(auth_type)
-            print(f"[TRACE raw_api_key] factory.py:378 AFTER resolve_auth_config auth_dict['raw_api_key']={auth_dict.get('raw_api_key', '')[:30] if auth_dict.get('raw_api_key') else None}...")
+            print_auth_trace("AFTER resolve_auth_config", "factory.py:378", auth_dict.get('raw_api_key', ''))
 
             logger.debug(
                 f"ProviderClientFactory.get_client: Using {auth_category} auth ({auth_type}) with "
@@ -383,9 +383,9 @@ class ProviderClientFactory:
                 f"key={api_key_masked}"
             )
 
-            print(f"[TRACE raw_api_key] factory.py:386 BEFORE AuthConfig(**auth_dict)")
+            print_auth_trace("BEFORE AuthConfig", "factory.py:386")
             auth_config = AuthConfig(**auth_dict)
-            print(f"[TRACE raw_api_key] factory.py:388 AFTER AuthConfig auth_config.raw_api_key={auth_config.raw_api_key[:30] if auth_config.raw_api_key else None}...")
+            print_auth_trace("AFTER AuthConfig", "factory.py:388", auth_config.raw_api_key)
 
             console.print(f"[bold green]AuthConfig ({auth_type} → {auth_category}):[/bold green]", {
                 "type": auth_dict["type"],

@@ -12,6 +12,8 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from fetch_client import AuthConfig
 
+from console_print import print_auth_trace
+
 
 def resolve_auth_config(
     auth_type: str,
@@ -61,8 +63,7 @@ def resolve_auth_config(
     # Debug: Log input values to trace auth issues
     raw_key_preview = getattr(api_key_result, "raw_api_key", None)
     api_key_preview = getattr(api_key_result, "api_key", None)
-    print(f"[TRACE raw_api_key] auth_resolver.py:68 GET api_key_result.raw_api_key={raw_key_preview[:30] if raw_key_preview else None}...")
-    print(f"[TRACE raw_api_key] auth_resolver.py:69 GET api_key_result.api_key={api_key_preview[:30] if api_key_preview else None}...")
+    print_auth_trace(f"ENTRY auth_type={auth_type}", "auth_resolver.py:65", str(api_key_result))
     logger.debug(
         f"resolve_auth_config: auth_type='{auth_type}', header_name='{header_name}', "
         f"raw_api_key_starts='{raw_key_preview[:20] if raw_key_preview else None}...', "
@@ -77,7 +78,7 @@ def resolve_auth_config(
     if auth_type in raw_passthrough_types:
         # Use raw_api_key if available, fallback to api_key
         raw_key = getattr(api_key_result, "raw_api_key", None) or getattr(api_key_result, "api_key", "")
-        print(f"[TRACE raw_api_key] auth_resolver.py:82 RETURN (raw_passthrough) raw_api_key={raw_key[:30] if raw_key else None}...")
+        print_auth_trace("RETURN (raw_passthrough)", "auth_resolver.py:80", raw_key)
         return {
             "type": "custom",
             "raw_api_key": raw_key,
@@ -87,7 +88,7 @@ def resolve_auth_config(
     elif is_bearer_type:
         # Bearer auth: pass raw token, fetch_client adds "Bearer " prefix
         raw_key = getattr(api_key_result, "raw_api_key", None) or getattr(api_key_result, "api_key", "")
-        print(f"[TRACE raw_api_key] auth_resolver.py:91 RETURN (bearer) raw_api_key={raw_key[:30] if raw_key else None}...")
+        print_auth_trace("RETURN (bearer)", "auth_resolver.py:91", raw_key)
         return {
             "type": "bearer",
             "raw_api_key": raw_key,
@@ -97,7 +98,7 @@ def resolve_auth_config(
         # Pre-computed value (e.g., "Basic base64(email:token)")
         # Use api_key (not raw_api_key) as it contains the full computed value
         computed_key = getattr(api_key_result, "api_key", "")
-        print(f"[TRACE raw_api_key] auth_resolver.py:100 RETURN (pre_computed) raw_api_key={computed_key[:30] if computed_key else None}...")
+        print_auth_trace("RETURN (pre_computed)", "auth_resolver.py:100", computed_key)
         return {
             "type": "custom",
             "raw_api_key": computed_key,
