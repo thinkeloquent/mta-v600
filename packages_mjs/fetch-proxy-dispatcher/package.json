@@ -50,7 +50,8 @@
     "node": ">=22.0.0"
   },
   "dependencies": {
-    "undici": "^7.0.0"
+    "@internal/fetch-proxy-config": "workspace:*",
+    "undici": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

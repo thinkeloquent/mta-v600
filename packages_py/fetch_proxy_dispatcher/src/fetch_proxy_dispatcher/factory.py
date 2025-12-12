@@ -108,6 +108,7 @@ class ProxyDispatcherFactory:
             )
         logger.debug(
             f"ProxyDispatcherFactory.__init__: adapter={adapter}, "
+            f"proxy_url={_mask_proxy_url(self._config.proxy_url)}, "
             f"proxy_urls=[{proxy_urls_str}], agent_proxy=[{agent_proxy_str}], "
             f"default_env={self._config.default_environment}, "
             f"cert={self._config.cert is not None}, "
@@ -119,9 +120,12 @@ class ProxyDispatcherFactory:
         """
         Resolve the effective proxy URL.
 
-        Priority:
-        1. Agent proxy (https_proxy > http_proxy)
-        2. Environment-specific proxy from config
+        Priority (Waterfall via fetch_proxy_config):
+        1. Agent proxy (via NetworkConfig.agent_proxy)
+        2. Environment-specific proxy from config (via NetworkConfig.proxy_urls)
+        3. PROXY_URL env var
+        4. HTTPS_PROXY env var
+        5. HTTP_PROXY env var
 
         Args:
             environment: Target environment override (any user-defined name).
@@ -129,32 +133,69 @@ class ProxyDispatcherFactory:
         Returns:
             Resolved proxy URL or None.
         """
+        from fetch_proxy_config import resolve_proxy_url, NetworkConfig, AgentProxyConfig as NetworkAgentProxyConfig
+
         logger.debug(
             f"_resolve_proxy_url: environment_arg={environment!r}, "
             f"default_environment={self._config.default_environment!r}"
         )
 
-        # Priority 1: Agent proxy
+        # Convert local FactoryConfig to NetworkConfig for the resolver
+        # This is temporary until we fully migrate models, but keeps logic centralized
+        env = environment or self._config.default_environment or get_app_env()
+        
+        # Helper to convert dicts
+        proxy_urls_dict = {}
+        if self._config.proxy_urls:
+            proxy_urls_dict = {k: v for k, v in self._config.proxy_urls.items()}
+            
+        agent_proxy = None
+        if self._config.agent_proxy:
+            agent_proxy = NetworkAgentProxyConfig(
+                http_proxy=self._config.agent_proxy.http_proxy,
+                https_proxy=self._config.agent_proxy.https_proxy
+            )
+
+        network_config = NetworkConfig(
+            default_environment=env,
+            proxy_urls=proxy_urls_dict,
+            agent_proxy=agent_proxy
+        )
+        
+        # Helper logic: fetch_proxy_config prioritizes override parameter (1st arg)
+        # But we don't have a direct "proxy_url_override" passed to _resolve_proxy_url here EXCEPT
+        # via the fact that agent proxy logic was previously custom.
+        # However, fetch_proxy_config.resolve_proxy_url() handles:
+        # 1. override param
+        # 2. network_config.proxy_urls[default_env]
+        # 3. PROXY_URL
+        # 4. HTTPS_PROXY
+        
+        # Note: Previous logic prioritized agent_proxy above all else manually. 
+        # The new fetch_proxy_config DOES NOT explicitly handle "agent_proxy" config field 
+        # in its 'resolve_proxy_url' waterfall (it checks env vars 4/5).
+        # Wait, let's check fetch_proxy_config/resolver.py again.
+        
+        # Checking fetch_proxy_config/resolver.py content from earlier step (ID 190/195):
+        # It checks override -> network_config.proxy_urls -> PROXY_URL -> HTTPS_PROXY -> HTTP_PROXY.
+        # It DOES NOT check network_config.agent_proxy field.
+        # So we must maintain the explicit agent_proxy check here if we want to honor the config object's agent_proxy.
+        
+        # Priority 1: Agent proxy from Config Object (Explicit override in YAML/Config)
         if self._config.agent_proxy:
             agent = (
                 self._config.agent_proxy.https_proxy
                 or self._config.agent_proxy.http_proxy
             )
             if agent:
-                logger.debug(f"_resolve_proxy_url: Using agent_proxy={_mask_proxy_url(agent)}")
-                return agent
+                 logger.debug(f"_resolve_proxy_url: Using agent_proxy from config={_mask_proxy_url(agent)}")
+                 return agent
 
-        # Priority 2: Environment-specific
-        env = environment or self._config.default_environment or get_app_env()
-        logger.debug(f"_resolve_proxy_url: Resolved environment={env!r}")
-
-        if self._config.proxy_urls:
-            result = self._config.proxy_urls.get(env)
-            logger.debug(f"_resolve_proxy_url: proxy_urls.get({env!r})={_mask_proxy_url(result)}")
-            return result
-
-        logger.debug("_resolve_proxy_url: No proxy_urls configured, returning None")
-        return None
+        # Delegate rest to shared resolver
+        # Pass the direct override from factory config if present
+        result = resolve_proxy_url(network_config, proxy_url_override=self._config.proxy_url)
+        logger.debug(f"_resolve_proxy_url: Resolved via fetch_proxy_config={_mask_proxy_url(result)}")
+        return result
 
     def get_proxy_dispatcher(
         self,

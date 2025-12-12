@@ -33,7 +33,7 @@ async def health_status():
     # Initialize provider from static config
     provider = ConfluenceApiToken(static_config)
     api_key_result = provider.get_api_key()
-    network_config = provider.get_network_config()
+    network_config = provider.get_network_config() or {}
     base_url = provider.get_base_url()
 
     # Build status response
@@ -63,7 +63,7 @@ async def health_status():
                 ),
                 default_headers={"Accept": "application/json"},
                 verify=network_config.get("cert_verify", False),
-                proxy=network_config.get("proxy_url"),
+                proxy_url=provider.get_proxy_url(),
             )
             async with client:
                 response = await client.get("/rest/api/user/current")

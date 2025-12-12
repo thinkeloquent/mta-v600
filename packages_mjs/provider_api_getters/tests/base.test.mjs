@@ -380,4 +380,155 @@ describe('BaseApiToken', () => {
       );
     });
   });
+
+  // ===========================================================================
+  // NEW: getNetworkConfig Tests
+  // ===========================================================================
+  describe('getNetworkConfig', () => {
+    describe('Statement Coverage', () => {
+      it('should return null when no config store', () => {
+        const token = new TestApiToken();
+        expect(token.getNetworkConfig()).toBeNull();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('getNetworkConfig')
+        );
+      });
+
+      it('should return null when provider has no network config', () => {
+        const mockStore = createMockStore({ test: { base_url: 'http://test.com' } });
+        const token = new TestApiToken(mockStore);
+        expect(token.getNetworkConfig()).toBeNull();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('No network config')
+        );
+      });
+
+      it('should return network config when present', () => {
+        const networkConfig = {
+          proxy_urls: { DEV: 'http://proxy.dev:8080' },
+          cert_verify: true,
+        };
+        const mockStore = createMockStore({ test: { network: networkConfig } });
+        const token = new TestApiToken(mockStore);
+
+        const result = token.getNetworkConfig();
+        expect(result).toEqual(networkConfig);
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('Found network config')
+        );
+      });
+    });
+
+    describe('Decision/Branch Coverage', () => {
+      it('should log different messages for found vs not found', () => {
+        // Test branch: network config not found
+        const tokenNoConfig = new TestApiToken(createMockStore({ test: {} }));
+        tokenNoConfig.getNetworkConfig();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('No network config')
+        );
+
+        // Clear spies
+        consoleSpy.debug.mockClear();
+
+        // Test branch: network config found
+        const tokenWithConfig = new TestApiToken(
+          createMockStore({ test: { network: { cert_verify: false } } })
+        );
+        tokenWithConfig.getNetworkConfig();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('Found network config')
+        );
+      });
+    });
+
+    describe('Boundary Value Analysis', () => {
+      it('should handle empty network config object', () => {
+        const mockStore = createMockStore({ test: { network: {} } });
+        const token = new TestApiToken(mockStore);
+        const result = token.getNetworkConfig();
+        expect(result).toEqual({});
+      });
+
+      it('should handle network config with all fields', () => {
+        const fullNetworkConfig = {
+          default_environment: 'DEV',
+          proxy_urls: {
+            DEV: 'http://proxy.dev:8080',
+            STAGE: 'http://proxy.stage:8080',
+            QA: 'http://proxy.qa:8080',
+            PROD: 'http://proxy.prod:8080',
+          },
+          agent_proxy: {
+            http_proxy: 'http://agent:8080',
+            https_proxy: 'http://agent:8080',
+          },
+          ca_bundle: '/path/to/ca.crt',
+          cert: '/path/to/cert.crt',
+          cert_verify: true,
+        };
+        const mockStore = createMockStore({ test: { network: fullNetworkConfig } });
+        const token = new TestApiToken(mockStore);
+
+        const result = token.getNetworkConfig();
+        expect(result).toEqual(fullNetworkConfig);
+      });
+    });
+  });
+
+  // ===========================================================================
+  // NEW: getProxyUrl Tests
+  // ===========================================================================
+  describe('getProxyUrl', () => {
+    describe('Statement Coverage', () => {
+      it('should return null when no config store', () => {
+        const token = new TestApiToken();
+        expect(token.getProxyUrl()).toBeNull();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('getProxyUrl')
+        );
+      });
+
+      it('should return null when provider has no proxy_url', () => {
+        const mockStore = createMockStore({ test: { base_url: 'http://test.com' } });
+        const token = new TestApiToken(mockStore);
+        expect(token.getProxyUrl()).toBeNull();
+      });
+
+      it('should return proxy_url when present', () => {
+        const mockStore = createMockStore({
+          test: { proxy_url: 'http://custom-proxy:8080' }
+        });
+        const token = new TestApiToken(mockStore);
+        expect(token.getProxyUrl()).toBe('http://custom-proxy:8080');
+      });
+    });
+
+    describe('Boundary Value Analysis', () => {
+      it('should handle empty string proxy_url as null', () => {
+        const mockStore = createMockStore({ test: { proxy_url: '' } });
+        const token = new TestApiToken(mockStore);
+        // Empty string is falsy, so || null returns null
+        expect(token.getProxyUrl()).toBeNull();
+      });
+
+      it('should handle proxy_url with special characters', () => {
+        const mockStore = createMockStore({
+          test: { proxy_url: 'http://user:p%40ssword@proxy.internal:8080' }
+        });
+        const token = new TestApiToken(mockStore);
+        expect(token.getProxyUrl()).toBe('http://user:p%40ssword@proxy.internal:8080');
+      });
+    });
+
+    describe('Log Verification', () => {
+      it('should log debug message on getProxyUrl call', () => {
+        const token = new TestApiToken();
+        token.getProxyUrl();
+        expect(consoleSpy.debug).toHaveBeenCalledWith(
+          expect.stringContaining('getProxyUrl: Getting proxy URL')
+        );
+      });
+    });
+  });
 });

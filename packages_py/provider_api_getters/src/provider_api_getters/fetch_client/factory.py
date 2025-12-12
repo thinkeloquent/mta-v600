@@ -41,18 +41,20 @@ class ProviderClientFactory:
             logger.debug("ProviderClientFactory.config_store: static_config loaded successfully")
         return self._config_store
 
-    def _get_proxy_config(self) -> Dict[str, Any]:
-        """Get proxy configuration from static config."""
-        logger.debug("ProviderClientFactory._get_proxy_config: Getting proxy configuration")
+    def _get_network_config(self) -> Dict[str, Any]:
+        """
+        Get global network configuration from config store.
+
+        Returns:
+            Network config dictionary or empty dict if not found
+        """
         try:
-            proxy_config = self.config_store.get_nested("proxy") or {}
-            logger.debug(
-                f"ProviderClientFactory._get_proxy_config: Proxy config = "
-                f"{{keys={list(proxy_config.keys())}}}"
-            )
-            return proxy_config
+            if not self.config_store:
+                return {}
+            # Try 'network' first, fall back to 'proxy'
+            return self.config_store.get_nested("network") or self.config_store.get_nested("proxy") or {}
         except Exception as e:
-            logger.warning(f"ProviderClientFactory._get_proxy_config: Error getting proxy config: {e}")
+            logger.warning(f"Failed to get network config: {e}")
             return {}
 
     def _get_client_config(self) -> Dict[str, Any]:
@@ -77,8 +79,9 @@ class ProviderClientFactory:
 
         Resolution priority (deep merge):
         1. runtime_override (if provided via POST endpoint)
-        2. providers.{name}.proxy|client|headers (provider-specific)
-        3. Global settings (proxy.*, client.*)
+        1. runtime_override (passed in recursive calls or from API)
+        2. providers.{name}.network|client|headers (provider-specific)
+        3. Global settings (network.*, client.*)
 
         Args:
             provider_name: Provider name
@@ -95,37 +98,44 @@ class ProviderClientFactory:
         api_token = self.get_api_token(provider_name)
         if not api_token:
             return {
-                "proxy": self._get_proxy_config(),
+                "network": self._get_network_config(),
                 "client": self._get_client_config(),
                 "headers": {},
+                "proxy_url": None,
                 "has_provider_override": False,
                 "has_runtime_override": False,
             }
 
         # Get specific overrides directly from provider config
-        # These correspond to providers.{name}.proxy, .client, .headers
-        provider_proxy = api_token.get_proxy_config() or {}
+        # These correspond to providers.{name}.network, .client, .headers
+        # We also support legacy 'proxy' key for backward compatibility or direct access
+        provider_network = api_token.get_network_config() or api_token.get_proxy_config() or {}
         provider_client = api_token.get_client_config() or {}
         provider_headers = api_token.get_headers_config() or {}
 
-        global_proxy = self._get_proxy_config()
+        global_network = self._get_network_config()
         global_client = self._get_client_config()
 
         # Priority: runtime_override > provider_specific > global
-        merged_proxy = deep_merge(global_proxy, provider_proxy)
+        merged_network = deep_merge(global_network, provider_network)
         merged_client = deep_merge(global_client, provider_client)
         headers = dict(provider_headers)
 
         # Apply runtime override if provided
         if runtime_override:
+            if runtime_override.get("network"):
+                merged_network = deep_merge(merged_network, runtime_override["network"])
+            # Legacy support for 'proxy' key in runtime override if clients send it?
+            # Ideally we support both or migrate clients. For safety, check both.
             if runtime_override.get("proxy"):
-                merged_proxy = deep_merge(merged_proxy, runtime_override["proxy"])
+                merged_network = deep_merge(merged_network, runtime_override["proxy"])
+
             if runtime_override.get("client"):
                 merged_client = deep_merge(merged_client, runtime_override["client"])
             if runtime_override.get("headers"):
                 headers = {**headers, **runtime_override["headers"]}
 
-        has_overrides = bool(provider_proxy or provider_client or provider_headers)
+        has_overrides = bool(provider_network or provider_client or provider_headers)
         if has_overrides:
             logger.info(
                 f"ProviderClientFactory._get_merged_config_for_provider: "
@@ -147,16 +157,18 @@ class ProviderClientFactory:
             )
 
         return {
-            "proxy": merged_proxy,
+            "network": merged_network,
             "client": merged_client,
             "headers": headers,
+            "proxy_url": api_token.get_proxy_url(), # New: Direct proxy URL override from provider
             "has_provider_override": has_overrides,
             "has_runtime_override": has_runtime,
         }
 
     def _create_httpx_client(
         self,
-        proxy_config: Optional[Dict[str, Any]] = None,
+        network_config: Optional[Dict[str, Any]] = None,
+        proxy_url: Optional[str] = None,
         timeout: float = 30.0,
         async_client: bool = True,
     ) -> Any:
@@ -175,7 +187,8 @@ class ProviderClientFactory:
         Does nothing if YAML value is explicitly null.
 
         Args:
-            proxy_config: Merged proxy configuration (global + provider overrides)
+            network_config: Merged network configuration (global + provider overrides)
+            proxy_url: Optional direct proxy URL override
             timeout: Request timeout in seconds
             async_client: Create async client if True, sync client if False
         """
@@ -198,19 +211,19 @@ class ProviderClientFactory:
             return httpx.AsyncClient() if async_client else httpx.Client()
 
         # Use provided config or fall back to global
-        if proxy_config is None:
-            proxy_config = self._get_proxy_config()
+        if network_config is None:
+            network_config = self._get_network_config()
 
         # Build ProxyUrlConfig from YAML (empty dict if not configured)
         proxy_urls = None
-        yaml_proxy_urls = proxy_config.get("proxy_urls")
+        yaml_proxy_urls = network_config.get("proxy_urls")
         if yaml_proxy_urls and isinstance(yaml_proxy_urls, dict) and yaml_proxy_urls:
             proxy_urls = ProxyUrlConfig(**yaml_proxy_urls)
             logger.debug(f"ProviderClientFactory._create_httpx_client: proxy_urls={list(yaml_proxy_urls.keys())}")
 
         # Build AgentProxyConfig from YAML
         agent_proxy = None
-        yaml_agent_proxy = proxy_config.get("agent_proxy")
+        yaml_agent_proxy = network_config.get("agent_proxy")
         if yaml_agent_proxy and isinstance(yaml_agent_proxy, dict):
             http_proxy = yaml_agent_proxy.get("http_proxy")
             https_proxy = yaml_agent_proxy.get("https_proxy")
@@ -222,10 +235,10 @@ class ProviderClientFactory:
                 )
 
         # Get other config values (null = don't use, undefined = fall through to ENV)
-        default_environment = proxy_config.get("default_environment")
-        ca_bundle = proxy_config.get("ca_bundle")  # null = no ca_bundle
-        cert = proxy_config.get("cert")  # null = no cert
-        cert_verify = proxy_config.get("cert_verify")  # false = disable SSL verify
+        default_environment = network_config.get("default_environment")
+        ca_bundle = network_config.get("ca_bundle")  # null = no ca_bundle
+        cert = network_config.get("cert")  # null = no cert
+        cert_verify = network_config.get("cert_verify")  # false = disable SSL verify
 
         logger.debug(
             f"ProviderClientFactory._create_httpx_client: default_env={default_environment}, "
@@ -235,6 +248,7 @@ class ProviderClientFactory:
         # Build factory config
         factory_config = FactoryConfig(
             proxy_urls=proxy_urls,
+            proxy_url=proxy_url,  # Pass direct override
             agent_proxy=agent_proxy,
             default_environment=default_environment,
             ca_bundle=ca_bundle,
@@ -336,11 +350,19 @@ class ProviderClientFactory:
             f"ProviderClientFactory.get_client: Creating httpx client with "
             f"timeout={timeout}, has_proxy_override={'proxy' in merged_config}"
         )
-        httpx_client = self._create_httpx_client(
-            proxy_config=merged_config["proxy"],
-            timeout=timeout,
-        )
+        client_kwargs = {
+            "timeout": timeout,
+            # "proxy" is handled by the factory via create_async_client/create_sync_client
+            # so we don't pass it directly here if we're using the factory.
+        }
 
+        # Create client using factory (configured with network settings)
+        httpx_client = self._create_httpx_client(
+            network_config=merged_config["network"],
+            proxy_url=merged_config.get("proxy_url"),
+            timeout=timeout,
+            async_client=True,
+        )
         auth_config = None
         if api_key_result.api_key:
             # Use get_auth_type() and get_header_name() from api_token for consistent auth type

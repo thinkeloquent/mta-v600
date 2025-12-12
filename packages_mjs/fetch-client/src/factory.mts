@@ -65,7 +65,7 @@ async function getProxyConfigFromYaml(): Promise<YamlProxyConfig | null> {
     const configModule = await import('@internal/app-static-config-yaml' as any);
     const config = configModule.config;
     if (config && typeof config.getNested === 'function') {
-      return config.getNested('proxy') || null;
+      return config.getNested('network') || config.getNested('proxy') || null;
     }
     return null;
   } catch {
@@ -148,6 +148,8 @@ async function getProxyDispatcherSafe(
 export interface ClientConfigWithProxy extends ClientConfig {
   /** Override proxy URL (e.g., "http://proxy:8080"). Takes priority over YAML/env config. */
   proxy?: string;
+  /** Alias for proxy. Override proxy URL (e.g., "http://proxy:8080"). */
+  proxyUrl?: string;
   /** Override SSL verification. undefined uses YAML config. */
   verify?: boolean;
 }
@@ -190,7 +192,7 @@ export interface ClientConfigWithProxy extends ClientConfig {
  * // With explicit proxy override
  * const client2 = await createClientWithDispatcher({
  *   baseUrl: 'https://api.example.com',
- *   proxy: 'http://proxy.company.com:8080',
+ *   proxyUrl: 'http://proxy.company.com:8080',
  *   verify: false,
  * });
  * ```
@@ -199,11 +201,13 @@ export async function createClientWithDispatcher(
   config: ClientConfigWithProxy
 ): Promise<FetchClient> {
   // Extract proxy options from config
-  const { proxy, verify, ...clientConfig } = config;
+  const { proxy, proxyUrl, verify, ...clientConfig } = config;
 
   // Only auto-configure dispatcher if not already provided
   if (!clientConfig.dispatcher) {
-    const dispatcher = await getProxyDispatcherSafe({ proxy, verify });
+    // proxyUrl is alias for proxy, proxy takes precedence if both provided (though unlikely)
+    const effectiveProxy = proxy || proxyUrl;
+    const dispatcher = await getProxyDispatcherSafe({ proxy: effectiveProxy, verify });
     if (dispatcher) {
       clientConfig.dispatcher = dispatcher;
     }

@@ -167,15 +167,18 @@ providers:
     # client:
     #   timeout_seconds: 120.0
     #   timeout_ms: 120000
-    # proxy:
-    #   default_environment: "dev"
-    #   proxy_urls: {}
-    #   ca_bundle: null
-    #   cert: null
-    #   cert_verify: false
-    #   agent_proxy:
-    #     http_proxy: null
-    #     https_proxy: null
+    proxy_url: "http://localhost:8080"
+    network:
+      default_environment: "dev"
+      proxy_urls:
+        dev: "http://localhost:8080"
+        prod: "http://localhost:8081"
+      ca_bundle: null
+      cert: null
+      cert_verify: false
+      agent_proxy:
+        http_proxy: null
+        https_proxy: null
 
 # Default provider for backward compatibility
 default_provider: "gemini"

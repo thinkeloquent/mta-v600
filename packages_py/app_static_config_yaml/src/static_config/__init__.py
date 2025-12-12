@@ -5,6 +5,9 @@ from .types import (
     ProviderConfig,
     ClientConfig,
     DisplayConfig,
+
+    NetworkConfig,
+    AgentProxyConfig,
     ProxyConfig,
     ServerConfig,
 )

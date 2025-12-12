@@ -29,6 +29,22 @@ class ResolutionContext(BaseModel):
     service_id: Optional[str] = None
 
 
+class AgentProxyConfig(BaseModel):
+    """Agent proxy settings."""
+    http_proxy: Optional[str] = None
+    https_proxy: Optional[str] = None
+
+
+class NetworkConfig(BaseModel):
+    """Network configuration including proxy settings."""
+    default_environment: str = "dev"
+    proxy_urls: Dict[str, Optional[str]] = Field(default_factory=dict)
+    ca_bundle: Optional[str] = None
+    cert: Optional[str] = None
+    cert_verify: bool = False
+    agent_proxy: AgentProxyConfig = Field(default_factory=AgentProxyConfig)
+
+
 class ProviderConfig(BaseModel):
     """Configuration for an external API provider.
 
@@ -88,20 +104,9 @@ class ProviderConfig(BaseModel):
     # Token resolver type
     token_resolver: Optional[str] = None  # static, startup, request
 
-    # Provider-specific config overrides
-    # These fields (proxy, client, headers) correspond to overrides in server.yaml
-    # They are not explicitly defined here as typed fields to allow for
-    # simple dictionary access or they can be added if strict typing is desired.
-    # For now, we rely on the dynamic loading which puts them in the provider config dict.
-    # However, if we want them to be part of the model, we should add them.
-    # Given the previous pattern was a dict, let's leave them flexible or add them.
-    # Since YamlConfig constructs this, and extra fields might be ignored or stored,
-    # let's explicitly add them as Optional fields for better type safety if possible,
-    # or just remove the overwrite_root_config field as it's no longer used.
-    # The safest bet for pydantic models that allow extra fields is to just remove the old one.
-    # If the model configuration allows extra, then proxy/client at root will work.
-    # Let's check if the model allows extra. It inherits form BaseModel. default is 'ignore' or 'extra'.
-    # Assuming standard pydantic behavior, let's just remove the field.
+    # Network Configuration
+    proxy_url: Optional[str] = None  # Direct override
+    network: Optional[NetworkConfig] = None  # Full network config override
 
 
 class ClientConfig(BaseModel):
@@ -120,20 +125,7 @@ class DisplayConfig(BaseModel):
     separator_length: int = 60
 
 
-class AgentProxyConfig(BaseModel):
-    """Agent proxy settings."""
-    http_proxy: Optional[str] = None
-    https_proxy: Optional[str] = None
 
-
-class ProxyConfig(BaseModel):
-    """Proxy configuration."""
-    default_environment: str = "dev"
-    proxy_urls: Dict[str, str] = Field(default_factory=dict)
-    ca_bundle: Optional[str] = None
-    cert: Optional[str] = None
-    cert_verify: bool = False
-    agent_proxy: AgentProxyConfig = Field(default_factory=AgentProxyConfig)
 
 
 class ServerConfig(BaseModel):
@@ -142,4 +134,8 @@ class ServerConfig(BaseModel):
     default_provider: str = "gemini"
     client: ClientConfig = Field(default_factory=ClientConfig)
     display: DisplayConfig = Field(default_factory=DisplayConfig)
-    proxy: ProxyConfig = Field(default_factory=ProxyConfig)
+    network: NetworkConfig = Field(default_factory=NetworkConfig)
+
+
+# Backward compatibility
+ProxyConfig = NetworkConfig

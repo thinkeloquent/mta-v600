@@ -29,7 +29,7 @@ export default async function healthStatusRoutes(fastify, options) {
     // Initialize provider from static config
     const provider = new ConfluenceApiToken(staticConfig);
     const apiKeyResult = provider.getApiKey();
-    const networkConfig = provider.getNetworkConfig();
+    const networkConfig = provider.getNetworkConfig() || {};
     const baseUrl = provider.getBaseUrl();
 
     // Build status response
@@ -41,8 +41,8 @@ export default async function healthStatusRoutes(fastify, options) {
         has_credentials: apiKeyResult.hasCredentials,
         auth_type: apiKeyResult.authType,
         network: {
-          proxy_url: networkConfig.proxyUrl,
-          cert_verify: networkConfig.certVerify,
+          proxy_url: networkConfig.proxy_url,
+          cert_verify: networkConfig.cert_verify,
         },
       },
     };
@@ -59,8 +59,8 @@ export default async function healthStatusRoutes(fastify, options) {
             email: apiKeyResult.email,
           },
           headers: { Accept: 'application/json' },
-          verify: networkConfig.certVerify,
-          proxy: networkConfig.proxyUrl,
+          verify: networkConfig.cert_verify,
+          proxyUrl: networkConfig.proxy_url,
         });
 
         const response = await client.get('/rest/api/user/current');

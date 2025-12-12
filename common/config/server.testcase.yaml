@@ -4,7 +4,7 @@
 
 # =============================================================================
 # Provider Configuration with Direct Overrides Examples
-# Keys: proxy, client, headers
+# Keys: network, client, headers
 # =============================================================================
 
 providers:
@@ -16,7 +16,7 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"
     token_resolver: "static"
-    proxy:
+    network:
       default_environment: "corp"
       proxy_urls:
         corp: "http://corporate-proxy.internal:8080"
@@ -36,7 +36,7 @@ providers:
     health_endpoint: "/myself"
     api_auth_type: "basic"
     token_resolver: "static"
-    proxy:
+    network:
       # No proxy needed - direct VPN access
       proxy_urls: {}
       agent_proxy:
@@ -54,7 +54,7 @@ providers:
     env_api_key: "GITHUB_TOKEN"
     api_auth_type: "bearer"
     token_resolver: "static"
-    proxy:
+    network:
       agent_proxy:
         http_proxy: "http://squid.internal:3128"
         https_proxy: "http://squid.internal:3128"
@@ -71,7 +71,7 @@ providers:
     env_connection_url: "ELASTICSEARCH_URL"
     api_auth_type: "connection_string"
     token_resolver: "static"
-    proxy:
+    network:
       cert_verify: true
       ca_bundle: "/etc/ssl/certs/elasticsearch-ca.pem"
       cert: "/etc/ssl/certs/client.pem"
@@ -89,7 +89,7 @@ providers:
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"
     token_resolver: "static"
-    proxy:
+    network:
       default_environment: "dev"
       proxy_urls:
         dev: "http://dev-proxy:8080"
@@ -105,7 +105,7 @@ providers:
     env_api_key: "AWS_ACCESS_KEY_ID"
     api_auth_type: "custom"  # AWS uses Signature v4
     token_resolver: "static"
-    proxy:
+    network:
       # Direct access within AWS VPC
       proxy_urls: {}
       agent_proxy:
@@ -141,10 +141,10 @@ client:
   max_connections: 10
 
 # =============================================================================
-# Global Proxy Configuration (can be overridden per-provider)
+# Global Network Configuration (can be overridden per-provider)
 # =============================================================================
 
-proxy:
+network:
   default_environment: "dev"
   proxy_urls: {}
   ca_bundle: null

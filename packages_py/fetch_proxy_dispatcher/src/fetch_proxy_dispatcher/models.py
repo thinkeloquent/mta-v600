@@ -107,6 +107,7 @@ class AgentProxyConfig:
 class FactoryConfig:
     """Configuration for ProxyDispatcherFactory."""
     proxy_urls: Optional[ProxyUrlConfig] = None
+    proxy_url: Optional[str] = None  # Direct override URL
     agent_proxy: Optional[AgentProxyConfig] = None
     default_environment: Optional[str] = None  # Accepts any user-defined environment name
     cert: Optional[Union[str, tuple]] = None  # Client cert: path or (cert, key) tuple

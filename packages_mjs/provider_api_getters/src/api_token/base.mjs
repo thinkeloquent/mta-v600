@@ -925,6 +925,37 @@ export class BaseApiToken {
    *
    * @returns {Object|null} Proxy config dictionary or null if not configured
    */
+  getProxyUrl() {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getProxyUrl: Getting proxy URL from provider config`
+    );
+    const providerConfig = this._getProviderConfig();
+    return providerConfig.proxy_url || null;
+  }
+
+  getNetworkConfig() {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getNetworkConfig: Getting network config from provider config`
+    );
+    const providerConfig = this._getProviderConfig();
+    const networkConfig = providerConfig.network || null;
+
+    if (networkConfig) {
+      logger.debug(
+        `${className}.getNetworkConfig: Found network config with keys: ${Object.keys(
+          networkConfig
+        )}`
+      );
+    } else {
+      logger.debug(
+        `${className}.getNetworkConfig: No network config in provider config`
+      );
+    }
+    return networkConfig;
+  }
+
   getProxyConfig() {
     const className = this.constructor.name;
     logger.debug(

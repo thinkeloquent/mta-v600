@@ -644,3 +644,177 @@ class TestBaseApiToken:
 
         assert token._config_cache is None
         assert "Clearing configuration cache" in caplog.text
+
+    # =========================================================================
+    # NEW: get_network_config Tests
+    # =========================================================================
+
+    class TestGetNetworkConfig:
+        """Tests for get_network_config method."""
+
+        def test_returns_none_when_no_config_store(self, caplog):
+            """Test get_network_config returns None when no config store."""
+            token = ConcreteApiToken()
+
+            with caplog.at_level(logging.DEBUG):
+                result = token.get_network_config()
+
+            assert result is None
+            assert "get_network_config" in caplog.text
+
+        def test_returns_none_when_no_network_config(self, caplog):
+            """Test get_network_config returns None when network not in config."""
+            from .conftest import MockConfigStore
+            config = {"providers": {"test": {"base_url": "https://api.test.com"}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            with caplog.at_level(logging.DEBUG):
+                result = token.get_network_config()
+
+            assert result is None
+            assert "No network config" in caplog.text
+
+        def test_returns_network_config_when_present(self, caplog):
+            """Test get_network_config returns config when present."""
+            from .conftest import MockConfigStore
+            network_config = {
+                "proxy_urls": {"DEV": "http://proxy.dev:8080"},
+                "cert_verify": True,
+            }
+            config = {"providers": {"test": {"network": network_config}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            with caplog.at_level(logging.DEBUG):
+                result = token.get_network_config()
+
+            assert result == network_config
+            assert "Found network config" in caplog.text
+
+        def test_logs_keys_when_network_config_found(self, caplog):
+            """Test get_network_config logs keys when config is found."""
+            from .conftest import MockConfigStore
+            network_config = {"proxy_urls": {}, "cert_verify": False}
+            config = {"providers": {"test": {"network": network_config}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            with caplog.at_level(logging.DEBUG):
+                token.get_network_config()
+
+            assert "proxy_urls" in caplog.text or "cert_verify" in caplog.text
+
+        def test_handles_empty_network_config(self, caplog):
+            """Test get_network_config handles empty dict."""
+            from .conftest import MockConfigStore
+            config = {"providers": {"test": {"network": {}}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            result = token.get_network_config()
+
+            assert result == {}
+
+        def test_handles_full_network_config(self, caplog):
+            """Test get_network_config handles full config with all fields."""
+            from .conftest import MockConfigStore
+            full_network_config = {
+                "default_environment": "DEV",
+                "proxy_urls": {
+                    "DEV": "http://proxy.dev:8080",
+                    "STAGE": "http://proxy.stage:8080",
+                    "QA": "http://proxy.qa:8080",
+                    "PROD": "http://proxy.prod:8080",
+                },
+                "agent_proxy": {
+                    "http_proxy": "http://agent:8080",
+                    "https_proxy": "http://agent:8080",
+                },
+                "ca_bundle": "/path/to/ca.crt",
+                "cert": "/path/to/cert.crt",
+                "cert_verify": True,
+            }
+            config = {"providers": {"test": {"network": full_network_config}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            result = token.get_network_config()
+
+            assert result == full_network_config
+
+    # =========================================================================
+    # NEW: get_proxy_url Tests
+    # =========================================================================
+
+    class TestGetProxyUrl:
+        """Tests for get_proxy_url method."""
+
+        def test_returns_none_when_no_config_store(self, caplog):
+            """Test get_proxy_url returns None when no config store."""
+            token = ConcreteApiToken()
+
+            with caplog.at_level(logging.DEBUG):
+                result = token.get_proxy_url()
+
+            assert result is None
+            assert "get_proxy_url" in caplog.text
+
+        def test_returns_none_when_no_proxy_url(self, caplog):
+            """Test get_proxy_url returns None when proxy_url not in config."""
+            from .conftest import MockConfigStore
+            config = {"providers": {"test": {"base_url": "https://api.test.com"}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            result = token.get_proxy_url()
+
+            assert result is None
+
+        def test_returns_proxy_url_when_present(self, caplog):
+            """Test get_proxy_url returns URL when present."""
+            from .conftest import MockConfigStore
+            config = {"providers": {"test": {"proxy_url": "http://custom-proxy:8080"}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            with caplog.at_level(logging.DEBUG):
+                result = token.get_proxy_url()
+
+            assert result == "http://custom-proxy:8080"
+
+        def test_handles_empty_string_proxy_url(self, caplog):
+            """Test get_proxy_url handles empty string."""
+            from .conftest import MockConfigStore
+            config = {"providers": {"test": {"proxy_url": ""}}}
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            result = token.get_proxy_url()
+
+            # Empty string is falsy but get() returns it
+            assert result == ""
+
+        def test_handles_proxy_url_with_credentials(self, caplog):
+            """Test get_proxy_url handles URL with embedded credentials."""
+            from .conftest import MockConfigStore
+            config = {
+                "providers": {
+                    "test": {"proxy_url": "http://user:p%40ssword@proxy.internal:8080"}
+                }
+            }
+            mock_store = MockConfigStore(config)
+            token = ConcreteApiToken(config_store=mock_store)
+
+            result = token.get_proxy_url()
+
+            assert result == "http://user:p%40ssword@proxy.internal:8080"
+
+        def test_logs_debug_on_call(self, caplog):
+            """Test get_proxy_url logs debug message."""
+            token = ConcreteApiToken()
+
+            with caplog.at_level(logging.DEBUG):
+                token.get_proxy_url()
+
+            assert "Getting proxy URL from provider config" in caplog.text

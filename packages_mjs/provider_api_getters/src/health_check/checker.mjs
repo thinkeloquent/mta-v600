@@ -81,8 +81,8 @@ function printPanel(title, content, borderColor = "cyan") {
 
   console.log(
     colorFn("╭" + "─".repeat(topLeft)) +
-    titlePadded +
-    colorFn("─".repeat(topRight) + "╮")
+      titlePadded +
+      colorFn("─".repeat(topRight) + "╮")
   );
   console.log(colorFn("╰" + "─".repeat(width - 2) + "╯"));
 
@@ -96,9 +96,16 @@ function printPanel(title, content, borderColor = "cyan") {
 /**
  * Print a pretty panel for the proxy/network configuration.
  * @param {string} providerName - Provider name
+ * @param {Object} apiToken - API token instance
+ * @param {Object} apiKeyResult - Result from getApiKey() with credentials info
  * @param {Object} configUsed - Configuration object
  */
-function printProxyConfigPanel(providerName, configUsed) {
+function printProxyConfigPanel(
+  providerName,
+  apiToken,
+  apiKeyResult,
+  configUsed
+) {
   if (!configUsed) return;
 
   const proxyConfig = configUsed.proxy || {};
@@ -125,6 +132,17 @@ function printProxyConfigPanel(providerName, configUsed) {
       has_runtime_override: configUsed.has_runtime_override || false,
     },
   };
+
+  // Debug log with redacted sensitive data
+  const redactedApiKey = apiKeyResult?.apiKey
+    ? `${apiKeyResult.apiKey.substring(0, 10)}...[REDACTED]`
+    : null;
+  console.log(
+    `printProxyConfigPanel: provider=${providerName}, ` +
+      `tokenClass=${apiToken?.constructor?.name || "null"}, ` +
+      `apiKey=${redactedApiKey}, ` +
+      `hasCredentials=${apiKeyResult?.hasCredentials}`
+  );
 
   const title = pc.bold(
     pc.magenta(`Provider Config → ${providerName.toUpperCase()}`)
@@ -711,7 +729,7 @@ export class ProviderHealthChecker {
     const startTime = performance.now();
 
     // Print proxy/network config panel
-    printProxyConfigPanel(providerName, configUsed);
+    printProxyConfigPanel(providerName, apiToken, apiKeyResult, configUsed);
 
     if (!apiKeyResult.hasCredentials) {
       return new ProviderConnectionResponse({

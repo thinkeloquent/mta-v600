@@ -8,6 +8,7 @@ import type { Dispatcher } from 'undici';
 import type { AppEnv } from './config.mjs';
 import { getAppEnv, Environment } from './config.mjs';
 import { defaultAgents, createProxyAgent, type AgentType } from './agents.mjs';
+import { resolveProxyUrl } from '@internal/fetch-proxy-config';
 
 /**
  * Simple logger for factory module
@@ -69,6 +70,8 @@ export interface AgentProxyConfig {
 export interface FactoryConfig {
   /** Proxy URLs per environment */
   proxyUrls?: ProxyUrlConfig;
+  /** Direct proxy URL override */
+  proxyUrl?: string;
   /** Agent proxy overrides */
   agentProxy?: AgentProxyConfig;
   /** Default environment when not detected */
@@ -109,16 +112,17 @@ export class ProxyDispatcherFactory {
     // Log factory initialization
     const proxyUrlsStr = config.proxyUrls
       ? Object.entries(config.proxyUrls)
-          .map(([k, v]) => `${k}=${maskProxyUrl(v)}`)
-          .join(', ')
+        .map(([k, v]) => `${k}=${maskProxyUrl(v)}`)
+        .join(', ')
       : 'none';
+    const proxyUrlStr = config.proxyUrl ? maskProxyUrl(config.proxyUrl) : 'none';
     const agentProxyStr = config.agentProxy
       ? `http=${maskProxyUrl(config.agentProxy.httpProxy)}, https=${maskProxyUrl(config.agentProxy.httpsProxy)}`
       : 'none';
 
     log.debug(
-      `ProxyDispatcherFactory.__init__: proxyUrls=[${proxyUrlsStr}], ` +
-        `agentProxy=[${agentProxyStr}], defaultEnvironment=${config.defaultEnvironment ?? 'auto'}`
+      `ProxyDispatcherFactory.__init__: proxyUrls=[${proxyUrlsStr}], proxyUrl=${proxyUrlStr}, ` +
+      `agentProxy=[${agentProxyStr}], defaultEnvironment=${config.defaultEnvironment ?? 'auto'}`
     );
   }
 
@@ -133,13 +137,13 @@ export class ProxyDispatcherFactory {
   getProxyDispatcher(options: FactoryOptions = {}): Dispatcher {
     log.debug(
       `getProxyDispatcher: environment=${options.environment ?? 'auto'}, ` +
-        `disableTls=${options.disableTls}, agentType=${options.agentType ?? 'auto'}`
+      `disableTls=${options.disableTls}, agentType=${options.agentType ?? 'auto'}`
     );
 
     const env = options.environment ?? this.config.defaultEnvironment ?? getAppEnv();
     log.debug(`getProxyDispatcher: Resolved environment=${env}`);
 
-    // Check agent proxy override
+    // Priority 1: Agent proxy override
     const agentProxy =
       this.config.agentProxy?.httpsProxy || this.config.agentProxy?.httpProxy;
 
@@ -150,12 +154,24 @@ export class ProxyDispatcherFactory {
       return dispatcher;
     }
 
-    // Check env-specific proxy
-    const envProxy = this.config.proxyUrls?.[env];
-    if (envProxy) {
-      log.debug(`getProxyDispatcher: Using env-specific proxy for ${env}=${maskProxyUrl(envProxy)}`);
-      const dispatcher = createProxyAgent(envProxy, options.disableTls);
-      log.debug('getProxyDispatcher: ProxyAgent created from env proxy');
+    // Use shared resolution logic
+    // Convert config to NetworkConfig format
+    const networkConfig = {
+      default_environment: this.config.defaultEnvironment,
+      // Convert mapping back to what resolver expects if keys match
+      proxy_urls: this.config.proxyUrls as Record<string, string>,
+      agent_proxy: {
+        http_proxy: this.config.agentProxy?.httpProxy,
+        https_proxy: this.config.agentProxy?.httpsProxy
+      }
+    };
+
+    // Pass direct override from factory config if present
+    const resolvedUrl = resolveProxyUrl(networkConfig, this.config.proxyUrl);
+
+    if (resolvedUrl) {
+      log.debug(`getProxyDispatcher: Resolved proxy URL=${maskProxyUrl(resolvedUrl)}`);
+      const dispatcher = createProxyAgent(resolvedUrl, options.disableTls);
       return dispatcher;
     }
 
@@ -189,7 +205,7 @@ export class ProxyDispatcherFactory {
   setAgentProxy(agentProxy: AgentProxyConfig): void {
     log.debug(
       `setAgentProxy: httpProxy=${maskProxyUrl(agentProxy.httpProxy)}, ` +
-        `httpsProxy=${maskProxyUrl(agentProxy.httpsProxy)}`
+      `httpsProxy=${maskProxyUrl(agentProxy.httpsProxy)}`
     );
     this.config.agentProxy = { ...this.config.agentProxy, ...agentProxy };
   }

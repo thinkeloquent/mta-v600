@@ -88,20 +88,21 @@ def _print_proxy_config_panel(
         return
 
     # Extract relevant proxy/network config
-    proxy_config = config_used.get("proxy", {})
-    client_config = config_used.get("client", {})
+    proxy_config = config_used.get("network") or config_used.get("proxy") or {}
+    client_config = config_used.get("client") or {}
 
     config_info = {
         "provider": provider_name,
         "base_url": config_used.get("base_url"),
         "auth_type": config_used.get("auth_type"),
-        "proxy": {
+        "network": {
             "default_environment": proxy_config.get("default_environment"),
             "proxy_urls": proxy_config.get("proxy_urls") or "(none)",
             "ca_bundle": proxy_config.get("ca_bundle") or "(system default)",
             "cert": proxy_config.get("cert") or "(none)",
             "cert_verify": proxy_config.get("cert_verify"),
             "agent_proxy": proxy_config.get("agent_proxy") or "(none)",
+            "proxy_url": config_used.get("proxy_url"),
         },
         "client": {
             "timeout_seconds": client_config.get("timeout_seconds"),

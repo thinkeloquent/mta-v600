@@ -13,15 +13,18 @@
  * Falls back to ENV if YAML value is undefined (not present).
  * Does nothing if YAML value is explicitly null.
  */
-import pino from 'pino';
-import { getApiTokenClass } from '../api_token/index.mjs';
-import { deepMerge } from '../utils/deep_merge.mjs';
-import { resolveAuthConfig, getAuthTypeCategory } from '../utils/authResolver.mjs';
+import pino from "pino";
+import { getApiTokenClass } from "../api_token/index.mjs";
+import { deepMerge } from "../utils/deep_merge.mjs";
+import {
+  resolveAuthConfig,
+  getAuthTypeCategory,
+} from "../utils/authResolver.mjs";
 
 // Create pino logger with pretty printing
 const logger = pino({
   transport: {
-    target: 'pino-pretty',
+    target: "pino-pretty",
     options: {
       colorize: true,
     },
@@ -43,10 +46,15 @@ export class ProviderClientFactory {
     this.#configStore = value;
   }
 
-  _getProxyConfig() {
+  _getNetworkConfig() {
     try {
       if (!this.configStore) return {};
-      return this.configStore.getNested('proxy') || {};
+      // Try 'network' first, fall back to 'proxy'
+      return (
+        this.configStore.getNested("network") ||
+        this.configStore.getNested("proxy") ||
+        {}
+      );
     } catch {
       return {};
     }
@@ -55,7 +63,7 @@ export class ProviderClientFactory {
   _getClientConfig() {
     try {
       if (!this.configStore) return {};
-      return this.configStore.getNested('client') || {};
+      return this.configStore.getNested("client") || {};
     } catch {
       return {};
     }
@@ -77,9 +85,10 @@ export class ProviderClientFactory {
     const apiToken = this.getApiToken(providerName);
     if (!apiToken) {
       return {
-        proxy: this._getProxyConfig(),
+        network: this._getNetworkConfig(),
         client: this._getClientConfig(),
         headers: {},
+        proxy_url: null,
         has_provider_override: false,
         has_runtime_override: false,
       };
@@ -87,56 +96,69 @@ export class ProviderClientFactory {
 
     // Get specific overrides directly from provider config
     // These correspond to providers.{name}.proxy, .client, .headers
-    const providerProxy = apiToken.getProxyConfig() || {};
+    const providerNetwork =
+      apiToken.getNetworkConfig() || apiToken.getProxyConfig() || {};
     const providerClient = apiToken.getClientConfig() || {};
     const providerHeaders = apiToken.getHeadersConfig() || {};
 
-    const globalProxy = this._getProxyConfig();
+    const globalNetwork = this._getNetworkConfig();
     const globalClient = this._getClientConfig();
 
     // Priority: runtime_override > provider_specific > global
-    let mergedProxy = deepMerge(globalProxy, providerProxy);
-    let mergedClient = deepMerge(globalClient, providerClient);
-    let headers = { ...providerHeaders };
+    const mergedNetwork = deepMerge(globalNetwork, providerNetwork);
+    const mergedClient = deepMerge(globalClient, providerClient);
+    const headers = { ...providerHeaders };
 
-    // Apply runtime override if provided
-    if (runtimeOverride) {
-      if (runtimeOverride.proxy) {
-        mergedProxy = deepMerge(mergedProxy, runtimeOverride.proxy);
+    if (runtimeOverride && Object.keys(runtimeOverride).length > 0) {
+      if (runtimeOverride.network) {
+        Object.assign(
+          mergedNetwork,
+          deepMerge(mergedNetwork, runtimeOverride.network)
+        );
       }
+      // Legacy 'proxy' support
+      if (runtimeOverride.proxy) {
+        Object.assign(
+          mergedNetwork,
+          deepMerge(mergedNetwork, runtimeOverride.proxy)
+        );
+      }
+
       if (runtimeOverride.client) {
-        mergedClient = deepMerge(mergedClient, runtimeOverride.client);
+        Object.assign(
+          mergedClient,
+          deepMerge(mergedClient, runtimeOverride.client)
+        );
       }
       if (runtimeOverride.headers) {
-        headers = { ...headers, ...runtimeOverride.headers };
+        Object.assign(headers, runtimeOverride.headers);
       }
     }
 
     const hasOverrides =
-      Object.keys(providerProxy).length > 0 ||
+      Object.keys(providerNetwork).length > 0 ||
       Object.keys(providerClient).length > 0 ||
       Object.keys(providerHeaders).length > 0;
 
     if (hasOverrides) {
-      logger.info(
-        { providerName },
-        'Provider-specific overrides applied'
-      );
+      logger.info({ providerName }, "Provider-specific overrides applied");
     }
 
     if (runtimeOverride && Object.keys(runtimeOverride).length > 0) {
       logger.info(
         { providerName, runtimeOverrideKeys: Object.keys(runtimeOverride) },
-        'Runtime override applied'
+        "Runtime override applied"
       );
     }
 
     return {
-      proxy: mergedProxy,
+      network: mergedNetwork,
       client: mergedClient,
       headers,
+      proxy_url: apiToken.getProxyUrl(),
       has_provider_override: hasOverrides,
-      has_runtime_override: runtimeOverride && Object.keys(runtimeOverride).length > 0,
+      has_runtime_override:
+        runtimeOverride && Object.keys(runtimeOverride).length > 0,
     };
   }
 
@@ -150,19 +172,26 @@ export class ProviderClientFactory {
    * - cert_verify: false = disable TLS validation
    * - ca_bundle: path to CA bundle file
    *
-   * @param {Object} proxyConfig - Merged proxy configuration (global + provider overrides)
+   * @param {Object} networkConfig - Merged network configuration (global + provider overrides)
+   * @param {string} proxyUrl - Optional direct proxy URL override
    * @returns {Promise<Dispatcher|undefined>} Dispatcher or undefined
    */
-  async _createDispatcher(proxyConfig = null) {
+  async _createDispatcher(networkConfig = null, proxyUrl = null) {
     try {
-      const { ProxyDispatcherFactory } = await import('@internal/fetch-proxy-dispatcher');
+      const { ProxyDispatcherFactory } = await import(
+        "@internal/fetch-proxy-dispatcher"
+      );
       // Use provided config or fall back to global
-      proxyConfig = proxyConfig || this._getProxyConfig();
+      networkConfig = networkConfig || this._getNetworkConfig();
 
       // Build ProxyUrlConfig from YAML (convert to uppercase keys)
       let proxyUrls;
-      const yamlProxyUrls = proxyConfig?.proxy_urls;
-      if (yamlProxyUrls && typeof yamlProxyUrls === 'object' && Object.keys(yamlProxyUrls).length > 0) {
+      const yamlProxyUrls = networkConfig?.proxy_urls;
+      if (
+        yamlProxyUrls &&
+        typeof yamlProxyUrls === "object" &&
+        Object.keys(yamlProxyUrls).length > 0
+      ) {
         proxyUrls = {};
         // Convert keys to uppercase for ProxyUrlConfig (DEV, STAGE, QA, PROD)
         for (const [key, value] of Object.entries(yamlProxyUrls)) {
@@ -174,8 +203,8 @@ export class ProviderClientFactory {
 
       // Build AgentProxyConfig from YAML
       let agentProxy;
-      const yamlAgentProxy = proxyConfig?.agent_proxy;
-      if (yamlAgentProxy && typeof yamlAgentProxy === 'object') {
+      const yamlAgentProxy = networkConfig?.agent_proxy;
+      if (yamlAgentProxy && typeof yamlAgentProxy === "object") {
         const httpProxy = yamlAgentProxy.http_proxy;
         const httpsProxy = yamlAgentProxy.https_proxy;
         if (httpProxy || httpsProxy) {
@@ -187,17 +216,23 @@ export class ProviderClientFactory {
       }
 
       // Get other config values
-      const defaultEnvironment = proxyConfig?.default_environment?.toUpperCase();
-      const disableTls = proxyConfig?.cert_verify === false;
+      const defaultEnvironment =
+        networkConfig?.default_environment?.toUpperCase();
+      const disableTls = networkConfig?.cert_verify === false;
 
       // Build factory config
       const factoryConfig = {};
       if (proxyUrls) factoryConfig.proxyUrls = proxyUrls;
       if (agentProxy) factoryConfig.agentProxy = agentProxy;
-      if (defaultEnvironment) factoryConfig.defaultEnvironment = defaultEnvironment;
+      if (proxyUrl) factoryConfig.proxyUrl = proxyUrl; // Pass direct override
+      if (defaultEnvironment)
+        factoryConfig.defaultEnvironment = defaultEnvironment;
 
       const factory = new ProxyDispatcherFactory(factoryConfig);
-      logger.info({ factoryConfig, disableTls }, 'ProxyDispatcherFactory config');
+      logger.info(
+        { factoryConfig, disableTls },
+        "ProxyDispatcherFactory config"
+      );
       return factory.getProxyDispatcher({ disableTls });
     } catch {
       return undefined;
@@ -214,32 +249,56 @@ export class ProviderClientFactory {
   async getClient(providerName) {
     let createClient;
     try {
-      const fetchClient = await import('@internal/fetch-client');
+      const fetchClient = await import("@internal/fetch-client");
       createClient = fetchClient.createClient;
     } catch {
       return null;
     }
 
     const apiToken = this.getApiToken(providerName);
+    console.log({
+      apiToken: apiToken
+        ? `[${apiToken.constructor.name}] baseUrl=${apiToken.getBaseUrl()?.substring(0, 10)}...`
+        : null,
+    });
     if (!apiToken) return null;
-    logger.info({ providerName }, 'API token retrieved');
+    logger.info({ providerName }, "API token retrieved");
 
     const baseUrl = apiToken.getBaseUrl();
     if (!baseUrl) return null;
 
     // Use async method to support dynamic token resolution
     const apiKeyResult = await apiToken.getApiKeyAsync();
+    console.log({
+      apiKeyResult: {
+        hasCredentials: apiKeyResult.hasCredentials,
+        isPlaceholder: apiKeyResult.isPlaceholder,
+        authType: apiKeyResult.authType,
+        apiKey: apiKeyResult.apiKey
+          ? `${apiKeyResult.apiKey.substring(0, 10)}...[REDACTED]`
+          : null,
+      },
+    });
     if (apiKeyResult.isPlaceholder) return null;
 
     // Get merged config (global + provider overrides)
     const mergedConfig = this._getMergedConfigForProvider(providerName);
-
-    // Check token resolver type for per-request tokens
-    const tokenResolverType = apiToken.getTokenResolverType();
+    logger.info(
+      { providerName, has_provider_override: mergedConfig.has_provider_override },
+      "Config merged"
+    );
 
     // Create dispatcher with merged proxy config
-    const dispatcher = await this._createDispatcher(mergedConfig.proxy);
+    const dispatcher = await this._createDispatcher(
+      mergedConfig.network,
+      mergedConfig.proxy_url
+    );
 
+    if (!dispatcher && mergedConfig.proxy_url) {
+      logger.warn({ providerName, proxyUrl: mergedConfig.proxy_url }, "Failed to create dispatcher despite proxy_url override");
+    }
+
+    // Resolve auth config to get final auth params
     let auth;
     if (apiKeyResult.apiKey) {
       // Use getAuthType() and getHeaderName() from apiToken for consistent auth type
@@ -251,16 +310,21 @@ export class ProviderClientFactory {
       auth = resolveAuthConfig(authType, apiKeyResult, headerName);
       const authCategory = getAuthTypeCategory(authType);
 
-      logger.info({ providerName, authType, authCategory, resolvedType: auth.type }, 'Auth config created');
+      logger.info(
+        { providerName, authType, authCategory, resolvedType: auth.type },
+        "Auth config created"
+      );
     }
+
+    // Check token resolver type for per-request tokens
+    const tokenResolverType = apiToken.getTokenResolverType();
 
     // Build client options with merged config
     const clientOptions = {
-      baseUrl,
       dispatcher,
       auth,
       headers: {
-        'User-Agent': 'provider-api-getters/1.0',
+        "User-Agent": "provider-api-getters/1.0",
       },
     };
 
@@ -271,20 +335,34 @@ export class ProviderClientFactory {
 
     // Apply additional headers from overwrite_config (merge with defaults)
     if (Object.keys(mergedConfig.headers).length > 0) {
-      clientOptions.headers = { ...clientOptions.headers, ...mergedConfig.headers };
+      clientOptions.headers = {
+        ...clientOptions.headers,
+        ...mergedConfig.headers,
+      };
     }
 
     // For per-request tokens, add dynamic auth handler
-    if (tokenResolverType === 'request') {
+    if (tokenResolverType === "request") {
       clientOptions.getApiKeyForRequest = async (context) => {
         const result = await apiToken.getApiKeyForRequestAsync(context);
         return result.apiKey;
       };
-      logger.info({ providerName, tokenResolverType }, 'Dynamic auth enabled for per-request tokens');
+      logger.info(
+        { providerName, tokenResolverType },
+        "Dynamic auth enabled for per-request tokens"
+      );
     }
 
     const client = createClient(clientOptions);
-    logger.info({ providerName, baseUrl, hasOverrideHeaders: Object.keys(mergedConfig.headers).length > 0, tokenResolverType }, 'FetchClient created');
+    logger.info(
+      {
+        providerName,
+        baseUrl,
+        hasOverrideHeaders: Object.keys(mergedConfig.headers).length > 0,
+        tokenResolverType,
+      },
+      "FetchClient created"
+    );
 
     return client;
   }
@@ -305,7 +383,7 @@ export async function getProviderClient(providerName) {
   if (_factory === null) {
     // Lazy-load ConfigStore singleton to avoid circular dependencies
     try {
-      const { config } = await import('@internal/app-static-config-yaml');
+      const { config } = await import("@internal/app-static-config-yaml");
       _factory = new ProviderClientFactory(config);
     } catch {
       // Fallback to factory without config (will use env vars)
