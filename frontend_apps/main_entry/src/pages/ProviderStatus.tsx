@@ -224,6 +224,33 @@ export function ProviderStatus() {
 
     try {
       const res = await fetch(`${HEALTHZ_API}/${providerName}`);
+
+      if (!res.ok) {
+        // Handle HTTP errors (4xx, 5xx)
+        let errorMsg = `HTTP ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.detail || errorData.error || errorData.message || errorMsg;
+        } catch {
+          // Ignore JSON parse errors for error responses
+        }
+
+        setProviderStatuses((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(providerName, {
+            provider: providerName,
+            status: 'error',
+            latency_ms: null,
+            message: null,
+            error: errorMsg,
+            timestamp: new Date().toISOString(),
+            loading: false,
+          });
+          return newMap;
+        });
+        return;
+      }
+
       const data: ProviderConnectionResponse = await res.json();
 
       setProviderStatuses((prev) => {
@@ -265,7 +292,7 @@ export function ProviderStatus() {
     }
   }, [fetchProvidersList, checkAllProviders]);
 
-  // Initial load
+  // Initial load - run once on mount
   useEffect(() => {
     const init = async () => {
       setInitialLoading(true);
@@ -273,7 +300,8 @@ export function ProviderStatus() {
       setInitialLoading(false);
     };
     init();
-  }, [refreshAll]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const providers = providersList.map(

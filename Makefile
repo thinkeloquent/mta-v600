@@ -87,7 +87,7 @@ clean-ports:
 	@bash .bin/clean-ports.sh
 
 # Development - run frontend watch + all backends in parallel (cleans ports first)
-dev: clean-ports
+dev: clean-ports build
 	@echo "Starting development servers..."
 	@echo "  Frontend: watch mode (rebuilds on changes)"
 	@echo "  Fastify:  http://localhost:$(FASTIFY_PORT)"

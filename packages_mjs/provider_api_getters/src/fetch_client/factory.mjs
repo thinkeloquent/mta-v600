@@ -321,6 +321,7 @@ export class ProviderClientFactory {
 
     // Build client options with merged config
     const clientOptions = {
+      baseUrl,
       dispatcher,
       auth,
       headers: {
