@@ -3,7 +3,6 @@ name = "test-sensitive-data"
 version = "0.0.1"
 description = "Centralized sensitive test data for test suites"
 authors = ["Your Name"]
-readme = "README.md"
 packages = [{include = "test_sensitive_data", from = "src"}]
 include = ["sensitive-data.yaml"]
 

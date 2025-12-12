@@ -64,7 +64,7 @@ help:
 	@echo "  make clean         - Clean build artifacts"
 
 # Setup
-setup:
+setup: clean
 	@echo "Running setup scripts..."
 	@bash .bin/pyproject-remove-readme-line.sh || true
 	@bash .bin/git-hook-setup.sh || true
@@ -95,6 +95,14 @@ dev: clean-ports
 	@echo ""
 	@$(MAKE) -j3 dev-frontend dev-fastify dev-fastapi
 
+dev-no-cache: clean clean-ports
+	@echo "Starting development servers..."
+	@echo "  Frontend: watch mode (rebuilds on changes)"
+	@echo "  Fastify:  http://localhost:$(FASTIFY_PORT)"
+	@echo "  FastAPI:  http://localhost:$(FASTAPI_PORT)"
+	@echo ""
+	@$(MAKE) -j3 dev-frontend dev-fastify dev-fastapi
+	
 # Development using dev-parallel.sh (with colored output and graceful shutdown)
 dev-parallel:
 	@FASTIFY_PORT=$(FASTIFY_PORT) \
@@ -127,8 +135,9 @@ dev-fastapi:
 
 # Build
 build:
-	npm run build:log
-
+	make -f Makefile.fastapi build-log
+	make -f Makefile.fastify build-log
+	
 test:
 	rm -rf ./logs && mkdir ./logs
 	npm run test:log
@@ -155,6 +164,7 @@ docker-down:
 # Clean
 clean:
 	pnpm clean
+	find . -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true

@@ -3,7 +3,6 @@ name = "fetch-auth-config"
 version = "0.1.0"
 description = "Fetch Auth Config package"
 authors = ["Your Name"]
-readme = "README.md"
 packages = [{include = "fetch_auth_config", from = "src"}]
 
 [tool.poetry.dependencies]

@@ -3,7 +3,6 @@ name = "fetch-header-config"
 version = "0.1.0"
 description = "Fetch Header Config package"
 authors = ["Your Name"]
-readme = "README.md"
 packages = [{include = "fetch_header_config", from = "src"}]
 
 [tool.poetry.dependencies]

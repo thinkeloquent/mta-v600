@@ -1,12 +1,10 @@
 /**
  * Provider health check implementation.
  */
-import { getApiTokenClass } from '../api_token/index.mjs';
-import { ProviderClientFactory } from '../fetch_client/factory.mjs';
-import { getApiTokenClass } from '../api_token/index.mjs';
-import { ProviderClientFactory } from '../fetch_client/factory.mjs';
-import { encodeAuth } from '@internal/fetch-auth-encoding';
-import pc from 'picocolors';
+import { getApiTokenClass } from "../api_token/index.mjs";
+import { ProviderClientFactory } from "../fetch_client/factory.mjs";
+import { encodeAuth } from "@internal/fetch-auth-encoding";
+import pc from "picocolors";
 
 // ============================================================================
 // Console Panel Utilities
@@ -19,9 +17,11 @@ import pc from 'picocolors';
  * @returns {string} Masked value
  */
 function maskSensitiveHeader(value, visibleChars = 10) {
-  if (!value) return '<empty>';
-  if (value.length <= visibleChars) return '*'.repeat(value.length);
-  return value.substring(0, visibleChars) + '*'.repeat(value.length - visibleChars);
+  if (!value) return "<empty>";
+  if (value.length <= visibleChars) return "*".repeat(value.length);
+  return (
+    value.substring(0, visibleChars) + "*".repeat(value.length - visibleChars)
+  );
 }
 
 /**
@@ -31,7 +31,11 @@ function maskSensitiveHeader(value, visibleChars = 10) {
  */
 function formatHeadersForDisplay(headers) {
   const sensitiveHeaders = new Set([
-    'authorization', 'x-api-key', 'x-figma-token', 'cookie', 'set-cookie'
+    "authorization",
+    "x-api-key",
+    "x-figma-token",
+    "cookie",
+    "set-cookie",
   ]);
   const masked = {};
   for (const [key, value] of Object.entries(headers || {})) {
@@ -51,7 +55,7 @@ function formatHeadersForDisplay(headers) {
  */
 function stripAnsiLength(str) {
   // eslint-disable-next-line no-control-regex
-  return str.replace(/\x1b\[[0-9;]*m/g, '').length;
+  return str.replace(/\x1b\[[0-9;]*m/g, "").length;
 }
 
 /**
@@ -60,7 +64,7 @@ function stripAnsiLength(str) {
  * @param {string} content - JSON string to display
  * @param {string} borderColor - Color for the border (cyan, magenta, green, red, yellow)
  */
-function printPanel(title, content, borderColor = 'cyan') {
+function printPanel(title, content, borderColor = "cyan") {
   // Get the actual display length of the title (without ANSI codes)
   const titleDisplayLen = stripAnsiLength(title);
   // Fixed width based on title length + padding
@@ -75,14 +79,18 @@ function printPanel(title, content, borderColor = 'cyan') {
   const topLeft = Math.floor(topBorderLen / 2);
   const topRight = topBorderLen - topLeft;
 
-  console.log(colorFn('╭' + '─'.repeat(topLeft)) + titlePadded + colorFn('─'.repeat(topRight) + '╮'));
-  console.log(colorFn('╰' + '─'.repeat(width - 2) + '╯'));
+  console.log(
+    colorFn("╭" + "─".repeat(topLeft)) +
+      titlePadded +
+      colorFn("─".repeat(topRight) + "╮")
+  );
+  console.log(colorFn("╰" + "─".repeat(width - 2) + "╯"));
 
   // Plain JSON content
   console.log(content);
 
   // Footer bar
-  console.log(colorFn('╰' + '─'.repeat(width - 2) + '╯'));
+  console.log(colorFn("╰" + "─".repeat(width - 2) + "╯"));
 }
 
 /**
@@ -102,11 +110,11 @@ function printProxyConfigPanel(providerName, configUsed) {
     auth_type: configUsed.auth_type,
     proxy: {
       default_environment: proxyConfig.default_environment,
-      proxy_urls: proxyConfig.proxy_urls || '(none)',
-      ca_bundle: proxyConfig.ca_bundle || '(system default)',
-      cert: proxyConfig.cert || '(none)',
+      proxy_urls: proxyConfig.proxy_urls || "(none)",
+      ca_bundle: proxyConfig.ca_bundle || "(system default)",
+      cert: proxyConfig.cert || "(none)",
       cert_verify: proxyConfig.cert_verify,
-      agent_proxy: proxyConfig.agent_proxy || '(none)',
+      agent_proxy: proxyConfig.agent_proxy || "(none)",
     },
     client: {
       timeout_seconds: clientConfig.timeout_seconds,
@@ -118,8 +126,10 @@ function printProxyConfigPanel(providerName, configUsed) {
     },
   };
 
-  const title = pc.bold(pc.magenta(`Provider Config → ${providerName.toUpperCase()}`));
-  printPanel(title, JSON.stringify(configInfo, null, 2), 'magenta');
+  const title = pc.bold(
+    pc.magenta(`Provider Config → ${providerName.toUpperCase()}`)
+  );
+  printPanel(title, JSON.stringify(configInfo, null, 2), "magenta");
 }
 
 /**
@@ -137,12 +147,14 @@ function printHealthRequestPanel(providerName, method, url, headers, authType) {
     provider: providerName,
     method: method,
     url: url,
-    auth_type: authType || 'unknown',
+    auth_type: authType || "unknown",
     headers: maskedHeaders,
   };
 
-  const title = pc.bold(pc.cyan(`Provider Health Request → ${providerName.toUpperCase()}`));
-  printPanel(title, JSON.stringify(requestInfo, null, 2), 'cyan');
+  const title = pc.bold(
+    pc.cyan(`Provider Health Request → ${providerName.toUpperCase()}`)
+  );
+  printPanel(title, JSON.stringify(requestInfo, null, 2), "cyan");
 }
 
 /**
@@ -155,15 +167,23 @@ function printHealthRequestPanel(providerName, method, url, headers, authType) {
  * @param {any} responseData - Response body data
  * @param {string} error - Error message if any
  */
-function printHealthResponsePanel(providerName, status, statusCode, latencyMs, responseHeaders, responseData, error) {
+function printHealthResponsePanel(
+  providerName,
+  status,
+  statusCode,
+  latencyMs,
+  responseHeaders,
+  responseData,
+  error
+) {
   // Determine color based on status
-  let borderColor = 'yellow';
+  let borderColor = "yellow";
   let statusDisplay = status.toUpperCase();
 
-  if (status === 'connected') {
-    borderColor = 'green';
-  } else if (status === 'error') {
-    borderColor = 'red';
+  if (status === "connected") {
+    borderColor = "green";
+  } else if (status === "error") {
+    borderColor = "red";
   }
 
   const maskedRespHeaders = formatHeadersForDisplay(responseHeaders || {});
@@ -178,10 +198,10 @@ function printHealthResponsePanel(providerName, status, statusCode, latencyMs, r
 
   // Include response data (truncated if too large)
   if (responseData !== null && responseData !== undefined) {
-    if (typeof responseData === 'object') {
+    if (typeof responseData === "object") {
       responseInfo.data = responseData;
-    } else if (typeof responseData === 'string' && responseData.length > 500) {
-      responseInfo.data = responseData.substring(0, 500) + '...';
+    } else if (typeof responseData === "string" && responseData.length > 500) {
+      responseInfo.data = responseData.substring(0, 500) + "...";
     } else {
       responseInfo.data = responseData;
     }
@@ -192,7 +212,11 @@ function printHealthResponsePanel(providerName, status, statusCode, latencyMs, r
   }
 
   const colorFn = pc[borderColor] || pc.yellow;
-  const title = pc.bold(colorFn(`Provider Health Response ← ${providerName.toUpperCase()} (${statusDisplay})`));
+  const title = pc.bold(
+    colorFn(
+      `Provider Health Response ← ${providerName.toUpperCase()} (${statusDisplay})`
+    )
+  );
   printPanel(title, JSON.stringify(responseInfo, null, 2), borderColor);
 }
 
@@ -208,8 +232,8 @@ function printDatabaseConfigPanel(providerName, connectionType, configUsed) {
   const configInfo = {
     provider: providerName,
     connection_type: connectionType,
-    auth_type: configUsed.auth_type || 'connection_string',
-    proxy: configUsed.proxy || '(not applicable)',
+    auth_type: configUsed.auth_type || "connection_string",
+    proxy: configUsed.proxy || "(not applicable)",
     client: configUsed.client || {},
     overrides: {
       has_overwrite_root_config: configUsed.has_overwrite_root_config || false,
@@ -217,8 +241,10 @@ function printDatabaseConfigPanel(providerName, connectionType, configUsed) {
     },
   };
 
-  const title = pc.bold(pc.magenta(`Provider Config → ${providerName.toUpperCase()}`));
-  printPanel(title, JSON.stringify(configInfo, null, 2), 'magenta');
+  const title = pc.bold(
+    pc.magenta(`Provider Config → ${providerName.toUpperCase()}`)
+  );
+  printPanel(title, JSON.stringify(configInfo, null, 2), "magenta");
 }
 
 /**
@@ -229,12 +255,18 @@ function printDatabaseConfigPanel(providerName, connectionType, configUsed) {
  * @param {string} message - Result message
  * @param {string} error - Error message if any
  */
-function printDatabaseResponsePanel(providerName, status, latencyMs, message, error) {
-  let borderColor = 'yellow';
-  if (status === 'connected') {
-    borderColor = 'green';
-  } else if (status === 'error') {
-    borderColor = 'red';
+function printDatabaseResponsePanel(
+  providerName,
+  status,
+  latencyMs,
+  message,
+  error
+) {
+  let borderColor = "yellow";
+  if (status === "connected") {
+    borderColor = "green";
+  } else if (status === "error") {
+    borderColor = "red";
   }
 
   const responseInfo = {
@@ -252,7 +284,11 @@ function printDatabaseResponsePanel(providerName, status, latencyMs, message, er
   }
 
   const colorFn = pc[borderColor] || pc.yellow;
-  const title = pc.bold(colorFn(`Provider Health Response ← ${providerName.toUpperCase()} (${status.toUpperCase()})`));
+  const title = pc.bold(
+    colorFn(
+      `Provider Health Response ← ${providerName.toUpperCase()} (${status.toUpperCase()})`
+    )
+  );
   printPanel(title, JSON.stringify(responseInfo, null, 2), borderColor);
 }
 
@@ -349,7 +385,7 @@ export class ProviderHealthChecker {
     if (!TokenClass) {
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'error',
+        status: "error",
         error: `Unknown provider: ${providerName}`,
       });
     }
@@ -361,17 +397,17 @@ export class ProviderHealthChecker {
     if (apiKeyResult.isPlaceholder) {
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'not_implemented',
+        status: "not_implemented",
         message: apiKeyResult.placeholderMessage,
         configUsed,
       });
     }
 
-    if (providerNameLower === 'postgres') {
+    if (providerNameLower === "postgres") {
       return this._checkPostgres(apiToken, configUsed);
-    } else if (providerNameLower === 'redis') {
+    } else if (providerNameLower === "redis") {
       return this._checkRedis(apiToken, configUsed);
-    } else if (providerNameLower === 'elasticsearch') {
+    } else if (providerNameLower === "elasticsearch") {
       return this._checkElasticsearch(apiToken, configUsed);
     } else {
       return this._checkHttp(providerName, apiToken, apiKeyResult, configUsed);
@@ -382,16 +418,23 @@ export class ProviderHealthChecker {
     const startTime = performance.now();
 
     // Print database config panel
-    printDatabaseConfigPanel('postgres', 'Sequelize', configUsed);
+    printDatabaseConfigPanel("postgres", "Sequelize", configUsed);
 
     try {
       const sequelize = await apiToken.getClient();
       if (!sequelize) {
-        const errorMsg = 'Failed to create Sequelize instance. Check sequelize/pg installation and credentials.';
-        printDatabaseResponsePanel('postgres', 'error', performance.now() - startTime, null, errorMsg);
+        const errorMsg =
+          "Failed to create Sequelize instance. Check sequelize/pg installation and credentials.";
+        printDatabaseResponsePanel(
+          "postgres",
+          "error",
+          performance.now() - startTime,
+          null,
+          errorMsg
+        );
         return new ProviderConnectionResponse({
-          provider: 'postgres',
-          status: 'error',
+          provider: "postgres",
+          status: "error",
           error: errorMsg,
           configUsed,
         });
@@ -404,22 +447,34 @@ export class ProviderHealthChecker {
       // Close the connection
       await sequelize.close();
 
-      const message = 'PostgreSQL connection successful (Sequelize)';
-      printDatabaseResponsePanel('postgres', 'connected', latencyMs, message, null);
+      const message = "PostgreSQL connection successful (Sequelize)";
+      printDatabaseResponsePanel(
+        "postgres",
+        "connected",
+        latencyMs,
+        message,
+        null
+      );
 
       return new ProviderConnectionResponse({
-        provider: 'postgres',
-        status: 'connected',
+        provider: "postgres",
+        status: "connected",
         latencyMs: Math.round(latencyMs * 100) / 100,
         message,
         configUsed,
       });
     } catch (e) {
       const latencyMs = performance.now() - startTime;
-      printDatabaseResponsePanel('postgres', 'error', latencyMs, null, e.message);
+      printDatabaseResponsePanel(
+        "postgres",
+        "error",
+        latencyMs,
+        null,
+        e.message
+      );
       return new ProviderConnectionResponse({
-        provider: 'postgres',
-        status: 'error',
+        provider: "postgres",
+        status: "error",
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
         configUsed,
@@ -431,16 +486,23 @@ export class ProviderHealthChecker {
     const startTime = performance.now();
 
     // Print database config panel
-    printDatabaseConfigPanel('redis', 'ioredis', configUsed);
+    printDatabaseConfigPanel("redis", "ioredis", configUsed);
 
     try {
       const client = await apiToken.getClient();
       if (!client) {
-        const errorMsg = 'Failed to create Redis client. Check ioredis installation and credentials.';
-        printDatabaseResponsePanel('redis', 'error', performance.now() - startTime, null, errorMsg);
+        const errorMsg =
+          "Failed to create Redis client. Check ioredis installation and credentials.";
+        printDatabaseResponsePanel(
+          "redis",
+          "error",
+          performance.now() - startTime,
+          null,
+          errorMsg
+        );
         return new ProviderConnectionResponse({
-          provider: 'redis',
-          status: 'error',
+          provider: "redis",
+          status: "error",
           error: errorMsg,
           configUsed,
         });
@@ -450,32 +512,38 @@ export class ProviderHealthChecker {
       const latencyMs = performance.now() - startTime;
       await client.quit();
 
-      if (result === 'PONG') {
-        const message = 'Redis connection successful (PONG)';
-        printDatabaseResponsePanel('redis', 'connected', latencyMs, message, null);
+      if (result === "PONG") {
+        const message = "Redis connection successful (PONG)";
+        printDatabaseResponsePanel(
+          "redis",
+          "connected",
+          latencyMs,
+          message,
+          null
+        );
         return new ProviderConnectionResponse({
-          provider: 'redis',
-          status: 'connected',
+          provider: "redis",
+          status: "connected",
           latencyMs: Math.round(latencyMs * 100) / 100,
           message,
           configUsed,
         });
       }
 
-      const errorMsg = 'PING did not return expected response';
-      printDatabaseResponsePanel('redis', 'error', latencyMs, null, errorMsg);
+      const errorMsg = "PING did not return expected response";
+      printDatabaseResponsePanel("redis", "error", latencyMs, null, errorMsg);
       return new ProviderConnectionResponse({
-        provider: 'redis',
-        status: 'error',
+        provider: "redis",
+        status: "error",
         error: errorMsg,
         configUsed,
       });
     } catch (e) {
       const latencyMs = performance.now() - startTime;
-      printDatabaseResponsePanel('redis', 'error', latencyMs, null, e.message);
+      printDatabaseResponsePanel("redis", "error", latencyMs, null, e.message);
       return new ProviderConnectionResponse({
-        provider: 'redis',
-        status: 'error',
+        provider: "redis",
+        status: "error",
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
         configUsed,
@@ -490,7 +558,11 @@ export class ProviderHealthChecker {
     const startTime = performance.now();
 
     // Print database config panel
-    printDatabaseConfigPanel('elasticsearch', 'HTTP (native fetch)', configUsed);
+    printDatabaseConfigPanel(
+      "elasticsearch",
+      "HTTP (native fetch)",
+      configUsed
+    );
 
     try {
       const connectionUrl = apiToken.getConnectionUrl();
@@ -502,29 +574,35 @@ export class ProviderHealthChecker {
       const password = parsedUrl.password;
 
       // Remove credentials from URL for fetch
-      parsedUrl.username = '';
-      parsedUrl.password = '';
+      parsedUrl.username = "";
+      parsedUrl.password = "";
       // Build health URL - ensure no double slashes
-      const baseUrl = parsedUrl.toString().replace(/\/+$/, '');
+      const baseUrl = parsedUrl.toString().replace(/\/+$/, "");
       const healthUrl = `${baseUrl}/_cluster/health`;
 
       // Get dispatcher from factory with YAML proxy config
       const dispatcher = await this.#clientFactory._createDispatcher();
 
-      const headers = { 'Accept': 'application/json' };
+      const headers = { Accept: "application/json" };
 
       // Add Basic Auth header if credentials were in the URL
       if (username && password) {
         // Use fetch-auth-encoding package
-        const auth = encodeAuth('basic', { username, password });
-        headers['Authorization'] = auth.Authorization;
+        const auth = encodeAuth("basic", { username, password });
+        headers["Authorization"] = auth.Authorization;
       }
 
       // Print request panel (for HTTP-based elasticsearch check)
-      printHealthRequestPanel('elasticsearch', 'GET', healthUrl, headers, username ? 'basic' : 'none');
+      printHealthRequestPanel(
+        "elasticsearch",
+        "GET",
+        healthUrl,
+        headers,
+        username ? "basic" : "none"
+      );
 
       const fetchOptions = {
-        method: 'GET',
+        method: "GET",
         headers,
       };
 
@@ -547,13 +625,13 @@ export class ProviderHealthChecker {
         const result = await response.json();
 
         if (result && result.cluster_name) {
-          const clusterStatus = result.status || 'unknown';
+          const clusterStatus = result.status || "unknown";
           const message = `Cluster '${result.cluster_name}' is ${clusterStatus}`;
 
           // Print success response panel
           printHealthResponsePanel(
-            'elasticsearch',
-            'connected',
+            "elasticsearch",
+            "connected",
             response.status,
             latencyMs,
             responseHeaders,
@@ -562,19 +640,27 @@ export class ProviderHealthChecker {
           );
 
           return new ProviderConnectionResponse({
-            provider: 'elasticsearch',
-            status: 'connected',
+            provider: "elasticsearch",
+            status: "connected",
             latencyMs: Math.round(latencyMs * 100) / 100,
             message,
             configUsed,
           });
         }
 
-        const errorMsg = 'Unexpected response from cluster health check';
-        printHealthResponsePanel('elasticsearch', 'error', response.status, latencyMs, responseHeaders, result, errorMsg);
+        const errorMsg = "Unexpected response from cluster health check";
+        printHealthResponsePanel(
+          "elasticsearch",
+          "error",
+          response.status,
+          latencyMs,
+          responseHeaders,
+          result,
+          errorMsg
+        );
         return new ProviderConnectionResponse({
-          provider: 'elasticsearch',
-          status: 'error',
+          provider: "elasticsearch",
+          status: "error",
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: errorMsg,
           configUsed,
@@ -582,10 +668,18 @@ export class ProviderHealthChecker {
       } else {
         const text = await response.text();
         const errorMsg = `HTTP ${response.status}: ${text.substring(0, 200)}`;
-        printHealthResponsePanel('elasticsearch', 'error', response.status, latencyMs, responseHeaders, text.substring(0, 200), errorMsg);
+        printHealthResponsePanel(
+          "elasticsearch",
+          "error",
+          response.status,
+          latencyMs,
+          responseHeaders,
+          text.substring(0, 200),
+          errorMsg
+        );
         return new ProviderConnectionResponse({
-          provider: 'elasticsearch',
-          status: 'error',
+          provider: "elasticsearch",
+          status: "error",
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: errorMsg,
           configUsed,
@@ -594,10 +688,18 @@ export class ProviderHealthChecker {
     } catch (e) {
       const latencyMs = performance.now() - startTime;
       // Print error response panel for exceptions
-      printHealthResponsePanel('elasticsearch', 'error', 0, latencyMs, {}, null, e.message);
+      printHealthResponsePanel(
+        "elasticsearch",
+        "error",
+        0,
+        latencyMs,
+        {},
+        null,
+        e.message
+      );
       return new ProviderConnectionResponse({
-        provider: 'elasticsearch',
-        status: 'error',
+        provider: "elasticsearch",
+        status: "error",
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
         configUsed,
@@ -614,8 +716,8 @@ export class ProviderHealthChecker {
     if (!apiKeyResult.hasCredentials) {
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'error',
-        error: 'No API credentials configured',
+        status: "error",
+        error: "No API credentials configured",
         configUsed,
       });
     }
@@ -624,8 +726,8 @@ export class ProviderHealthChecker {
     if (!baseUrl) {
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'error',
-        error: 'No base URL configured',
+        status: "error",
+        error: "No base URL configured",
         configUsed,
       });
     }
@@ -634,8 +736,8 @@ export class ProviderHealthChecker {
     if (!client) {
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'error',
-        error: 'Failed to create HTTP client',
+        status: "error",
+        error: "Failed to create HTTP client",
         configUsed,
       });
     }
@@ -643,23 +745,30 @@ export class ProviderHealthChecker {
     // Build request headers for logging (get from apiToken config)
     const healthEndpoint = apiToken.healthEndpoint;
     const fullUrl = `${baseUrl}${healthEndpoint}`;
-    const authType = apiToken.getAuthType?.() || configUsed?.auth_type || 'unknown';
+    const authType =
+      apiToken.getAuthType?.() || configUsed?.auth_type || "unknown";
 
     // Get headers configuration from apiToken
     const headersConfig = apiToken.getHeadersConfig?.() || {};
     const requestHeaders = {
-      'User-Agent': 'provider-api-getters/1.0',
+      "User-Agent": "provider-api-getters/1.0",
       ...headersConfig,
     };
 
     // Add auth header for display (from apiKeyResult)
-    const headerName = apiToken.getHeaderName?.() || 'Authorization';
+    const headerName = apiToken.getHeaderName?.() || "Authorization";
     if (apiKeyResult.apiKey) {
       requestHeaders[headerName] = apiKeyResult.apiKey;
     }
 
     // Print request panel
-    printHealthRequestPanel(providerName, 'GET', fullUrl, requestHeaders, authType);
+    printHealthRequestPanel(
+      providerName,
+      "GET",
+      fullUrl,
+      requestHeaders,
+      authType
+    );
 
     try {
       const response = await client.get(healthEndpoint);
@@ -669,12 +778,15 @@ export class ProviderHealthChecker {
       const responseHeaders = response.headers || {};
 
       if (response.status >= 200 && response.status < 300) {
-        const message = this._extractSuccessMessage(providerName, response.data);
+        const message = this._extractSuccessMessage(
+          providerName,
+          response.data
+        );
 
         // Print success response panel
         printHealthResponsePanel(
           providerName,
-          'connected',
+          "connected",
           response.status,
           latencyMs,
           responseHeaders,
@@ -684,18 +796,20 @@ export class ProviderHealthChecker {
 
         return new ProviderConnectionResponse({
           provider: providerName,
-          status: 'connected',
+          status: "connected",
           latencyMs: Math.round(latencyMs * 100) / 100,
           configUsed,
           message,
         });
       } else {
-        const errorMsg = `HTTP ${response.status}: ${JSON.stringify(response.data)}`;
+        const errorMsg = `HTTP ${response.status}: ${JSON.stringify(
+          response.data
+        )}`;
 
         // Print error response panel
         printHealthResponsePanel(
           providerName,
-          'error',
+          "error",
           response.status,
           latencyMs,
           responseHeaders,
@@ -705,7 +819,7 @@ export class ProviderHealthChecker {
 
         return new ProviderConnectionResponse({
           provider: providerName,
-          status: 'error',
+          status: "error",
           latencyMs: Math.round(latencyMs * 100) / 100,
           error: errorMsg,
           configUsed,
@@ -717,7 +831,7 @@ export class ProviderHealthChecker {
       // Print error response panel for exceptions
       printHealthResponsePanel(
         providerName,
-        'error',
+        "error",
         0,
         latencyMs,
         {},
@@ -727,7 +841,7 @@ export class ProviderHealthChecker {
 
       return new ProviderConnectionResponse({
         provider: providerName,
-        status: 'error',
+        status: "error",
         latencyMs: Math.round(latencyMs * 100) / 100,
         error: e.message,
         configUsed,
@@ -742,24 +856,24 @@ export class ProviderHealthChecker {
   }
 
   _extractSuccessMessage(providerName, data) {
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== "object") {
       return `Connected to ${providerName}`;
     }
 
     const providerLower = providerName.toLowerCase();
 
-    if (providerLower === 'figma') {
+    if (providerLower === "figma") {
       const email = data.email;
       if (email) return `Connected as ${email}`;
-    } else if (providerLower === 'github') {
+    } else if (providerLower === "github") {
       const login = data.login;
       if (login) return `Connected as @${login}`;
-    } else if (providerLower === 'jira' || providerLower === 'confluence') {
+    } else if (providerLower === "jira" || providerLower === "confluence") {
       const displayName = data.displayName;
       const email = data.emailAddress;
       if (displayName) return `Connected as ${displayName}`;
       if (email) return `Connected as ${email}`;
-    } else if (['gemini', 'openai', 'gemini_openai'].includes(providerLower)) {
+    } else if (["gemini", "openai", "gemini_openai"].includes(providerLower)) {
       const models = data.data;
       if (Array.isArray(models)) {
         return `Connected, ${models.length} models available`;
@@ -785,7 +899,9 @@ export async function checkProviderConnection(providerName) {
   if (_checker === null) {
     // Lazy-load ConfigStore singleton to avoid circular dependencies
     try {
-      const { config } = await import('@internal/static-config-property-management');
+      const { config } = await import(
+        "@internal/static-config-property-management"
+      );
       _checker = new ProviderHealthChecker(config);
     } catch {
       // Fallback to checker without config (will use env vars)
