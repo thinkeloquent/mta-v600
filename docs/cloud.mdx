@@ -1,0 +1,20 @@
+constraints.txt has httpx==0.28.1.
+
+The correct commands for cloud are:
+make -f Makefile.poetry lock
+make -f Makefile.poetry constraints
+make -f Makefile.pipx pip-install-constrained
+
+Or in one step:
+make -f Makefile.poetry constraints-lock
+make -f Makefile.pipx pip-install-constrained
+
+Also verify after install:
+pip show httpx | grep Version
+Should show Version: 0.28.1
+
+If it's still showing an older version, you may need to:
+pip install --upgrade httpx==0.28.1
+
+Or force reinstall with constraints:
+pip install -c constraints.txt --force-reinstall httpx
