@@ -18,3 +18,34 @@ pip install --upgrade httpx==0.28.1
 
 Or force reinstall with constraints:
 pip install -c constraints.txt --force-reinstall httpx
+
+===
+
+1. Install (Deterministic)
+   Use the "constrained" install target to ensure your CI environment matches your locked development environment exactly.
+
+# Installs all dependencies + local packages using versions pinned in constraints.txt
+
+make -f Makefile.pipx pip-install-all-constrained
+
+2. Build (Artifacts)
+
+If you need to produce build artifacts (wheels) for deployment (e.g., to build a Docker image or push to Artifactory):
+
+# Builds standalone wheels for all packages in ./dist_pipx/
+
+make -f Makefile.pipx build-all-standalone
+
+3. Run (Tests/App) To run your test suite or application logic using the installed environment:
+
+# Run tests (assuming pytest is in your dev dependencies)
+
+pytest
+
+# OR execute a command using the Makefile wrapper
+
+make -f Makefile.pipx run PKG=fastapi_apps/main_entry CMD="python -m app.main"
+
+Why not the others?
+Makefile.poetry: Great for local dev, but requires installing poetry in CI (slower, more complex).
+Makefile.pip: Good fallback, but install-all might drift from your lockfile if requirements.txt is outdated or missing. Makefile.pipx forces the use of constraints.txt.

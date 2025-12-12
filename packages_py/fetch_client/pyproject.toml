@@ -13,7 +13,7 @@ fetch-auth-encoding = {path = "../fetch_auth_encoding", develop = true}
 console-print = {path = "../console_print", develop = true}
 # Shared dependencies - use "*" to inherit version from root pyproject.toml
 # Actual versions are pinned in constraints.txt for pip installs
-httpx = "*"
+httpx = ">=0.23.0"
 
 [tool.poetry.extras]
 fastapi = ["fastapi"]
