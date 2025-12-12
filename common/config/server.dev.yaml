@@ -9,9 +9,6 @@
 providers:
   gemini_openai:
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
-    paths:
-      generateContent: "/models/{model}:generateContent"
-      streamGenerateContent: "/models/{model}:streamGenerateContent"
     model: "gemini-2.0-flash"
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
@@ -39,9 +36,9 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
-    # proxy_url: "http://localhost:8080"
-    # Provider-specific configuration overrides (optional)
-    # These are deep-merged with global proxy/client settings
+    paths:
+      generateContent: "/models/{model}:generateContent"
+      streamGenerateContent: "/models/{model}:streamGenerateContent"
     proxy:
       # Override proxy for this provider only
       default_environment: "prod"

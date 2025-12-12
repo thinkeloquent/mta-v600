@@ -130,7 +130,7 @@ export async function checkRedisHealth(config = null) {
   }
 
   // Build ioredis client options
-  // IMPORTANT: maxRetriesPerRequest limits retries to avoid long waits
+  // IMPORTANT: No retries - fail fast, user must manually retry
   const clientConfig = {
     host: connConfig.host,
     port: connConfig.port,
@@ -138,13 +138,8 @@ export async function checkRedisHealth(config = null) {
     username: connConfig.username,
     password: apiKeyResult.apiKey,
     connectTimeout: 10000,        // 10 second connection timeout
-    maxRetriesPerRequest: 5,      // Limit retries (default is 20, too high)
-    retryStrategy: (times) => {
-      // Retry with exponential backoff, max 3 seconds
-      const delay = Math.min(times * 200, 3000);
-      console.log(`  Retry attempt ${times}, waiting ${delay}ms...`);
-      return delay;
-    },
+    maxRetriesPerRequest: 0,      // No retries - fail immediately
+    retryStrategy: () => null,    // Disable reconnection retries (return null = stop retrying)
     lazyConnect: true,            // Don't connect until explicitly called
   };
 
@@ -154,7 +149,7 @@ export async function checkRedisHealth(config = null) {
   console.log(`  Username: ${clientConfig.username || 'N/A'}`);
   console.log(`  Password: ${maskSensitive(clientConfig.password)}`);
   console.log(`  Connect timeout: ${clientConfig.connectTimeout}ms`);
-  console.log(`  Max retries per request: ${clientConfig.maxRetriesPerRequest}`);
+  console.log(`  Retries: disabled (fail fast)`);
 
   // ============================================================
   // Step 5: CONNECT
@@ -204,7 +199,7 @@ export async function checkRedisHealth(config = null) {
       connection: connConfig,
       clientOptions: {
         connectTimeout: clientConfig.connectTimeout,
-        maxRetriesPerRequest: clientConfig.maxRetriesPerRequest,
+        retries: 'disabled',
       },
     };
 
@@ -238,7 +233,7 @@ export async function checkRedisHealth(config = null) {
       connection: connConfig,
       clientOptions: {
         connectTimeout: clientConfig.connectTimeout,
-        maxRetriesPerRequest: clientConfig.maxRetriesPerRequest,
+        retries: 'disabled',
       },
     };
 
@@ -258,11 +253,11 @@ export async function checkRedisHealth(config = null) {
         latencyMs,
         configUsed,
       };
-    } else if (error.message.includes('max retries')) {
-      console.log('  [Max Retries Exceeded]');
+    } else if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      console.log('  [Timeout Error]');
       return {
         success: false,
-        error: `Connection failed after ${clientConfig.maxRetriesPerRequest} retries`,
+        error: `Connection timed out after ${clientConfig.connectTimeout}ms`,
         latencyMs,
         configUsed,
       };
