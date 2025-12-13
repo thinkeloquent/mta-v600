@@ -151,11 +151,16 @@ export class ProviderClientFactory {
       );
     }
 
+    const proxyUrl = apiToken.getProxyUrl();
+    logger.info(
+      { providerName, proxyUrl, proxyUrlType: typeof proxyUrl },
+      "_getMergedConfigForProvider: returning proxy_url"
+    );
     return {
       network: mergedNetwork,
       client: mergedClient,
       headers,
-      proxy_url: apiToken.getProxyUrl(),
+      proxy_url: proxyUrl,
       has_provider_override: hasOverrides,
       has_runtime_override:
         runtimeOverride && Object.keys(runtimeOverride).length > 0,
@@ -224,7 +229,10 @@ export class ProviderClientFactory {
       const factoryConfig = {};
       if (proxyUrls) factoryConfig.proxyUrls = proxyUrls;
       if (agentProxy) factoryConfig.agentProxy = agentProxy;
-      if (proxyUrl) factoryConfig.proxyUrl = proxyUrl; // Pass direct override
+      // Allow proxyUrl to be false/empty string if explicitly set (overrides global)
+      if (proxyUrl !== null && proxyUrl !== undefined) {
+        factoryConfig.proxyUrl = proxyUrl;
+      }
       if (defaultEnvironment)
         factoryConfig.defaultEnvironment = defaultEnvironment;
 

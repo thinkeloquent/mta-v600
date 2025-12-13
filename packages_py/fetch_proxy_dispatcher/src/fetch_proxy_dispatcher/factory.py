@@ -140,6 +140,17 @@ class ProxyDispatcherFactory:
             f"default_environment={self._config.default_environment!r}"
         )
 
+        # Priority 0: Explicit proxy_url override from factory config (e.g. from provider)
+        # This MUST take precedence over agent_proxy and everything else.
+        if self._config.proxy_url is not None:
+             # If False, it means explicitly disabled -> return None (direct connection)
+             if self._config.proxy_url is False:
+                 logger.debug("_resolve_proxy_url: Explicitly disabled via proxy_url=False")
+                 return None
+             # If String, use it
+             logger.debug(f"_resolve_proxy_url: Using explicit override='{_mask_proxy_url(self._config.proxy_url)}'")
+             return self._config.proxy_url
+
         # Convert local FactoryConfig to NetworkConfig for the resolver
         # This is temporary until we fully migrate models, but keeps logic centralized
         env = environment or self._config.default_environment or get_app_env()

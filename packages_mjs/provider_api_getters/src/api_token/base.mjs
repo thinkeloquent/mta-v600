@@ -405,6 +405,10 @@ export class BaseApiToken {
           `${className}._getProviderConfig: Found config with keys: ` +
           `[${Object.keys(config).join(', ')}]`
         );
+        // Debug: Log actual proxy_url value
+        console.log(
+          `[_getProviderConfig DEBUG] ${className}: config.proxy_url=${config.proxy_url} (type=${typeof config.proxy_url})`
+        );
         this.#configCache = config;
         return config;
       } else {
@@ -937,7 +941,12 @@ export class BaseApiToken {
       `${className}.getProxyUrl: Getting proxy URL from provider config`
     );
     const providerConfig = this._getProviderConfig();
-    return providerConfig.proxy_url || null;
+    // Preserve false as explicit "no proxy" override (don't convert to null with ||)
+    const proxyUrl = providerConfig.proxy_url !== undefined ? providerConfig.proxy_url : null;
+    console.log(
+      `[proxy_url DEBUG] ${className}.getProxyUrl: providerConfig.proxy_url=${providerConfig.proxy_url} (type=${typeof providerConfig.proxy_url}), returning=${proxyUrl}`
+    );
+    return proxyUrl;
   }
 
   getNetworkConfig() {

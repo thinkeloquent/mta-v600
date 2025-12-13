@@ -70,8 +70,8 @@ export interface AgentProxyConfig {
 export interface FactoryConfig {
   /** Proxy URLs per environment */
   proxyUrls?: ProxyUrlConfig;
-  /** Direct proxy URL override */
-  proxyUrl?: string;
+  /** Direct proxy URL override (false = explicitly disabled) */
+  proxyUrl?: string | false;
   /** Agent proxy overrides */
   agentProxy?: AgentProxyConfig;
   /** Default environment when not detected */
@@ -130,6 +130,7 @@ export class ProxyDispatcherFactory {
    * Get a dispatcher based on options and factory configuration
    *
    * Priority:
+   * 0. proxyUrl=false (explicit disable, bypasses all other checks)
    * 1. Agent proxy (httpsProxy > httpProxy)
    * 2. Environment-specific proxy from config
    * 3. Appropriate agent based on environment
@@ -142,6 +143,15 @@ export class ProxyDispatcherFactory {
 
     const env = options.environment ?? this.config.defaultEnvironment ?? getAppEnv();
     log.debug(`getProxyDispatcher: Resolved environment=${env}`);
+
+    // Priority 0: Explicit proxyUrl=false means "no proxy" - bypasses all other checks
+    if (this.config.proxyUrl === false) {
+      log.debug('getProxyDispatcher: proxyUrl=false, explicitly disabled - using direct connection');
+      const agentType = options.agentType ?? (env === Environment.DEV ? 'DEV' : 'stayAlive');
+      const dispatcher = defaultAgents[agentType]();
+      log.debug(`getProxyDispatcher: Agent created of type=${agentType}`);
+      return dispatcher;
+    }
 
     // Priority 1: Agent proxy override
     const agentProxy =

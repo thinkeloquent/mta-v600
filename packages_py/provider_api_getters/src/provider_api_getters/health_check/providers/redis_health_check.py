@@ -147,7 +147,12 @@ async def check_redis_health(config: dict = None) -> dict:
         }
 
     # Build redis-py client options
-    # IMPORTANT: socket_connect_timeout and retry_on_timeout control retry behavior
+    # IMPORTANT: No retries - fail fast on first attempt
+    # Use Retry with retries=0 to completely disable retry behavior
+    from redis.backoff import NoBackoff
+    from redis.retry import Retry
+    no_retry = Retry(NoBackoff(), retries=0)
+
     client_config = {
         "host": conn_config["host"],
         "port": conn_config["port"],
@@ -156,7 +161,9 @@ async def check_redis_health(config: dict = None) -> dict:
         "password": api_key_result.api_key,
         "socket_timeout": 10,           # 10 second socket timeout
         "socket_connect_timeout": 10,   # 10 second connection timeout
-        "retry_on_timeout": False,      # Don't retry on timeout (avoids long waits)
+        "retry_on_timeout": False,      # Don't retry on timeout
+        "retry_on_error": [],           # Don't retry on any errors
+        "retry": no_retry,              # Disable all retry logic
         "decode_responses": True,
     }
 
@@ -167,7 +174,7 @@ async def check_redis_health(config: dict = None) -> dict:
     print(f"  Password: {mask_sensitive(client_config['password'])}")
     print(f"  Socket timeout: {client_config['socket_timeout']}s")
     print(f"  Connect timeout: {client_config['socket_connect_timeout']}s")
-    print(f"  Retry on timeout: {client_config['retry_on_timeout']}")
+    print(f"  Retries: disabled (fail fast)")
 
     # ============================================================
     # Step 5: CONNECT
@@ -218,7 +225,7 @@ async def check_redis_health(config: dict = None) -> dict:
             "client_options": {
                 "socket_timeout": client_config["socket_timeout"],
                 "socket_connect_timeout": client_config["socket_connect_timeout"],
-                "retry_on_timeout": client_config["retry_on_timeout"],
+                "retries": "disabled",
             },
         }
 
@@ -254,6 +261,7 @@ async def check_redis_health(config: dict = None) -> dict:
             "client_options": {
                 "socket_timeout": client_config["socket_timeout"],
                 "socket_connect_timeout": client_config["socket_connect_timeout"],
+                "retries": "disabled",
             },
         }
 
@@ -282,6 +290,7 @@ async def check_redis_health(config: dict = None) -> dict:
             "client_options": {
                 "socket_timeout": client_config["socket_timeout"],
                 "socket_connect_timeout": client_config["socket_connect_timeout"],
+                "retries": "disabled",
             },
         }
 
@@ -310,6 +319,7 @@ async def check_redis_health(config: dict = None) -> dict:
             "client_options": {
                 "socket_timeout": client_config["socket_timeout"],
                 "socket_connect_timeout": client_config["socket_connect_timeout"],
+                "retries": "disabled",
             },
         }
 
@@ -338,6 +348,7 @@ async def check_redis_health(config: dict = None) -> dict:
             "client_options": {
                 "socket_timeout": client_config["socket_timeout"],
                 "socket_connect_timeout": client_config["socket_connect_timeout"],
+                "retries": "disabled",
             },
         }
 

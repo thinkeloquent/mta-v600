@@ -100,8 +100,12 @@ class AsyncFetchClient:
         httpx_client: Optional[httpx.AsyncClient] = None,
     ):
         self._config = resolve_config(config)
-        if httpx_client is not None:
-            self._client = httpx_client
+        
+        # Use explicit arg, or fall back to config's client
+        client_to_use = httpx_client or config.httpx_client
+
+        if client_to_use is not None:
+            self._client = client_to_use
         else:
             # Check environment variables for SSL verification override
             # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification
@@ -298,8 +302,12 @@ class SyncFetchClient:
         httpx_client: Optional[httpx.Client] = None,
     ):
         self._config = resolve_config(config)
-        if httpx_client is not None:
-            self._client = httpx_client
+        
+        # Use explicit arg, or fall back to config's client
+        client_to_use = httpx_client or config.httpx_client
+
+        if client_to_use is not None:
+            self._client = client_to_use
         else:
             # Check environment variables for SSL verification override
             # NODE_TLS_REJECT_UNAUTHORIZED=0 or SSL_CERT_VERIFY=0 will disable SSL verification

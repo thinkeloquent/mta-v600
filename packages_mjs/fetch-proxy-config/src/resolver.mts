@@ -16,10 +16,14 @@ import type { NetworkConfig } from './types.mjs';
  */
 export function resolveProxyUrl(
     networkConfig?: NetworkConfig | null,
-    proxyUrlOverride?: string | null
+    proxyUrlOverride?: string | false | null
 ): string | null {
-    // 1. Check override
-    if (proxyUrlOverride) {
+    // 1. Check override - explicit false means "no proxy"
+    if (proxyUrlOverride !== undefined && proxyUrlOverride !== null) {
+        // false = explicitly disabled, return null (direct connection)
+        if (proxyUrlOverride === false) {
+            return null;
+        }
         return proxyUrlOverride;
     }
 

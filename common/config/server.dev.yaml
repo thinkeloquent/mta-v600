@@ -6,6 +6,9 @@
 # All external API endpoints must be defined here (no hardcoded fallbacks)
 # =============================================================================
 
+# proxy_url: false: explicitly tells the ProxyDispatcher to disable proxying for this client. It overrides the global settings (where proxy_urls might be defined) and forces a direct connection. This is the correct way to opt-out a specific provider from the global proxy.
+# proxy_url: null (or missing): typically means "no override". In this case, the ProviderClientFactory falls back to the merged network configuration. If the global config has network.proxy_urls set (like in server.dev.yaml), null would result in inheriting that global proxy.
+
 providers:
   gemini_openai:
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
@@ -13,17 +16,8 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
-    # proxy_url: "http://localhost:8080"  # Disabled - no proxy running
-    # Provider-specific configuration overrides (optional)
-    # These are deep-merged with global proxy/client settings
-    # network:
-    #   # Override proxy for this provider only
-    #   default_environment: "dev"
-    #   proxy_urls:
-    #     dev: "http://localhost:8080"
-    #     prod: "http://localhost:8081"
-    #   cert_verify: true
-    #   ca_bundle: "/path/to/custom-ca.crt"
+    proxy_url: false  # Disabled - no proxy running
+
     client:
       # Override timeout for this provider only
       timeout_seconds: 120.0
@@ -37,20 +31,20 @@ providers:
     env_api_key: "OPENAI_API_KEY"
     api_auth_type: "bearer"
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
   anthropic:
     base_url: "https://api.anthropic.com/v1"
     model: "claude-3-sonnet"
     env_api_key: "ANTHROPIC_API_KEY"
     api_auth_type: "x-api-key"       # Anthropic uses x-api-key header
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
   figma:
     base_url: "https://api.figma.com/v1"
     env_api_key: "FIGMA_TOKEN"
     api_auth_type: "custom"             # Figma uses custom X-Figma-Token header
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
     headers:
       Accept: "application/json"
     # Custom environment variable mappings
@@ -65,7 +59,7 @@ providers:
       - "GITHUB_PAT"
     api_auth_type: "bearer"
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
     headers:
       Accept: "application/vnd.github+json"
       X-GitHub-Api-Version: "2022-11-28"
@@ -81,7 +75,7 @@ providers:
     health_endpoint: "/user/current"           # Confluence REST API user endpoint
     api_auth_type: "basic_email_token"         # Jira Cloud uses Basic auth with email:token
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
@@ -98,7 +92,7 @@ providers:
     health_endpoint: "/myself"                 # Jira endpoint (ENV swapped)
     api_auth_type: "basic_email_token"         # Confluence Cloud uses Basic auth with email:token
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
@@ -131,26 +125,27 @@ providers:
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"           # SauceLabs uses Basic auth with username:access_key
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
   # ServiceNow
   servicenow:
     base_url: "https://dev12345.service-now.com" # Example instance
     env_api_key: "SERVICENOW_PASSWORD"
     api_auth_type: "basic"
     token_resolver: "static"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
   # Rally (Broadcom)
   rally:
     base_url: "https://rally1.rallydev.com"
     env_api_key: "RALLY_API_KEY"
     api_auth_type: "header"
+    proxy_url: false  # Disabled - no proxy running
 
   statsig:
     base_url: "https://statsigapi.net/console/v1"
     env_api_key: "STATSIG_API_KEY"
     api_auth_type: "custom_header"
     api_auth_header_name: "statsig-api-key"
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
   # Sonar (SonarQube/SonarCloud)
   sonar:
     base_url: "https://sonarcloud.io"  # or https://your-sonar.example.com for SonarQube
@@ -163,6 +158,8 @@ providers:
     health_endpoint: "/api/authentication/validate"
     api_auth_type: "bearer"
     token_resolver: "static"
+    proxy_url: false  # Disabled - no proxy running
+
   # Akamai Edge API (EdgeGrid authentication)
   akamai:
     base_url: null  # Set via AKAMAI_HOST or .edgerc file
@@ -173,7 +170,7 @@ providers:
     health_endpoint: "/-/client-api/active-grants/implicit"
     api_auth_type: "edgegrid"  # Akamai EdgeGrid signature-based auth
     token_resolver: "static"
-  # Placeholder providers (not implemented)
+    proxy_url: false  # Disabled - no proxy running
 
   elasticsearch:
     placeholder: true
@@ -182,7 +179,8 @@ providers:
     # client:
     #   timeout_seconds: 120.0
     #   timeout_ms: 120000
-    # proxy_url: "http://localhost:8080"
+    proxy_url: false  # Disabled - no proxy running
+
     network:
       default_environment: "dev"
       proxy_urls:
@@ -226,17 +224,19 @@ display:
 # =============================================================================
 
 network:
-  default_environment: null
+  default_environment: 'dev'
   proxy_urls:
-    dev: null
-    prod: null
-  ca_bundle: null
+    dev: 'http://proxy.dev.local:8080'
+  ca_bundle: "/path/to/custom-ca.crt"
   cert: null
-  cert_verify: false
+  cert_verify: true
   agent_proxy:
-    http_proxy: null
-    https_proxy: null
+    http_proxy: 'http://proxy.dev.local:8080'
+    https_proxy: 'http://proxy.dev.local:8080'
     
+
+
+
 
 
 # =============================================================================
