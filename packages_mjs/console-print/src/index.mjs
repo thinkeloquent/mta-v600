@@ -303,6 +303,7 @@ export {
 
   // Sensitive data masking
   maskSensitive,
+  maskAuthHeader,
   maskUrl,
 
   // Status messages

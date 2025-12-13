@@ -15,6 +15,7 @@
 
 import { createHmac, createHash, randomBytes } from 'crypto';
 import { encodeAuth } from '@internal/fetch-auth-encoding';
+import { maskAuthHeader } from '@internal/console-print';
 
 // Simple console logger for defensive programming
 const logger = {
@@ -101,9 +102,7 @@ export class AuthHeader {
    * @returns {string}
    */
   toString() {
-    const maskedValue = this.headerValue.length > 10
-      ? this.headerValue.substring(0, 10) + '***'
-      : '***';
+    const maskedValue = maskAuthHeader(this.headerValue);
     return `${this.headerName}: ${maskedValue}`;
   }
 }

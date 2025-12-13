@@ -17,6 +17,9 @@ import os
 # Import token registry for dynamic token resolution
 from ..token_resolver import token_registry
 
+# Import masking utilities from console_print
+from console_print import mask_auth_header
+
 # Import auth header factory - lazy import to avoid circular dependency
 # Will be imported on first use in get_auth_header() method
 
@@ -218,7 +221,7 @@ class ApiKeyResult:
         }
 
         if include_sensitive:
-            result["api_key_masked"] = _mask_sensitive(self.api_key)
+            result["api_key_masked"] = mask_auth_header(self.api_key)
             if self.username:
                 result["username"] = self.username
 

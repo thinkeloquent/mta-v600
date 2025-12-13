@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 import json
 
 from .types import AuthType, RequestContext
-from console_print import print_auth_trace
+from console_print import print_auth_trace, mask_auth_header, mask_sensitive
 
 LOG_PREFIX = f"[AUTH:{__file__}]"
 
@@ -91,7 +91,7 @@ class AuthConfig:
         """Safe repr that masks sensitive values."""
         return (
             f"AuthConfig(type={self.type!r}, "
-            f"raw_api_key={_mask_sensitive(self.raw_api_key)!r}, "
+            f"raw_api_key={mask_auth_header(self.raw_api_key)!r}, "
             f"username={self.username!r}, "
             f"email={self.email!r}, "
             f"password={_mask_sensitive(self.password)!r}, "

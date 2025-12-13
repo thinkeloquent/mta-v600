@@ -334,6 +334,7 @@ from console_print.printer import (
 
     # Sensitive data masking
     mask_sensitive,
+    mask_auth_header,
     mask_url,
 
     # Status messages
@@ -367,6 +368,7 @@ __all__ = [
 
     # Sensitive data masking
     "mask_sensitive",
+    "mask_auth_header",
     "mask_url",
 
     # Status messages

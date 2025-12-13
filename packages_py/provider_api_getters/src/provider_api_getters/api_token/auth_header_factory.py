@@ -14,7 +14,7 @@ Supported auth schemes:
 """
 
 from fetch_auth_encoding import encode_auth
-from console_print import print_auth_trace
+from console_print import print_auth_trace, mask_auth_header
 import hashlib
 import hmac
 import logging
@@ -102,11 +102,7 @@ class AuthHeader:
 
     def __str__(self) -> str:
         """String representation with masked value for logging."""
-        masked_value = (
-            self.header_value[:10] + "***"
-            if len(self.header_value) > 10
-            else "***"
-        )
+        masked_value = mask_auth_header(self.header_value)
         return f"{self.header_name}: {masked_value}"
 
 

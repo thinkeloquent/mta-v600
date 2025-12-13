@@ -8,7 +8,7 @@ from typing import Any, AsyncGenerator, Dict, Generator, Optional, Union
 import httpx
 import json
 
-from console_print import console, print_panel, print_syntax_panel
+from console_print import console, print_panel, print_syntax_panel, mask_auth_header
 
 from ..types import FetchResponse, HttpMethod, RequestContext, SSEEvent
 from ..config import ClientConfig, resolve_config, ResolvedConfig
@@ -39,16 +39,12 @@ from ..streaming.ndjson_reader import parse_ndjson_stream, parse_ndjson_stream_s
 logger = logging.getLogger("fetch_client.base_client")
 
 
-def _mask_auth_header(headers: Dict[str, str]) -> Dict[str, str]:
-    """Mask authorization header for safe logging."""
+def _mask_headers_for_logging(headers: Dict[str, str]) -> Dict[str, str]:
+    """Mask authorization header for safe logging using mask_auth_header (15 chars)."""
     masked = dict(headers)
     for key in masked:
         if key.lower() in ('authorization', 'x-api-key'):
-            value = masked[key]
-            if len(value) > 10:
-                masked[key] = value[:10] + '*' * (len(value) - 10)
-            else:
-                masked[key] = '*' * len(value)
+            masked[key] = mask_auth_header(masked[key])
     return masked
 
 
@@ -119,7 +115,7 @@ class AsyncFetchClient:
         request_body = build_body(json, body, self._config.serializer)
 
         # Pretty print request
-        masked_headers = _mask_auth_header(request_headers)
+        masked_headers = _mask_headers_for_logging(request_headers)
         request_info = f"[bold cyan]{method}[/bold cyan] {url}"
         print_panel(request_info, title="[bold blue]Request[/bold blue]")
         console.print("[bold]Headers:[/bold]", masked_headers)
@@ -312,7 +308,7 @@ class SyncFetchClient:
         request_body = build_body(json, body, self._config.serializer)
 
         # Pretty print request
-        masked_headers = _mask_auth_header(request_headers)
+        masked_headers = _mask_headers_for_logging(request_headers)
         request_info = f"[bold cyan]{method}[/bold cyan] {url}"
         print_panel(request_info, title="[bold blue]Request[/bold blue]")
         console.print("[bold]Headers:[/bold]", masked_headers)

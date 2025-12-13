@@ -3,17 +3,16 @@
  */
 import type { AuthConfig, RequestContext } from '../types.mjs';
 import { getComputedApiKey } from '../config.mjs';
+import { maskAuthHeader } from '@internal/console-print';
 
 // Get current file path for logging
 const LOG_PREFIX = `[AUTH:auth-handler.mts]`;
 
 /**
- * Mask sensitive value for logging, showing first 10 chars.
+ * Mask sensitive value for logging, showing first 15 chars.
  */
 function maskValue(val: string | undefined): string {
-  if (!val) return '<empty>';
-  if (val.length <= 10) return '*'.repeat(val.length);
-  return val.substring(0, 10) + '*'.repeat(val.length - 10);
+  return maskAuthHeader(val);
 }
 
 /**

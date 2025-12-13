@@ -209,6 +209,30 @@ def mask_sensitive(
     return value[:show_chars] + "***"
 
 
+def mask_auth_header(
+    value: Optional[str],
+    visible_chars: int = 15,
+) -> str:
+    """
+    Mask Authorization header value for logging.
+
+    Shows first N characters (default: 15) to allow inspection of
+    auth scheme prefix and partial token.
+
+    Args:
+        value: Authorization header value (e.g., "Basic cm9iZXJ0...")
+        visible_chars: Number of chars to show (default: 15)
+
+    Returns:
+        Masked value: "Basic cm9iZXJ0***" or "sk-abc123xyz78***"
+    """
+    if not value:
+        return "<none>"
+    if len(value) <= visible_chars:
+        return value  # Don't mask if shorter than visible limit
+    return f"{value[:visible_chars]}***"
+
+
 def mask_url(url: Optional[str]) -> str:
     """
     Mask a URL by hiding password and sensitive query parameters.
@@ -404,14 +428,14 @@ def print_auth_trace(
     """
     key_preview = ""
     if key:
-        visible_len = 30
+        visible_len = 15  # Show first 15 chars for auth inspection
         preview = key[:visible_len] if len(key) > visible_len else key
         key_preview = f" {preview}..." if preview else " <empty>..."
     elif key is None:
         key_preview = " None..."
 
     full_message = f"{file_info} {message}{key_preview}"
-    
+
     if HAS_RICH:
         console = RichConsole()
         # Use a distinct style for these traces to make them stand out or fade as needed

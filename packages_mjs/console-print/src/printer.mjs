@@ -153,6 +153,22 @@ export function maskSensitive(value, options = {}) {
 }
 
 /**
+ * Mask Authorization header value for logging.
+ *
+ * Shows first N characters (default: 15) to allow inspection of
+ * auth scheme prefix and partial token.
+ *
+ * @param {string} value - Authorization header value (e.g., "Basic cm9iZXJ0...")
+ * @param {number} [visibleChars=15] - Number of chars to show (default: 15)
+ * @returns {string} Masked value: "Basic cm9iZXJ0***" or "sk-abc123xyz78***"
+ */
+export function maskAuthHeader(value, visibleChars = 15) {
+  if (!value) return '<none>';
+  if (value.length <= visibleChars) return value; // Don't mask if shorter than visible limit
+  return `${value.substring(0, visibleChars)}***`;
+}
+
+/**
  * Mask a URL by hiding password and sensitive query parameters.
  * @param {string} url - URL to mask
  * @returns {string} Masked URL
