@@ -2,6 +2,7 @@
 PostgreSQL connection getter.
 
 Returns a database connection URL or client instance rather than an API key.
+Uses db_connection_postgres package for database connection management.
 """
 import logging
 import os
@@ -16,6 +17,21 @@ LOG_PREFIX = f"[POSTGRES:{__file__}]"
 
 # Default environment variable names
 DEFAULT_CONNECTION_URL_ENV_VAR = "DATABASE_URL"
+
+# Optional import of db_connection_postgres
+# Falls back to direct asyncpg if not available
+_db_connection_available = False
+try:
+    from db_connection_postgres import (
+        DatabaseConfig,
+        DatabaseManager,
+        get_db_manager,
+        reset_db_manager,
+    )
+    _db_connection_available = True
+    logger.debug(f"{LOG_PREFIX} db_connection_postgres package available")
+except ImportError:
+    logger.debug(f"{LOG_PREFIX} db_connection_postgres not installed, using fallback")
 
 
 class PostgresApiToken(BaseApiToken):
@@ -152,18 +168,36 @@ class PostgresApiToken(BaseApiToken):
         Get PostgreSQL connection URL.
 
         Resolution order:
-        1. Build from individual POSTGRES_* env vars (if all required are present)
-        2. Use DATABASE_URL env var (or configured env var name)
-
-        This order prioritizes individual env vars because they're more explicit
-        and DATABASE_URL may contain stale values.
+        1. Use db_connection_postgres.DatabaseConfig if available (preferred)
+        2. Build from individual POSTGRES_* env vars (fallback)
+        3. Use DATABASE_URL env var (last resort)
 
         Returns:
             Connection URL string or None if not configured
         """
         logger.info(f"{LOG_PREFIX} get_connection_url: START - Resolving connection URL")
 
-        # First try building from individual components (more explicit)
+        # Use db_connection_postgres if available (preferred path)
+        if _db_connection_available:
+            logger.info(f"{LOG_PREFIX} get_connection_url: Using db_connection_postgres.DatabaseConfig")
+            try:
+                db_config = self._get_database_config()
+                # Build a plain postgresql:// URL for asyncpg compatibility
+                # (SQLAlchemy URLs use postgresql+asyncpg:// which asyncpg doesn't understand)
+                password = db_config.password or ""
+                url = f"postgresql://{db_config.user}:{password}@{db_config.host}:{db_config.port}/{db_config.database}"
+                logger.info(
+                    f"{LOG_PREFIX} get_connection_url: SUCCESS - Got URL from DatabaseConfig\n"
+                    f"  URL (masked): {_mask_sensitive(url)}"
+                )
+                return url
+            except Exception as e:
+                logger.warning(
+                    f"{LOG_PREFIX} get_connection_url: DatabaseConfig failed, using fallback\n"
+                    f"  Error: {e}"
+                )
+
+        # Fallback: Build from individual POSTGRES_* env vars
         logger.info(f"{LOG_PREFIX} get_connection_url: Step 1 - Trying POSTGRES_* env vars")
         url = self._build_connection_url()
 
@@ -210,6 +244,38 @@ class PostgresApiToken(BaseApiToken):
         """
         logger.info(f"{LOG_PREFIX} get_connection_config: START - Building connection config dict")
 
+        # Use db_connection_postgres if available (preferred path)
+        if _db_connection_available:
+            logger.info(f"{LOG_PREFIX} get_connection_config: Using db_connection_postgres.DatabaseConfig")
+            try:
+                db_config = self._get_database_config()
+                ssl_mode = db_config.ssl_mode
+
+                # Map ssl_mode to ssl context for asyncpg
+                ssl_context = self._ssl_mode_to_context(ssl_mode)
+
+                config = {
+                    "host": db_config.host,
+                    "port": db_config.port,
+                    "database": db_config.database,
+                    "username": db_config.user,
+                    "password": db_config.password,
+                    "ssl": ssl_context,
+                }
+
+                logger.info(
+                    f"{LOG_PREFIX} get_connection_config: SUCCESS via DatabaseConfig:\n"
+                    f"  Connection: postgresql://{_mask_sensitive(db_config.user)}:****@{db_config.host}:{db_config.port}/{db_config.database}\n"
+                    f"  SSL mode: {ssl_mode}"
+                )
+                return config
+            except Exception as e:
+                logger.warning(
+                    f"{LOG_PREFIX} get_connection_config: DatabaseConfig failed, using fallback\n"
+                    f"  Error: {e}"
+                )
+
+        # Fallback: Build from env vars and YAML config
         provider_config = self._get_provider_config()
 
         host = os.getenv("POSTGRES_HOST") or provider_config.get("host", "localhost")
@@ -398,16 +464,89 @@ class PostgresApiToken(BaseApiToken):
         )
         return False
 
+    def _ssl_mode_to_context(self, ssl_mode: str) -> Any:
+        """
+        Convert ssl_mode string to asyncpg-compatible ssl parameter.
+
+        Args:
+            ssl_mode: SSL mode string (disable, require, verify-ca, verify-full, prefer)
+
+        Returns:
+            Value compatible with asyncpg's ssl parameter
+        """
+        import ssl
+
+        ssl_mode_lower = ssl_mode.lower() if ssl_mode else "disable"
+
+        if ssl_mode_lower in ("disable", "false", "0", "no"):
+            return False
+        elif ssl_mode_lower in ("require", "true", "1", "yes"):
+            # SSL enabled without certificate verification
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+        elif ssl_mode_lower in ("verify-ca", "verify-full"):
+            # SSL with certificate verification
+            return True
+        elif ssl_mode_lower == "prefer":
+            return "prefer"
+        else:
+            logger.warning(f"{LOG_PREFIX} _ssl_mode_to_context: Unknown ssl_mode '{ssl_mode}', defaulting to disable")
+            return False
+
+    def _get_database_config(self) -> "DatabaseConfig":
+        """
+        Get DatabaseConfig from db_connection_postgres package.
+
+        Creates a DatabaseConfig using environment variables.
+        The package reads from POSTGRES_* env vars automatically.
+
+        Returns:
+            DatabaseConfig instance
+
+        Raises:
+            RuntimeError: If db_connection_postgres is not available
+        """
+        if not _db_connection_available:
+            raise RuntimeError("db_connection_postgres package is not installed")
+
+        # DatabaseConfig reads from env vars automatically
+        return DatabaseConfig()
+
+    def _get_database_manager(self) -> "DatabaseManager":
+        """
+        Get DatabaseManager from db_connection_postgres package.
+
+        Uses the global singleton DatabaseManager for connection pooling.
+
+        Returns:
+            DatabaseManager instance
+
+        Raises:
+            RuntimeError: If db_connection_postgres is not available
+        """
+        if not _db_connection_available:
+            raise RuntimeError("db_connection_postgres package is not installed")
+
+        # get_db_manager returns the global singleton
+        return get_db_manager()
+
     async def get_async_client(self) -> Optional[Any]:
         """
         Get async PostgreSQL client (asyncpg pool).
 
+        Always returns an asyncpg connection pool for backward compatibility
+        with code that expects pool.acquire() and conn.fetchval() patterns.
+
+        When db_connection_postgres is available, uses DatabaseConfig for
+        connection parameters. Otherwise falls back to env var parsing.
+
         Returns:
             asyncpg connection pool or None if unavailable
         """
-        logger.info(f"{LOG_PREFIX} get_async_client: START - Creating asyncpg connection pool")
+        logger.info(f"{LOG_PREFIX} get_async_client: START - Getting async PostgreSQL client")
 
-        # Step 1: Import asyncpg
         try:
             import asyncpg
             logger.info(f"{LOG_PREFIX} get_async_client: asyncpg module imported successfully")
@@ -419,8 +558,6 @@ class PostgresApiToken(BaseApiToken):
             )
             return None
 
-        # Step 2: Get connection URL
-        logger.info(f"{LOG_PREFIX} get_async_client: Step 2 - Getting connection URL")
         connection_url = self.get_connection_url()
 
         if not connection_url:
@@ -430,8 +567,7 @@ class PostgresApiToken(BaseApiToken):
             )
             return None
 
-        # Step 3: Strip sslmode from URL (asyncpg ignores it)
-        # We pass ssl as a separate parameter
+        # Strip sslmode from URL (asyncpg ignores it)
         if "?" in connection_url:
             base_url = connection_url.split("?")[0]
             query_params = connection_url.split("?")[1]
@@ -444,8 +580,6 @@ class PostgresApiToken(BaseApiToken):
             base_url = connection_url
             logger.info(f"{LOG_PREFIX} get_async_client: URL has no query params to strip")
 
-        # Step 4: Get SSL context
-        logger.info(f"{LOG_PREFIX} get_async_client: Step 4 - Getting SSL configuration")
         ssl_context = self._get_ssl_context()
 
         # Determine SSL description for logging
@@ -460,9 +594,8 @@ class PostgresApiToken(BaseApiToken):
         else:
             ssl_desc = f"UNKNOWN ({type(ssl_context).__name__})"
 
-        # Step 5: Create connection pool
         logger.info(
-            f"{LOG_PREFIX} get_async_client: Step 5 - Creating asyncpg pool\n"
+            f"{LOG_PREFIX} get_async_client: Creating asyncpg pool\n"
             f"  URL (masked): {_mask_sensitive(base_url)}\n"
             f"  SSL: {ssl_desc}\n"
             f"  Pool config: min_size=1, max_size=1, timeout=10"
@@ -499,7 +632,6 @@ class PostgresApiToken(BaseApiToken):
             return None
 
         except OSError as e:
-            # Connection refused, host unreachable, etc.
             error_msg = str(e)
             if "SSL" in error_msg or "ssl" in error_msg:
                 logger.error(

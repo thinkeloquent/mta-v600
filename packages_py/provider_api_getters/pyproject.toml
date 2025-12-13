@@ -13,16 +13,17 @@ console_print = {path = "../console_print", develop = true}
 fetch_client = {path = "../fetch_client", develop = true}
 fetch_proxy_dispatcher = {path = "../fetch_proxy_dispatcher", develop = true}
 fetch-auth-encoding = {path = "../fetch_auth_encoding", develop = true}
+db-connection-postgres = {path = "../db_connection_postgres", develop = true, optional = true}
 httpx = ">=0.23.0"
 asyncpg = {version = "^0.30.0", optional = true}
 redis = {version = "^5.0.0", optional = true}
 elasticsearch = {version = "^8.0.0", extras = ["async"], optional = true}
 
 [tool.poetry.extras]
-postgres = ["asyncpg"]
+postgres = ["asyncpg", "db-connection-postgres"]
 redis = ["redis"]
 elasticsearch = ["elasticsearch"]
-all = ["asyncpg", "redis", "elasticsearch"]
+all = ["asyncpg", "db-connection-postgres", "redis", "elasticsearch"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

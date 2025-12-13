@@ -8,7 +8,7 @@ Or from project root: python packages_py/provider_api_getters/src/provider_api_g
 Uses:
 - static_config for YAML configuration
 - PostgresApiToken for connection config resolution
-- asyncpg for native PostgreSQL connection
+- db_connection_postgres for connection management
 """
 import asyncio
 import json
@@ -28,11 +28,22 @@ else:
     # Relative import when used as module
     from ...api_token import PostgresApiToken
 
+try:
+    from db_connection_postgres import (
+        DatabaseConfig,
+        init_db,
+        close_db,
+        get_health_status,
+    )
+except ImportError:
+    print("[ERROR] db_connection_postgres package not found.")
+    print("Ensure packages_py/db_connection_postgres is installed.")
+    sys.exit(1)
+
 
 async def check_postgres_health(config: dict = None) -> dict:
-    print(f"\n{'='*20} Starting PostgreSQL Health Check {'='*20}\n")    
     """
-    Check PostgreSQL connectivity using native asyncpg client.
+    Check PostgreSQL connectivity using db_connection_postgres package.
 
     Args:
         config: Configuration dict (if None, loads from static_config)
@@ -40,6 +51,8 @@ async def check_postgres_health(config: dict = None) -> dict:
     Returns:
         dict: Health check result with success status and data/error
     """
+    print(f"\n{'='*20} Starting PostgreSQL Health Check {'='*20}\n")
+    
     # Load config if not provided
     if config is None:
         from static_config import config as static_config
@@ -55,11 +68,16 @@ async def check_postgres_health(config: dict = None) -> dict:
     connection_config = provider.get_connection_config()
 
     # Debug output
+    connection_host = connection_config.get('host', 'N/A')
+    connection_port = connection_config.get('port', 'N/A')
+    connection_db = connection_config.get('database', 'N/A')
+    connection_user = connection_config.get('username', 'N/A')
+
     print(f"\n[Config]")
-    print(f"  Host: {connection_config.get('host', 'N/A')}")
-    print(f"  Port: {connection_config.get('port', 'N/A')}")
-    print(f"  Database: {connection_config.get('database', 'N/A')}")
-    print(f"  Username: {connection_config.get('username', 'N/A')}")
+    print(f"  Host: {connection_host}")
+    print(f"  Port: {connection_port}")
+    print(f"  Database: {connection_db}")
+    print(f"  Username: {connection_user}")
     print(f"  Has credentials: {api_key_result.has_credentials}")
     print(f"  Is placeholder: {api_key_result.is_placeholder}")
 
@@ -67,92 +85,78 @@ async def check_postgres_health(config: dict = None) -> dict:
         print("\n[ERROR] Missing or placeholder credentials")
         return {"success": False, "error": "Missing credentials"}
 
-    # Try to import asyncpg
-    try:
-        import asyncpg
-    except ImportError:
-        print("\n[ERROR] asyncpg not installed")
-        print("  Install with: pip install asyncpg")
-        return {"success": False, "error": "asyncpg not installed"}
-
-    # Build connection parameters from get_connection_config()
-    # This includes proper SSL handling for asyncpg
+    # Map connection_config to DatabaseConfig
     host = connection_config.get("host", "localhost")
-    port = connection_config.get("port", 5432)
+    port = int(connection_config.get("port", 5432))
     database = connection_config.get("database", "postgres")
     username = connection_config.get("username", "postgres")
     password = connection_config.get("password") or api_key_result.raw_api_key
+    
+    # Handle SSL mapping
+    # connection_config['ssl'] might be bool or string
+    raw_ssl = connection_config.get("ssl", False)
+    ssl_mode = "disable"
+    if isinstance(raw_ssl, str):
+        ssl_mode = raw_ssl
+    elif raw_ssl is True:
+        ssl_mode = "require" # Default to require if explicitly True
+    
+    print(f"\n[Connecting via db_connection_postgres]")
+    print(f"  SSL Mode: {ssl_mode}")
 
-    # Get SSL config from get_connection_config()
-    # asyncpg requires explicit ssl parameter (doesn't parse ?sslmode= from URLs)
-    ssl_param = connection_config.get("ssl", False)
-
-    print(f"\n[Connecting]")
-    print(f"  postgresql://{username}:****@{host}:{port}/{database}")
-    print(f"  SSL: {ssl_param}")
+    db_config = DatabaseConfig(
+        host=host,
+        port=port,
+        database=database,
+        user=username,
+        password=password,
+        ssl_mode=ssl_mode,
+        echo=True # Enable echo for debug script
+    )
 
     try:
-        # Create connection with explicit ssl parameter
-        # asyncpg accepts: False (no SSL), True (SSL with verification),
-        # ssl.SSLContext (SSL without verification), or "prefer"
-        conn = await asyncpg.connect(
-            host=host,
-            port=port,
-            database=database,
-            user=username,
-            password=password,
-            timeout=10,
-            ssl=ssl_param,
-        )
+        # Initialize the global DB manager with our config
+        await init_db(db_config)
+        
+        # Run health check
+        health = await get_health_status()
+        
+        # Must close connections
+        await close_db()
 
-        print(f"\n[Connection Established]")
+        if health.get("status") == "healthy":
+            pg_version = health.get('pg_version')
+            print(f"\n[Connection Established]")
+            print(f"  Version: {pg_version}")
+            
+            return {
+                "success": True,
+                "message": "Connected to PostgreSQL",
+                "data": {
+                    "host": host,
+                    "port": port,
+                    "database": database,
+                    "version": pg_version,
+                },
+            }
+        else:
+            error_msg = health.get('error', 'Unknown error')
+            print(f"\n[Connection Failed]")
+            print(f"  Error: {error_msg}")
+            return {
+                "success": False,
+                "error": error_msg,
+            }
 
-        # Run health check query
-        result = await conn.fetchval("SELECT 1")
-        version = await conn.fetchval("SELECT version()")
-
-        print(f"\n[Query Results]")
-        print(f"  SELECT 1: {result}")
-        print(f"  Version: {version[:60]}..." if len(version) > 60 else f"  Version: {version}")
-
-        # Close connection
-        await conn.close()
-
-        return {
-            "success": True,
-            "message": "Connected to PostgreSQL",
-            "data": {
-                "host": host,
-                "port": port,
-                "database": database,
-                "version": version,
-            },
-        }
-
-    except asyncpg.InvalidPasswordError as e:
-        print(f"\n[Authentication Error]")
-        print(f"  {e}")
-        return {
-            "success": False,
-            "error": "Invalid password",
-        }
-    except asyncpg.InvalidCatalogNameError as e:
-        print(f"\n[Database Error]")
-        print(f"  {e}")
-        return {
-            "success": False,
-            "error": f"Database '{database}' does not exist",
-        }
-    except OSError as e:
-        print(f"\n[Connection Error]")
-        print(f"  {e}")
-        return {
-            "success": False,
-            "error": f"Cannot connect to {host}:{port}",
-        }
     except Exception as e:
         print(f"\n[Exception]")
         print(f"  {type(e).__name__}: {e}")
+        # Ensure fallback close
+        try:
+            await close_db()
+        except:
+            pass
+            
         return {
             "success": False,
             "error": str(e),
