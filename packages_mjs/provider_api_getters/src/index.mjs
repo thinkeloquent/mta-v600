@@ -15,6 +15,7 @@ export {
   RallyApiToken,
   ElasticsearchApiToken,
   SaucelabsApiToken,
+  SonarApiToken,
   getApiTokenClass,
   PROVIDER_REGISTRY,
 } from './api_token/index.mjs';

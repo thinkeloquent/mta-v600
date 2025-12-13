@@ -11,7 +11,7 @@ from fastapi import APIRouter
 
 from static_config import config as static_config
 from fetch_client import create_client_with_dispatcher, AuthConfig
-from provider_api_getters import ConfluenceApiToken
+from provider_api_getters import SonarApiToken
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ async def health_status():
         dict: Health status with provider config and optional connectivity check
     """
     # Initialize provider from static config
-    provider = ConfluenceApiToken(static_config)
+    provider = SonarApiToken(static_config)
     api_key_result = provider.get_api_key()
     network_config = provider.get_network_config() or {}
     base_url = provider.get_base_url()
@@ -39,7 +39,7 @@ async def health_status():
     # Build status response
     status = {
         "status": "healthy",
-        "provider": "confluence",
+        "provider": "sonar",
         "config": {
             "base_url": base_url,
             "has_credentials": api_key_result.has_credentials,
@@ -57,16 +57,16 @@ async def health_status():
             client = create_client_with_dispatcher(
                 base_url=base_url,
                 auth=AuthConfig(
-                    type="basic_email_token",
+                    type=api_key_result.auth_type,
                     raw_api_key=api_key_result.raw_api_key,
-                    email=api_key_result.email,
+                    header_name=api_key_result.header_name,
                 ),
                 default_headers={"Accept": "application/json"},
                 verify=network_config.get("cert_verify", False),
                 proxy_url=provider.get_proxy_url(),
             )
             async with client:
-                response = await client.get("/rest/api/user/current")
+                response = await client.get("/api/authentication/validate")
                 status["connectivity"] = {
                     "connected": response["ok"],
                     "status_code": response["status"],

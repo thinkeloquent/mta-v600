@@ -8,7 +8,7 @@
  * - @internal/fetch-proxy-dispatcher for proxy configuration
  */
 
-import { ConfluenceApiToken } from '@internal/provider-api-getters';
+import { SonarApiToken } from '@internal/provider-api-getters';
 import { createClientWithDispatcher } from '@internal/fetch-client';
 
 /**
@@ -27,7 +27,7 @@ export default async function healthStatusRoutes(fastify, options) {
     const staticConfig = fastify.staticConfig;
 
     // Initialize provider from static config
-    const provider = new ConfluenceApiToken(staticConfig);
+    const provider = new SonarApiToken(staticConfig);
     const apiKeyResult = provider.getApiKey();
     const networkConfig = provider.getNetworkConfig() || {};
     const baseUrl = provider.getBaseUrl();
@@ -35,7 +35,7 @@ export default async function healthStatusRoutes(fastify, options) {
     // Build status response
     const status = {
       status: 'healthy',
-      provider: 'confluence',
+      provider: 'sonar',
       config: {
         base_url: baseUrl,
         has_credentials: apiKeyResult.hasCredentials,
@@ -54,16 +54,16 @@ export default async function healthStatusRoutes(fastify, options) {
         client = await createClientWithDispatcher({
           baseUrl: baseUrl,
           auth: {
-            type: 'basic_email_token',
+            type: apiKeyResult.authType,
             rawApiKey: apiKeyResult.rawApiKey,
-            email: apiKeyResult.email,
+            headerName: apiKeyResult.headerName,
           },
           headers: { Accept: 'application/json' },
           verify: networkConfig.cert_verify,
           proxyUrl: networkConfig.proxy_url,
         });
 
-        const response = await client.get('/rest/api/user/current');
+        const response = await client.get('/api/authentication/validate');
         status.connectivity = {
           connected: response.ok,
           status_code: response.status,

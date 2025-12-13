@@ -12,7 +12,7 @@ from ..config import (
     get_auth_header_name,
     format_auth_header_value,
 )
-from console_print import print_auth_trace
+from console_print import print_auth_trace, mask_auth_header
 
 logger = logging.getLogger("fetch_client.request_builder")
 
@@ -73,7 +73,9 @@ def build_headers(
     if config.auth and context:
         logger.debug(f"build_headers: calling resolve_auth_header with auth.type={config.auth.type}, auth.raw_api_key={bool(config.auth.raw_api_key)}")
         auth_header = resolve_auth_header(config.auth, context)
-        logger.debug(f"build_headers: resolve_auth_header returned={auth_header}")
+        # Mask Authorization value for safe logging (show first 15 chars)
+        masked_header = {k: mask_auth_header(v) if k.lower() == "authorization" else v for k, v in auth_header.items()} if auth_header else None
+        logger.debug(f"build_headers: resolve_auth_header returned={masked_header}")
         if auth_header:
             result.update(auth_header)
     else:
