@@ -54,8 +54,13 @@ export async function checkGeminiOpenaiHealth() {
   console.log(`  Auth type: ${apiKeyResult.authType}`);
   console.log(`  Header name: ${apiKeyResult.headerName}`);
   console.log('\n[Network Config]');
-  console.log(`  Proxy URL: ${networkConfig.proxyUrl || 'None'}`);
-  console.log(`  Cert verify: ${networkConfig.certVerify}`);
+  console.log(`  Proxy URL (network): ${networkConfig?.proxyUrl || 'None'}`);
+  console.log(`  Cert verify: ${networkConfig?.certVerify}`);
+
+  // Debug provider config directly
+  const providerConfig = provider._getProviderConfig();
+  console.log(`  Provider Config Keys: ${Object.keys(providerConfig).join(', ')}`);
+  console.log(`  Provider Config Proxy URL: ${providerConfig.proxy_url}`);
 
   if (!apiKeyResult.hasCredentials || apiKeyResult.isPlaceholder) {
     console.log('\n[ERROR] Missing or placeholder credentials');
@@ -81,8 +86,8 @@ export async function checkGeminiOpenaiHealth() {
     headers: {
       'Accept': 'application/json',
     },
-    verify: networkConfig.certVerify,
-    proxy: networkConfig.proxyUrl,
+    verify: networkConfig?.certVerify,
+    proxy: networkConfig?.proxyUrl,
   });
 
   // Make health check request - list models

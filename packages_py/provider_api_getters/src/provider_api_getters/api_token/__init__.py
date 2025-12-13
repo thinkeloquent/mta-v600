@@ -19,6 +19,7 @@ from .elasticsearch import ElasticsearchApiToken
 from .saucelabs import SaucelabsApiToken
 from .sonar import SonarApiToken
 from .akamai import AkamaiApiToken
+from .servicenow import ServicenowApiToken
 
 # Registry mapping provider names to their token classes
 PROVIDER_REGISTRY: dict[str, type[BaseApiToken]] = {
@@ -38,6 +39,7 @@ PROVIDER_REGISTRY: dict[str, type[BaseApiToken]] = {
     "sonarqube": SonarApiToken,
     "sonarcloud": SonarApiToken,
     "akamai": AkamaiApiToken,
+    "servicenow": ServicenowApiToken,
 }
 
 
@@ -66,6 +68,7 @@ __all__ = [
     "SaucelabsApiToken",
     "SonarApiToken",
     "AkamaiApiToken",
+    "ServicenowApiToken",
     "get_api_token_class",
     "PROVIDER_REGISTRY",
 ]

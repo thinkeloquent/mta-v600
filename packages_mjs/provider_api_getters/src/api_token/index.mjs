@@ -17,6 +17,7 @@ export { ElasticsearchApiToken } from './elasticsearch.mjs';
 export { SaucelabsApiToken } from './saucelabs.mjs';
 export { SonarApiToken } from './sonar.mjs';
 export { AkamaiApiToken } from './akamai.mjs';
+export { ServicenowApiToken } from './servicenow.mjs';
 
 import { FigmaApiToken } from './figma.mjs';
 import { GithubApiToken } from './github.mjs';
@@ -32,6 +33,7 @@ import { ElasticsearchApiToken } from './elasticsearch.mjs';
 import { SaucelabsApiToken } from './saucelabs.mjs';
 import { SonarApiToken } from './sonar.mjs';
 import { AkamaiApiToken } from './akamai.mjs';
+import { ServicenowApiToken } from './servicenow.mjs';
 
 /**
  * Registry mapping provider names to their token classes.
@@ -53,6 +55,7 @@ export const PROVIDER_REGISTRY = {
   sonarqube: SonarApiToken,
   sonarcloud: SonarApiToken,
   akamai: AkamaiApiToken,
+  servicenow: ServicenowApiToken,
 };
 
 /**

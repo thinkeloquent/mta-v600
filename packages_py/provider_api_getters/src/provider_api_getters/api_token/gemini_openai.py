@@ -28,8 +28,8 @@ class GeminiOpenAIApiToken(BaseApiToken):
     Uses Bearer token authentication standard to OpenAI-compatible APIs.
 
     Configuration:
-        providers.gemini.base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
-        providers.gemini.env_api_key: "GEMINI_API_KEY"
+        providers.gemini_openai.base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+        providers.gemini_openai.env_api_key: "GEMINI_API_KEY"
 
     Environment Variables:
         GEMINI_API_KEY: API key for Google Gemini
@@ -38,8 +38,8 @@ class GeminiOpenAIApiToken(BaseApiToken):
 
     @property
     def provider_name(self) -> str:
-        """Return the provider name for Gemini."""
-        return "gemini"
+        """Return the provider name for Gemini OpenAI-compatible API."""
+        return "gemini_openai"
 
     @property
     def health_endpoint(self) -> str:

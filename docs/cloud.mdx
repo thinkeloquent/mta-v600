@@ -49,3 +49,10 @@ make -f Makefile.pipx run PKG=fastapi_apps/main_entry CMD="python -m app.main"
 Why not the others?
 Makefile.poetry: Great for local dev, but requires installing poetry in CI (slower, more complex).
 Makefile.pip: Good fallback, but install-all might drift from your lockfile if requirements.txt is outdated or missing. Makefile.pipx forces the use of constraints.txt.
+
+export SERVICENOW_INSTANCE="*****"
+export SERVICENOW_USERNAME="*****"
+export SERVICENOW_PASSWORD="*****"
+node packages_mjs/provider_api_getters/src/health_check/providers/servicenow_health_check.mj
+
+s

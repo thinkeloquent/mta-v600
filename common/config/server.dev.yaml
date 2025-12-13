@@ -13,33 +13,9 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"  # Disabled - no proxy running
     # Provider-specific configuration overrides (optional)
     # These are deep-merged with global proxy/client settings
-    # network:
-    #   # Override proxy for this provider only
-    #   default_environment: "dev"
-    #   proxy_urls:
-    #     dev: "http://localhost:8080"
-    #     prod: "http://localhost:8081"
-    #   cert_verify: true
-    #   ca_bundle: "/path/to/custom-ca.crt"
-    client:
-      # Override timeout for this provider only
-      timeout_seconds: 120.0
-      timeout_ms: 120000
-    headers:
-      # Additional headers for this provider only
-      X-Custom-Header: "value"
-  gemini:
-    base_url: "https://generativelanguage.googleapis.com/v1beta/"
-    model: "gemini-2.0-flash"
-    env_api_key: "GEMINI_API_KEY"
-    api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
-    token_resolver: "static"        # static (default), startup, request
-    paths:
-      generateContent: "/models/{model}:generateContent"
-      streamGenerateContent: "/models/{model}:streamGenerateContent"
     # network:
     #   # Override proxy for this provider only
     #   default_environment: "dev"
@@ -154,6 +130,13 @@ providers:
       - "SAUCELABS_ACCESS_KEY"
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"           # SauceLabs uses Basic auth with username:access_key
+    token_resolver: "static"
+    # proxy_url: "http://localhost:8080"
+  # ServiceNow
+  servicenow:
+    base_url: "https://dev12345.service-now.com" # Example instance
+    env_api_key: "SERVICENOW_PASSWORD"
+    api_auth_type: "basic"
     token_resolver: "static"
     # proxy_url: "http://localhost:8080"
   # Sonar (SonarQube/SonarCloud)

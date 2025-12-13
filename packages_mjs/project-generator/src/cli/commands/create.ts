@@ -34,7 +34,7 @@ export function createCreateCommand(): Command {
       }
 
       // Validate type
-      const validTypes: ProjectType[] = ['fastapi', 'fastify', 'frontend', 'react-component', 'ts-package', 'py-package'];
+      const validTypes: ProjectType[] = ['fastapi', 'fastify', 'frontend', 'react-component', 'ts-package', 'py-package', 'health-check-provider'];
       if (!type || !validTypes.includes(type as ProjectType)) {
         logger.error(`Invalid project type: ${type}`);
         logger.info(`Valid types: ${validTypes.join(', ')}`);
