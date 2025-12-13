@@ -39,6 +39,14 @@ class RedisApiToken(BaseApiToken):
         """Return the provider name for Redis."""
         return "redis"
 
+    def get_base_url(self) -> Optional[str]:
+        """
+        Get the base URL (connection URL) for generic usage.
+        
+        Overrides BaseApiToken.get_base_url which only reads from YAML.
+        """
+        return self.get_connection_url()
+
     @property
     def health_endpoint(self) -> str:
         """
@@ -179,6 +187,16 @@ class RedisApiToken(BaseApiToken):
             "use_tls": use_tls,
         }
 
+        # Check for SSL verification override
+        ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
+        node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
+
+        if use_tls and (ssl_cert_verify == "0" or node_tls == "0"):
+             config["ssl_cert_reqs"] = "none"
+             logger.info(f"RedisApiToken: Disable SSL verification (SSL_CERT_VERIFY={ssl_cert_verify}, NODE_TLS={node_tls})")
+
+        return config
+
         logger.debug(
             f"RedisApiToken.get_connection_config: Config - "
             f"host={host}, port={port}, db={db}, "
@@ -218,7 +236,15 @@ class RedisApiToken(BaseApiToken):
         logger.debug("RedisApiToken.get_sync_client: Creating Redis client")
 
         try:
-            client = redis.from_url(connection_url, decode_responses=True)
+            # Pass **config options that relate to connection logic if needed, 
+            # but from_url handles most. We need to reinject ssl_cert_reqs if present.
+            conn_config = self.get_connection_config()
+            kwargs = {"decode_responses": True}
+            
+            if "ssl_cert_reqs" in conn_config:
+                 kwargs["ssl_cert_reqs"] = conn_config["ssl_cert_reqs"]
+
+            client = redis.from_url(connection_url, **kwargs)
             logger.debug(
                 "RedisApiToken.get_sync_client: Redis client created successfully"
             )
@@ -259,7 +285,14 @@ class RedisApiToken(BaseApiToken):
         logger.debug("RedisApiToken.get_async_client: Creating async Redis client")
 
         try:
-            client = aioredis.from_url(connection_url, decode_responses=True)
+            # Pass ssl_cert_reqs if configured for async client
+            conn_config = self.get_connection_config()
+            kwargs = {"decode_responses": True}
+
+            if "ssl_cert_reqs" in conn_config:
+                 kwargs["ssl_cert_reqs"] = conn_config["ssl_cert_reqs"]
+
+            client = aioredis.from_url(connection_url, **kwargs)
             logger.debug(
                 "RedisApiToken.get_async_client: Async Redis client created successfully"
             )

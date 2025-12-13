@@ -45,6 +45,14 @@ class ElasticsearchApiToken(BaseApiToken):
         """Return the provider name for Elasticsearch."""
         return "elasticsearch"
 
+    def get_base_url(self) -> Optional[str]:
+        """
+        Get the base URL (connection URL) for generic usage.
+        
+        Overrides BaseApiToken.get_base_url which only reads from YAML.
+        """
+        return self.get_connection_url()
+
     @property
     def health_endpoint(self) -> str:
         """
@@ -179,6 +187,14 @@ class ElasticsearchApiToken(BaseApiToken):
             "verify_certs": True,
             "meta_header": False,
         }
+
+        # Check for SSL verification override in environment
+        ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
+        node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
+
+        if ssl_cert_verify == "0" or node_tls == "0":
+             config["verify_certs"] = False
+             logger.info(f"ElasticsearchApiToken: Disable SSL verification (SSL_CERT_VERIFY={ssl_cert_verify}, NODE_TLS={node_tls})")
 
         if username and password:
             config["basic_auth"] = (username, password)

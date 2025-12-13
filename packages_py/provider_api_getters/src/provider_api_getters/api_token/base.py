@@ -1525,9 +1525,24 @@ class BaseApiToken(ABC):
                 f"Found network config with keys: {list(network_config.keys())}"
             )
         else:
+            network_config = {}
             logger.debug(
                 f"{self.__class__.__name__}.get_network_config: "
-                "No network config in provider config"
+                "No network config in provider config, initializing empty dict"
+            )
+
+        # Check for global SSL verification disable override
+        ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
+        node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
+
+        if ssl_cert_verify == "0" or node_tls == "0":
+            # Create a copy to avoid modifying the cached config if it came from cache
+            network_config = network_config.copy()
+            network_config["cert_verify"] = False
+            logger.info(
+                f"{self.__class__.__name__}.get_network_config: "
+                f"Forcing cert_verify=False due to env override "
+                f"(SSL_CERT_VERIFY={ssl_cert_verify}, NODE_TLS={node_tls})"
             )
 
         return network_config

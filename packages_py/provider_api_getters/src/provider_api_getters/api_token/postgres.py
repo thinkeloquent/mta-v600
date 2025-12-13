@@ -42,6 +42,14 @@ class PostgresApiToken(BaseApiToken):
         """Return the provider name for PostgreSQL."""
         return "postgres"
 
+    def get_base_url(self) -> Optional[str]:
+        """
+        Get the base URL (connection URL) for generic usage.
+        
+        Overrides BaseApiToken.get_base_url which only reads from YAML.
+        """
+        return self.get_connection_url()
+
     @property
     def health_endpoint(self) -> str:
         """
