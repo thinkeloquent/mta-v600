@@ -7,17 +7,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_db_url():
-    """Get from env or build from components."""
-    url = os.getenv("DATABASE_URL")
-    if url:
-        return url
-    
-    # Construct
+    """Always build from components to avoid broken DATABASE_URL env var."""
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     user = os.getenv("POSTGRES_USER", "postgres")
     password = os.getenv("POSTGRES_PASSWORD", "postgres")
     dbname = os.getenv("POSTGRES_DB", "postgres")
+    
+    if not host: host = "localhost"
     
     return f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 
@@ -28,7 +25,6 @@ async def main():
 
     db_url = get_db_url()
     
-    # Components for direct connect
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     user = os.getenv("POSTGRES_USER", "postgres")
@@ -40,9 +36,9 @@ async def main():
     print(f"  Components: {host}:{port}")
 
     # ---------------------------------------------------------
-    # Test 1: Using URL + ssl="disable"
+    # Test 1: Using Constructed URL + ssl="disable"
     # ---------------------------------------------------------
-    print("\n[Test 1] Using URL + ssl='disable'")
+    print("\n[Test 1] Using Constructed URL + ssl='disable'")
     try:
         conn = await asyncpg.connect(db_url, ssl="disable")
         print("  SUCCESS: Connected!")
@@ -51,9 +47,9 @@ async def main():
         print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 2: Using URL + ssl=False
+    # Test 2: Using Constructed URL + ssl=False
     # ---------------------------------------------------------
-    print("\n[Test 2] Using URL + ssl=False")
+    print("\n[Test 2] Using Constructed URL + ssl=False")
     try:
         conn = await asyncpg.connect(db_url, ssl=False)
         print("  SUCCESS: Connected!")
@@ -62,35 +58,13 @@ async def main():
         print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 3: Components + ssl="disable"
+    # Test 3/4: Components (Already passing, but good to keep)
     # ---------------------------------------------------------
     print("\n[Test 3] Components + ssl='disable'")
     try:
         conn = await asyncpg.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=dbname,
+            host=host, port=port, user=user, password=password, database=dbname,
             ssl="disable"
-        )
-        print("  SUCCESS: Connected!")
-        await conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 4: Components + ssl=False
-    # ---------------------------------------------------------
-    print("\n[Test 4] Components + ssl=False")
-    try:
-        conn = await asyncpg.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=dbname,
-            ssl=False
         )
         print("  SUCCESS: Connected!")
         await conn.close()

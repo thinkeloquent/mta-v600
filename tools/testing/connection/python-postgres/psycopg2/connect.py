@@ -6,16 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_db_url():
-    """Get from env or build from components."""
-    url = os.getenv("DATABASE_URL")
-    if url:
-        return url
-    
+    """Always build from components."""
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     user = os.getenv("POSTGRES_USER", "postgres")
     password = os.getenv("POSTGRES_PASSWORD", "postgres")
     dbname = os.getenv("POSTGRES_DB", "postgres")
+    
+    if not host: host = "localhost"
     
     return f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 
@@ -36,9 +34,9 @@ def main():
     print(f"  Target URL: {db_url}")
 
     # ---------------------------------------------------------
-    # Test 1: Using URL directly
+    # Test 1: Using Constructed URL directly
     # ---------------------------------------------------------
-    print("\n[Test 1] Using URL directly")
+    print("\n[Test 1] Using Constructed URL directly")
     try:
         conn = psycopg2.connect(db_url)
         print("  SUCCESS: Connected!")
@@ -47,9 +45,9 @@ def main():
         print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 2: Using URL + sslmode='disable' kwarg
+    # Test 2: Using Constructed URL + sslmode='disable'
     # ---------------------------------------------------------
-    print("\n[Test 2] Using URL + sslmode='disable'")
+    print("\n[Test 2] Using Constructed URL + sslmode='disable'")
     try:
         conn = psycopg2.connect(db_url, sslmode="disable")
         print("  SUCCESS: Connected!")
@@ -63,11 +61,7 @@ def main():
     print("\n[Test 3] Components + sslmode='disable'")
     try:
         conn = psycopg2.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            dbname=dbname,
+            host=host, port=port, user=user, password=password, dbname=dbname,
             sslmode="disable"
         )
         print("  SUCCESS: Connected!")

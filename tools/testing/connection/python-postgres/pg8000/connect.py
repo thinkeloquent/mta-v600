@@ -6,10 +6,6 @@ import ssl
 
 load_dotenv()
 
-# pg8000 uses minimal URL parsing or components. 
-# We'll focus on components since that's its native style, 
-# but we can try to parse a URL if given for logging.
-
 def main():
     print("="*60)
     print("pg8000 Connection Test (Enhanced)")
@@ -21,6 +17,8 @@ def main():
     password = os.getenv("POSTGRES_PASSWORD", "postgres")
     dbname = os.getenv("POSTGRES_DB", "postgres")
 
+    if not host: host = "localhost"
+
     print(f"Config:")
     print(f"  Host: {host}:{port}")
     
@@ -30,11 +28,7 @@ def main():
     print("\n[Test 1] Components + ssl_context=None")
     try:
         conn = pg8000.native.Connection(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=dbname,
+            host=host, port=port, user=user, password=password, database=dbname,
             ssl_context=None
         )
         print("  SUCCESS: Connected!")
@@ -45,18 +39,14 @@ def main():
     # ---------------------------------------------------------
     # Test 2: Components + ssl_context (No Verify)
     # ---------------------------------------------------------
-    print("\n[Test 2] Components + ssl_context (check_hostname=False)")
+    print("\n[Test 2] Components + Explicit SSL Context (No Verify)")
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         
         conn = pg8000.native.Connection(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            database=dbname,
+            host=host, port=port, user=user, password=password, database=dbname,
             ssl_context=ctx
         )
         print("  SUCCESS: Connected!")
