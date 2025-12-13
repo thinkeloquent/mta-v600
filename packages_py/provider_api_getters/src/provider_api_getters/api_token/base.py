@@ -752,7 +752,8 @@ class BaseApiToken(ABC):
         """Get the custom header name from config."""
         logger.debug(f"{self.__class__.__name__}._get_custom_header_name: Getting custom header name")
         provider_config = self._get_provider_config()
-        return provider_config.get("custom_header_name")
+        # Check api_auth_header_name (preferred) or custom_header_name (legacy)
+        return provider_config.get("api_auth_header_name") or provider_config.get("custom_header_name")
 
     # =========================================================================
     # Public getter methods for credential types
