@@ -45,7 +45,7 @@ export const PROVIDER_REGISTRY = {
   github: GithubApiToken,
   jira: JiraApiToken,
   confluence: ConfluenceApiToken,
-  gemini: GeminiApiToken,
+  // gemini: GeminiApiToken, // Removed as per user request
   gemini_openai: GeminiOpenAIApiToken,
   openai: OpenAIApiToken,
   postgres: PostgresApiToken,

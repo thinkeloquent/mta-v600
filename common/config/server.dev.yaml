@@ -173,25 +173,36 @@ providers:
     proxy_url: false  # Disabled - no proxy running
 
   elasticsearch:
-    placeholder: true
-    message: "Elasticsearch integration not implemented"
+    # Elasticsearch/OpenSearch cluster
+    # Set ELASTICSEARCH_URL env var to your cluster URL (e.g., http://localhost:9200)
+    base_url: null
+    env_base_url: "ELASTICSEARCH_URL"
+    env_api_key: "ELASTICSEARCH_API_KEY"
+    env_api_key_fallbacks:
+      - "ES_API_KEY"
+      - "OPENSEARCH_API_KEY"
+    health_endpoint: "/"  # Root returns cluster info
+    api_auth_type: "bearer"
+    token_resolver: "static"
+    proxy_url: false  # Disabled - no proxy running
     # Example: Full overrides for on-prem/VPN provider
     # client:
     #   timeout_seconds: 120.0
     #   timeout_ms: 120000
-    proxy_url: false  # Disabled - no proxy running
+    # network:
+    #   default_environment: "dev"
+    #   proxy_urls:
+    #     dev: "http://localhost:8080"
+    #   cert_verify: false
 
-    network:
-      default_environment: "dev"
-      proxy_urls:
-        dev: "http://localhost:8080"
-        prod: "http://localhost:8081"
-      ca_bundle: null
-      cert: null
-      cert_verify: false
-      agent_proxy:
-        http_proxy: null
-        https_proxy: null
+  # Gemini alias (maps to same config as gemini_openai for health checks)
+  gemini:
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+    model: "gemini-2.0-flash"
+    env_api_key: "GEMINI_API_KEY"
+    api_auth_type: "bearer"
+    token_resolver: "static"
+    proxy_url: false
 
 # Default provider for backward compatibility
 default_provider: "gemini"

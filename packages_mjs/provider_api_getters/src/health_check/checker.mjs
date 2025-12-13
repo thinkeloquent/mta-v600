@@ -81,8 +81,8 @@ function printPanel(title, content, borderColor = "cyan") {
 
   console.log(
     colorFn("╭" + "─".repeat(topLeft)) +
-      titlePadded +
-      colorFn("─".repeat(topRight) + "╮")
+    titlePadded +
+    colorFn("─".repeat(topRight) + "╮")
   );
   console.log(colorFn("╰" + "─".repeat(width - 2) + "╯"));
 
@@ -139,9 +139,9 @@ function printProxyConfigPanel(
     : null;
   console.log(
     `printProxyConfigPanel: provider=${providerName}, ` +
-      `tokenClass=${apiToken?.constructor?.name || "null"}, ` +
-      `apiKey=${redactedApiKey}, ` +
-      `hasCredentials=${apiKeyResult?.hasCredentials}`
+    `tokenClass=${apiToken?.constructor?.name || "null"}, ` +
+    `apiKey=${redactedApiKey}, ` +
+    `hasCredentials=${apiKeyResult?.hasCredentials}`
   );
 
   const title = pc.bold(
@@ -252,6 +252,7 @@ function printDatabaseConfigPanel(providerName, connectionType, configUsed) {
     connection_type: connectionType,
     auth_type: configUsed.auth_type || "connection_string",
     proxy: configUsed.proxy || "(not applicable)",
+    proxy_url: configUsed.proxy_url, // Show direct override
     client: configUsed.client || {},
     overrides: {
       has_provider_override: configUsed.has_provider_override || false,
@@ -388,7 +389,8 @@ export class ProviderHealthChecker {
 
     return {
       base_url: apiToken?.getBaseUrl?.() || null,
-      proxy: mergedConfig.proxy,
+      proxy: mergedConfig.network, // This was mapped to mergedConfig.proxy in display, but factory uses 'network'
+      proxy_url: mergedConfig.proxy_url, // Direct proxy URL override
       client: mergedConfig.client,
       auth_type: apiToken?.getAuthType?.() || null,
       has_provider_override: mergedConfig.has_provider_override,
@@ -599,7 +601,11 @@ export class ProviderHealthChecker {
       const healthUrl = `${baseUrl}/_cluster/health`;
 
       // Get dispatcher from factory with YAML proxy config
-      const dispatcher = await this.#clientFactory._createDispatcher();
+      // Pass the specific proxy_url override from configUsed (e.g. proxy_url: false)
+      const dispatcher = await this.#clientFactory._createDispatcher(
+        configUsed?.proxy,
+        configUsed?.proxy_url
+      );
 
       const headers = { Accept: "application/json" };
 

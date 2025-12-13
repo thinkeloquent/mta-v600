@@ -484,9 +484,24 @@ class ProviderHealthChecker:
 
             logger.debug(f"ProviderHealthChecker._check_elasticsearch: Checking {health_url}")
 
+            # Get proxy URL from resolved config (supports proxy_url: false)
+            # We must use config_used because it contains the merged result (global + provider + overrides)
+            proxy_url = config_used.get("proxy_url") if config_used else None
+            
+            # If proxy_url is None, try falling back to api_token, but config_used is preferred
+            if proxy_url is None:
+                 proxy_url = api_token.get_proxy_url()
+
             # Use proxy factory to create httpx client with YAML config
-            httpx_client = self._client_factory._create_httpx_client(timeout=10.0, async_client=True)
-            logger.debug("ProviderHealthChecker._check_elasticsearch: Created httpx client with proxy config")
+            httpx_client = self._client_factory._create_httpx_client(
+                timeout=10.0,
+                async_client=True,
+                proxy_url=proxy_url
+            )
+            logger.debug(
+                f"ProviderHealthChecker._check_elasticsearch: Created httpx client "
+                f"with proxy_url={proxy_url}"
+            )
 
             async with httpx_client as client:
                 response = await client.get(health_url)

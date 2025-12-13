@@ -29,6 +29,15 @@ export class ElasticsearchApiToken extends BaseApiToken {
   }
 
   /**
+   * Override getBaseUrl to use connection URL with fallback to components.
+   * @returns {string|null}
+   */
+  getBaseUrl() {
+    logger.debug('ElasticsearchApiToken.getBaseUrl: Getting base URL (uses getConnectionUrl)');
+    return this.getConnectionUrl();
+  }
+
+  /**
    * Build connection URL from individual environment variables.
    * Uses https:// when ELASTIC_DB_TLS=true or port is 443/9243.
    * @returns {string|null}
