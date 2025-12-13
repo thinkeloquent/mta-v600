@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+#
+# debug-print-test-directories
+# Print a list of test directories for FastAPI and Fastify apps/packages
+#
+
+
+#   - FastAPI apps (fastapi_apps/*/tests*)
+#   - Fastify apps (fastify_apps/*/tests*, __tests__)
+#   - Python packages (packages_py/*/tests*)
+#   - JavaScript packages (packages_mjs/*/tests*, __tests__)
+
+set -euo pipefail
+
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+echo "=== Test Directories ==="
+echo ""
+
+# FastAPI apps test directories
+echo "📦 FastAPI Apps (fastapi_apps/*/tests*):"
+echo "----------------------------------------"
+for app_dir in "$PROJECT_ROOT"/fastapi_apps/*/; do
+    if [[ -d "$app_dir" ]]; then
+        app_name=$(basename "$app_dir")
+        # Skip special directories
+        [[ "$app_name" == "__pycache__" ]] && continue
+        [[ "$app_name" == "__STAGE__" ]] && continue
+        [[ "$app_name" == "__SPECS__" ]] && continue
+        [[ "$app_name" == "__BACKUP__" ]] && continue
+
+        # Check for tests directory (tests or tests_*)
+        for test_dir in "$app_dir"tests* "$app_dir"tests_*; do
+            if [[ -d "$test_dir" ]]; then
+                echo "  $test_dir"
+            fi
+        done
+    fi
+done
+echo ""
+
+# Fastify apps test directories
+echo "📦 Fastify Apps (fastify_apps/*/tests*):"
+echo "----------------------------------------"
+for app_dir in "$PROJECT_ROOT"/fastify_apps/*/; do
+    if [[ -d "$app_dir" ]]; then
+        app_name=$(basename "$app_dir")
+        # Skip special directories
+        [[ "$app_name" == "node_modules" ]] && continue
+        [[ "$app_name" == "__STAGE__" ]] && continue
+        [[ "$app_name" == "__SPECS__" ]] && continue
+        [[ "$app_name" == "__BACKUP__" ]] && continue
+
+        # Check for tests directory (tests, __tests__, *.test.*, *.spec.*)
+        for test_dir in "$app_dir"tests "$app_dir"__tests__ "$app_dir"test; do
+            if [[ -d "$test_dir" ]]; then
+                echo "  $test_dir"
+            fi
+        done
+    fi
+done
+echo ""
+
+# Python packages test directories
+echo "📦 Python Packages (packages_py/*/tests*):"
+echo "-------------------------------------------"
+for pkg_dir in "$PROJECT_ROOT"/packages_py/*/; do
+    if [[ -d "$pkg_dir" ]]; then
+        pkg_name=$(basename "$pkg_dir")
+        # Skip special directories
+        [[ "$pkg_name" == "__pycache__" ]] && continue
+        [[ "$pkg_name" == "__STAGE__" ]] && continue
+        [[ "$pkg_name" == "__SPECS__" ]] && continue
+        [[ "$pkg_name" == "__BACKUP__" ]] && continue
+
+        # Check for tests directory (tests, tests_*)
+        for test_dir in "$pkg_dir"tests "$pkg_dir"tests_*; do
+            if [[ -d "$test_dir" ]]; then
+                echo "  $test_dir"
+            fi
+        done
+    fi
+done
+echo ""
+
+# JavaScript/TypeScript packages test directories
+echo "📦 JavaScript Packages (packages_mjs/*/tests*):"
+echo "------------------------------------------------"
+for pkg_dir in "$PROJECT_ROOT"/packages_mjs/*/; do
+    if [[ -d "$pkg_dir" ]]; then
+        pkg_name=$(basename "$pkg_dir")
+        # Skip special directories
+        [[ "$pkg_name" == "node_modules" ]] && continue
+        [[ "$pkg_name" == "__STAGE__" ]] && continue
+        [[ "$pkg_name" == "__SPECS__" ]] && continue
+        [[ "$pkg_name" == "__BACKUP__" ]] && continue
+
+        # Check for tests directory (tests, __tests__, test)
+        for test_dir in "$pkg_dir"tests "$pkg_dir"__tests__ "$pkg_dir"test; do
+            if [[ -d "$test_dir" ]]; then
+                echo "  $test_dir"
+            fi
+        done
+    fi
+done
+echo ""
+
+echo "=== Summary ==="
+fastapi_count=$(find "$PROJECT_ROOT"/fastapi_apps -maxdepth 2 -type d \( -name "tests" -o -name "tests_*" \) 2>/dev/null | wc -l | tr -d ' ')
+fastify_count=$(find "$PROJECT_ROOT"/fastify_apps -maxdepth 2 -type d \( -name "tests" -o -name "__tests__" -o -name "test" \) 2>/dev/null | wc -l | tr -d ' ')
+py_pkg_count=$(find "$PROJECT_ROOT"/packages_py -maxdepth 2 -type d \( -name "tests" -o -name "tests_*" \) 2>/dev/null | wc -l | tr -d ' ')
+mjs_pkg_count=$(find "$PROJECT_ROOT"/packages_mjs -maxdepth 2 -type d \( -name "tests" -o -name "__tests__" -o -name "test" \) 2>/dev/null | wc -l | tr -d ' ')
+
+echo "FastAPI apps:      $fastapi_count test directories"
+echo "Fastify apps:      $fastify_count test directories"
+echo "Python packages:   $py_pkg_count test directories"
+echo "JS/TS packages:    $mjs_pkg_count test directories"
+echo "Total:             $((fastapi_count + fastify_count + py_pkg_count + mjs_pkg_count)) test directories"
