@@ -230,6 +230,18 @@ display:
 # Proxy Configuration
 # =============================================================================
 
+network:
+  default_environment: null
+  proxy_urls:
+    dev: null
+    prod: null
+  ca_bundle: null
+  cert: null
+  cert_verify: false
+  agent_proxy:
+    http_proxy: null
+    https_proxy: null
+    
 # shoudld be renamed to network
 # proxy:
 #   # Default environment name for ProxyDispatcherFactory
