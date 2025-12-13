@@ -28,6 +28,7 @@ cache-request = {path = "packages_py/cache_request", develop = true}
 cache-response = {path = "packages_py/cache_response", develop = true}
 connection-pool = {path = "packages_py/connection_pool", develop = true}
 console-print = {path = "packages_py/console_print", develop = true}
+db-connection-postgres = {path = "packages_py/db_connection_postgres", develop = true}
 fetch-auth-config = {path = "packages_py/fetch_auth_config", develop = true}
 fetch-auth-encoding = {path = "packages_py/fetch_auth_encoding", develop = true}
 fetch-client = {path = "packages_py/fetch_client", develop = true}

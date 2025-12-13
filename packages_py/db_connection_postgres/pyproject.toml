@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "db-connection-postgres"
+version = "1.0.0"
+description = "PostgreSQL database connection package using SQLAlchemy 2.0 and asyncpg"
+authors = []
+license = "MIT"
+packages = [{include = "db_connection_postgres", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+# SQLAlchemy with async support - pinned to match reference implementation
+sqlalchemy = {version = "==2.0.41", extras = ["asyncio"]}
+# Async PostgreSQL driver
+asyncpg = ">=0.30.0"
+# Sync PostgreSQL driver (for alembic and fallback)
+psycopg2-binary = "==2.9.9"
+# Database migrations
+alembic = ">=1.13.1"
+
+[tool.poetry.extras]
+fastapi = ["fastapi"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+fastapi = "*"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+pytest-mock = "^3.12.0"
+mypy = "^1.8.0"
+ruff = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/db_connection_postgres"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
