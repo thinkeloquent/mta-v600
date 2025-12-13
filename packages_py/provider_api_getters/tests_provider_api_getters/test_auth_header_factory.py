@@ -148,46 +148,49 @@ class TestAuthHeader:
 
         result = str(header)
 
-        # First 10 chars + "***"
-        assert result == "Authorization: Bearer ver***"
+        # First 15 chars + "***" (mask_auth_header default is 15)
+        assert result == "Authorization: Bearer very-lon***"
         # Ensure full value is NOT in string
         assert "very-long-secret-token-12345" not in result
 
     def test_str_masks_short_value(self):
-        """Test __str__ masks short values (boundary: <= 10 chars)."""
+        """Test __str__ shows short values in full (boundary: <= 15 chars)."""
         header = AuthHeader(
             header_name="Authorization",
-            header_value="short",  # 5 chars
+            header_value="short",  # 5 chars - less than 15, shown in full
             scheme=AuthScheme.BEARER_PAT,
         )
 
         result = str(header)
 
-        assert result == "Authorization: ***"
+        # Values <= 15 chars are shown in full by mask_auth_header
+        assert result == "Authorization: short"
 
-    def test_str_masks_exactly_10_chars(self):
-        """Test __str__ boundary: exactly 10 chars."""
+    def test_str_masks_exactly_15_chars(self):
+        """Test __str__ boundary: exactly 15 chars shown in full."""
         header = AuthHeader(
             header_name="Authorization",
-            header_value="1234567890",  # exactly 10 chars
+            header_value="123456789012345",  # exactly 15 chars
             scheme=AuthScheme.BEARER_PAT,
         )
 
         result = str(header)
 
-        assert result == "Authorization: ***"
+        # Exactly 15 chars - shown in full
+        assert result == "Authorization: 123456789012345"
 
-    def test_str_masks_11_chars(self):
-        """Test __str__ boundary: 11 chars (just over threshold)."""
+    def test_str_masks_16_chars(self):
+        """Test __str__ boundary: 16 chars (just over threshold)."""
         header = AuthHeader(
             header_name="Authorization",
-            header_value="12345678901",  # 11 chars
+            header_value="1234567890123456",  # 16 chars
             scheme=AuthScheme.BEARER_PAT,
         )
 
         result = str(header)
 
-        assert result == "Authorization: 1234567890***"
+        # First 15 chars + "***"
+        assert result == "Authorization: 123456789012345***"
 
 
 # =============================================================================

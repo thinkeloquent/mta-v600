@@ -282,7 +282,7 @@ class TestApiKeyResult:
     def test_to_dict_with_sensitive(self, caplog):
         """Test to_dict with sensitive data included."""
         result = ApiKeyResult(
-            api_key="secret-token",
+            api_key="secret-token-value-12345",  # 24 chars - longer than 15 char threshold
             username="user@example.com",
         )
 
@@ -290,7 +290,8 @@ class TestApiKeyResult:
             d = result.to_dict(include_sensitive=True)
 
         assert "api_key_masked" in d
-        assert d["api_key_masked"] == "secret-tok**"  # 12 chars total, 10 visible + 2 masked
+        # mask_auth_header shows first 15 chars + "***" for values > 15 chars
+        assert d["api_key_masked"] == "secret-token-va***"  # 15 visible + "***"
         assert d["username"] == "user@example.com"
 
 

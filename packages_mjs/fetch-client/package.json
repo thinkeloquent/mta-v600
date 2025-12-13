@@ -65,7 +65,8 @@
   "dependencies": {
     "pino": "^9.0.0",
     "pino-pretty": "^13.0.0",
-    "@internal/fetch-auth-encoding": "workspace:*"
+    "@internal/fetch-auth-encoding": "workspace:*",
+    "@internal/console-print": "workspace:*"
   },
   "peerDependencies": {
     "@internal/fetch-proxy-dispatcher": "workspace:*",

@@ -185,7 +185,7 @@ def mask_sensitive(
     Args:
         value: Value to mask
         options_or_show_chars: Number of chars to show, or options dict
-            - show_chars: Number of characters to show before masking (default: 15)
+            - show_chars: Number of characters to show before masking (default: 4)
             - mask_char: Character to use for masking (default: '*')
             - placeholder: Placeholder for null/empty values (default: '<none>')
 
@@ -198,7 +198,7 @@ def mask_sensitive(
     else:
         options = _normalize_options(options_or_show_chars)
 
-    show_chars = options.get("show_chars", 15)
+    show_chars = options.get("show_chars", 4)
     mask_char = options.get("mask_char", "*")
     placeholder = options.get("placeholder", "<none>")
 
