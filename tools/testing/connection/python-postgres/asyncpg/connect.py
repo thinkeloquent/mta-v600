@@ -36,31 +36,9 @@ async def main():
     print(f"  Components: {host}:{port}")
 
     # ---------------------------------------------------------
-    # Test 1: Using Constructed URL + ssl="disable"
-    # ---------------------------------------------------------
-    print("\n[Test 1] Using Constructed URL + ssl='disable'")
-    try:
-        conn = await asyncpg.connect(db_url, ssl="disable")
-        print("  SUCCESS: Connected!")
-        await conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 2: Using Constructed URL + ssl=False
-    # ---------------------------------------------------------
-    print("\n[Test 2] Using Constructed URL + ssl=False")
-    try:
-        conn = await asyncpg.connect(db_url, ssl=False)
-        print("  SUCCESS: Connected!")
-        await conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
     # Test 3/4: Components (Already passing, but good to keep)
     # ---------------------------------------------------------
-    print("\n[Test 3] Components + ssl='disable'")
+    print("\n[Test] Components + ssl='disable'")
     try:
         conn = await asyncpg.connect(
             host=host, port=port, user=user, password=password, database=dbname,

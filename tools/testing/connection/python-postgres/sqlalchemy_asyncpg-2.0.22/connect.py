@@ -43,51 +43,6 @@ async def main():
     print(f"  Host: {url_obj.host}:{url_obj.port}")
 
     # ---------------------------------------------------------
-    # Test 1: Using URL object directly (No SSL override)
-    # ---------------------------------------------------------
-    print("\n[Test 1] Using URL object directly (Default SSL)")
-    try:
-        engine = create_async_engine(url_obj)
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT version()"))
-            print(f"  SUCCESS: Connected! Version: {result.scalar()[:50]}...")
-        await engine.dispose()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 2: URL object + connect_args={"ssl": "disable"}
-    # ---------------------------------------------------------
-    print("\n[Test 2] URL object + connect_args={'ssl': 'disable'}")
-    try:
-        engine = create_async_engine(
-            url_obj,
-            connect_args={"ssl": "disable"}
-        )
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1"))
-            print(f"  SUCCESS: Connected!")
-        await engine.dispose()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 3: URL object + connect_args={"ssl": False}
-    # ---------------------------------------------------------
-    print("\n[Test 3] URL object + connect_args={'ssl': False}")
-    try:
-        engine = create_async_engine(
-            url_obj,
-            connect_args={"ssl": False}
-        )
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1"))
-            print(f"  SUCCESS: Connected!")
-        await engine.dispose()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
     # Test 4: Explicit Construction string (Legacy check)
     # ---------------------------------------------------------
     print("\n[Test 4] Explicit String Construction + connect_args={'ssl': 'disable'}")

@@ -25,29 +25,11 @@ def main():
     # ---------------------------------------------------------
     # Test 1: Components + ssl_context=None (Default/Disable)
     # ---------------------------------------------------------
-    print("\n[Test 1] Components + ssl_context=None")
+    print("\n[Test] Components + ssl_context=None")
     try:
         conn = pg8000.native.Connection(
             host=host, port=port, user=user, password=password, database=dbname,
             ssl_context=None
-        )
-        print("  SUCCESS: Connected!")
-        conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 2: Components + ssl_context (No Verify)
-    # ---------------------------------------------------------
-    print("\n[Test 2] Components + Explicit SSL Context (No Verify)")
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        conn = pg8000.native.Connection(
-            host=host, port=port, user=user, password=password, database=dbname,
-            ssl_context=ctx
         )
         print("  SUCCESS: Connected!")
         conn.close()

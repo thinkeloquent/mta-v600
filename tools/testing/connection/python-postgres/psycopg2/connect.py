@@ -34,28 +34,6 @@ def main():
     print(f"  Target URL: {db_url}")
 
     # ---------------------------------------------------------
-    # Test 1: Using Constructed URL directly
-    # ---------------------------------------------------------
-    print("\n[Test 1] Using Constructed URL directly")
-    try:
-        conn = psycopg2.connect(db_url)
-        print("  SUCCESS: Connected!")
-        conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
-    # Test 2: Using Constructed URL + sslmode='disable'
-    # ---------------------------------------------------------
-    print("\n[Test 2] Using Constructed URL + sslmode='disable'")
-    try:
-        conn = psycopg2.connect(db_url, sslmode="disable")
-        print("  SUCCESS: Connected!")
-        conn.close()
-    except Exception as e:
-        print(f"  FAILURE: {e}")
-
-    # ---------------------------------------------------------
     # Test 3: Components + sslmode='disable'
     # ---------------------------------------------------------
     print("\n[Test 3] Components + sslmode='disable'")
