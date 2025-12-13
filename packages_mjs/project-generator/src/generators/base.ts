@@ -84,7 +84,8 @@ export async function generateProject(
   const targetDir = options.targetDir || config.targetDirectory(root, normalizedName);
 
   // Check if target already exists
-  if (await fs.pathExists(targetDir)) {
+  const allowExisting = options.allowExisting || config.allowExisting;
+  if ((await fs.pathExists(targetDir)) && !allowExisting) {
     return {
       success: false,
       projectPath: targetDir,
@@ -127,8 +128,10 @@ export async function generateProject(
       instructions: getPostGenerationInstructions(projectType, normalizedName, targetDir),
     };
   } catch (error) {
-    // Clean up on failure
-    await fs.remove(targetDir).catch(() => {});
+    // Clean up on failure (only if we didn't allow existing, to avoid deleting whole repo)
+    if (!allowExisting) {
+      await fs.remove(targetDir).catch(() => { });
+    }
 
     return {
       success: false,
@@ -146,7 +149,11 @@ function getPostGenerationInstructions(
   projectName: string,
   projectPath: string
 ): string[] {
-  const instructions: string[] = [`cd ${projectPath}`];
+  const instructions: string[] = [];
+
+  if (projectType !== 'health-check-provider') {
+    instructions.push(`cd ${projectPath}`);
+  }
 
   switch (projectType) {
     case 'fastapi':
@@ -173,6 +180,12 @@ function getPostGenerationInstructions(
     case 'py-package':
       instructions.push('poetry install');
       instructions.push('poetry run pytest');
+      break;
+    case 'health-check-provider':
+      instructions.push(`Files created for provider: ${projectName}`);
+      instructions.push('1. Update packages_py/provider_api_getters/src/provider_api_getters/__init__.py to export the new Token class');
+      instructions.push('2. Update packages_mjs/provider_api_getters/src/index.mjs to export the new Token class');
+      instructions.push(`3. Run 'npm run rebuild' in packages_mjs/provider_api_getters`);
       break;
   }
 

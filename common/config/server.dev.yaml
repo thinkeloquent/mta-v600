@@ -157,6 +157,7 @@ providers:
   # Sonar (SonarQube/SonarCloud)
   sonar:
     base_url: "https://sonarcloud.io"  # or https://your-sonar.example.com for SonarQube
+    env_base_url: "SONAR_BASE_URL"
     env_api_key: "SONAR_TOKEN"
     env_api_key_fallbacks:
       - "SONARQUBE_TOKEN"

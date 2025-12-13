@@ -29,5 +29,6 @@ export function listProjectTypes(): Array<{ type: ProjectType; name: string; des
     { type: 'react-component', name: 'React Component', description: 'Reusable React UI component package' },
     { type: 'ts-package', name: 'TypeScript Package', description: '@internal/* TypeScript package' },
     { type: 'py-package', name: 'Python Package', description: 'packages_py/* Python package' },
+    { type: 'health-check-provider', name: 'Health Check Provider', description: 'Add provider to provider_api_getters' },
   ];
 }

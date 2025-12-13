@@ -21,13 +21,14 @@ export const PROJECT_TYPES: Array<{
   label: string;
   hint: string;
 }> = [
-  { value: 'fastapi', label: 'FastAPI Backend', hint: 'Python REST API with FastAPI' },
-  { value: 'fastify', label: 'Fastify Backend', hint: 'Node.js REST API with Fastify' },
-  { value: 'frontend', label: 'React Frontend', hint: 'React + Vite + Tailwind' },
-  { value: 'react-component', label: 'React Component Package', hint: 'Reusable UI component' },
-  { value: 'ts-package', label: 'TypeScript Package', hint: '@internal/* package' },
-  { value: 'py-package', label: 'Python Package', hint: 'packages_py/* package' },
-];
+    { value: 'fastapi', label: 'FastAPI Backend', hint: 'Python REST API with FastAPI' },
+    { value: 'fastify', label: 'Fastify Backend', hint: 'Node.js REST API with Fastify' },
+    { value: 'frontend', label: 'React Frontend', hint: 'React + Vite + Tailwind' },
+    { value: 'react-component', label: 'React Component Package', hint: 'Reusable UI component' },
+    { value: 'ts-package', label: 'TypeScript Package', hint: '@internal/* package' },
+    { value: 'py-package', label: 'Python Package', hint: 'packages_py/* package' },
+    { value: 'health-check-provider', label: 'Health Check Provider', hint: 'Add provider to provider_api_getters' },
+  ];
 
 /**
  * Run the interactive project creation flow.

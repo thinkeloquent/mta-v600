@@ -11,7 +11,8 @@ export type ProjectType =
   | 'frontend'
   | 'react-component'
   | 'ts-package'
-  | 'py-package';
+  | 'py-package'
+  | 'health-check-provider';
 
 /**
  * Options for project generation.
@@ -27,6 +28,8 @@ export interface GeneratorOptions {
   port?: number;
   /** Callback for file creation */
   onFileCreate?: (filePath: string) => void;
+  /** Allow generating into an existing directory */
+  allowExisting?: boolean;
 }
 
 /**
@@ -66,6 +69,7 @@ export interface ProjectTypeConfig {
   description: string;
   targetDirectory: (rootDir: string, projectName: string) => string;
   templatePath: string;
+  allowExisting?: boolean;
 }
 
 /**
@@ -113,5 +117,13 @@ export const PROJECT_TYPE_CONFIGS: Record<ProjectType, ProjectTypeConfig> = {
     description: 'Python package under packages_py/*',
     targetDirectory: (rootDir, name) => `${rootDir}/packages_py/${name.replace(/-/g, '_')}`,
     templatePath: 'py-package/template',
+  },
+  'health-check-provider': {
+    type: 'health-check-provider',
+    displayName: 'Health Check Provider',
+    description: 'New provider for provider_api_getters',
+    targetDirectory: (rootDir, name) => rootDir,
+    templatePath: 'health-check-provider/template',
+    allowExisting: true,
   },
 };
