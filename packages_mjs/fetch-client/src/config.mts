@@ -123,12 +123,8 @@ export function validateAuthConfig(auth: AuthConfig): void {
       throw new Error('password is required for basic_email auth type');
     }
   } else if (auth.type === 'bearer') {
-    // Auto-compute: need rawApiKey OR ((username OR email) AND (password OR rawApiKey))
-    const hasIdentifier = auth.username || auth.email;
-    const hasSecret = auth.password || auth.rawApiKey;
-    const hasCredentials = hasIdentifier && hasSecret;
-    if (!auth.rawApiKey && !hasCredentials) {
-      throw new Error('bearer auth requires rawApiKey OR ((username OR email) AND (password OR rawApiKey))');
+    if (!auth.rawApiKey) {
+      throw new Error('rawApiKey is required for bearer auth type');
     }
   } else if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {
     if (!auth.rawApiKey) {
@@ -278,18 +274,9 @@ export function formatAuthHeaderValue(auth: AuthConfig, apiKey: string): string 
 
   // === Bearer Auth Family ===
   if (auth.type === 'bearer') {
-    // Auto-compute: detect if credentials need base64 encoding
-    const identifier = auth.email || auth.username;
-    if (identifier) {
-      // Has identifier → encode as base64(identifier:secret)
-      const secret = auth.password || apiKey;
-      const headers = encodeAuth('bearer_username_password', { username: identifier, password: secret });
-      return headers.Authorization;
-    } else {
-      // No identifier → use apiKey as-is (PAT, OAuth, JWT)
-      const headers = encodeAuth('bearer', { token: apiKey });
-      return headers.Authorization;
-    }
+    // Strict: use apiKey as-is (PAT, OAuth, JWT)
+    const headers = encodeAuth('bearer', { token: apiKey });
+    return headers.Authorization;
   }
 
   if (auth.type === 'bearer_oauth' || auth.type === 'bearer_jwt') {

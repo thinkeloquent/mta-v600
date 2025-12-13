@@ -247,16 +247,18 @@ describe('config', () => {
       expect(formatAuthHeaderValue({ type: 'bearer' }, apiKey)).toBe(`Bearer ${apiKey}`);
     });
 
-    it('should format bearer with username as base64', () => {
+    it('should format bearer with username as raw token (Strict Bearer)', () => {
       const auth: AuthConfig = { type: 'bearer', username: 'user', rawApiKey: 'token' };
       const result = formatAuthHeaderValue(auth, 'token');
-      expect(result).toBe(encodeBearerBase64('user', 'token'));
+      // Strict bearer ignores username and returns raw token
+      expect(result).toBe('Bearer token');
     });
 
-    it('should format bearer with email as base64', () => {
+    it('should format bearer with email as raw token (Strict Bearer)', () => {
       const auth: AuthConfig = { type: 'bearer', email: 'user@test.com', rawApiKey: 'token' };
       const result = formatAuthHeaderValue(auth, 'token');
-      expect(result).toBe(encodeBearerBase64('user@test.com', 'token'));
+      // Strict bearer ignores email and returns raw token
+      expect(result).toBe('Bearer token');
     });
 
     it('should format bearer_oauth', () => {

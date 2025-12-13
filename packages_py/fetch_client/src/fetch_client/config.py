@@ -211,12 +211,8 @@ def validate_auth_config(auth: AuthConfig) -> None:
             raise ValueError("password is required for basic_email auth type")
 
     elif auth.type == "bearer":
-        # Auto-compute: need raw_api_key OR ((username OR email) AND (password OR raw_api_key))
-        has_identifier = auth.username or auth.email
-        has_secret = auth.password or auth.raw_api_key
-        has_credentials = has_identifier and has_secret
-        if not auth.raw_api_key and not has_credentials:
-            raise ValueError("bearer auth requires raw_api_key OR ((username OR email) AND (password OR raw_api_key))")
+        if not auth.raw_api_key:
+             raise ValueError("raw_api_key is required for bearer auth type")
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
         if not auth.raw_api_key:
@@ -340,19 +336,10 @@ def format_auth_header_value(auth: AuthConfig, api_key: str) -> str:
 
     # === Bearer Auth Family ===
     elif auth.type == "bearer":
-        # Auto-compute: detect if credentials need base64 encoding
-        identifier = auth.email or auth.username
-        if identifier:
-             # Has identifier → encode as base64(identifier:secret)
-             secret = auth.password or api_key
-             headers = encode_auth("bearer_username_password", username=identifier, password=secret)
-             trace_before_after("Bearer Creds", f"{identifier}:{secret}", headers["Authorization"])
-             return headers["Authorization"]
-        else:
-             # No identifier → use api_key as-is (PAT, OAuth, JWT)
-             headers = encode_auth("bearer", token=api_key)
-             trace_before_after("Bearer Token", api_key, headers["Authorization"])
-             return headers["Authorization"]
+         # Strict: use api_key as-is (PAT, OAuth, JWT)
+         headers = encode_auth("bearer", token=api_key)
+         trace_before_after("Bearer Token", api_key, headers["Authorization"])
+         return headers["Authorization"]
 
     elif auth.type in ("bearer_oauth", "bearer_jwt"):
          headers = encode_auth("bearer", token=api_key)

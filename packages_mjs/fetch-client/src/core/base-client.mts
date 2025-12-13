@@ -40,9 +40,24 @@ function maskAuthHeader(headers: Record<string, string>): Record<string, string>
   for (const key of Object.keys(masked)) {
     if (key.toLowerCase() === 'authorization' || key.toLowerCase() === 'x-api-key') {
       const value = masked[key];
-      if (value.length > 10) {
-        masked[key] = value.slice(0, 10) + '*'.repeat(value.length - 10);
+
+      // Check for standard auth schemas (Basic/Bearer/Digest)
+      const match = value.match(/^(Basic|Bearer|Digest)\s+(.*)$/i);
+
+      if (match) {
+        const schema = match[1];
+        const token = match[2];
+        const visibleLen = 15;
+
+        if (token.length > visibleLen) {
+          const preview = token.substring(0, visibleLen);
+          masked[key] = `${schema} ${preview}` + '*'.repeat(token.length - visibleLen);
+        } else {
+          // Token short, show schema + masked fully
+          masked[key] = `${schema} ` + '*'.repeat(token.length);
+        }
       } else {
+        // No schema -> Full redaction
         masked[key] = '*'.repeat(value.length);
       }
     }

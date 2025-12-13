@@ -247,19 +247,17 @@ class TestFormatAuthHeaderValue:
         result = format_auth_header_value(auth, "pat_token_123")
         assert result == "Bearer pat_token_123"
 
-    def test_bearer_with_username_encodes_base64(self):
-        """bearer auth with username uses base64 encoding"""
+    def test_bearer_with_username_is_strict_raw(self):
+        """bearer auth with username ignores username (Strict Bearer)"""
         auth = AuthConfig(type="bearer", username="user", raw_api_key="token")
         result = format_auth_header_value(auth, "token")
-        expected = self._encode_bearer_base64("user", "token")
-        assert result == expected
+        assert result == "Bearer token"
 
-    def test_bearer_with_email_encodes_base64(self):
-        """bearer auth with email uses base64 encoding"""
+    def test_bearer_with_email_is_strict_raw(self):
+        """bearer auth with email ignores email (Strict Bearer)"""
         auth = AuthConfig(type="bearer", email="user@test.com", raw_api_key="token")
         result = format_auth_header_value(auth, "token")
-        expected = self._encode_bearer_base64("user@test.com", "token")
-        assert result == expected
+        assert result == "Bearer token"
 
     def test_bearer_oauth(self):
         """bearer_oauth: OAuth 2.0 token as-is"""

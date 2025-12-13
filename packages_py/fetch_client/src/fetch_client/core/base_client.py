@@ -40,11 +40,40 @@ logger = logging.getLogger("fetch_client.base_client")
 
 
 def _mask_headers_for_logging(headers: Dict[str, str]) -> Dict[str, str]:
-    """Mask authorization header for safe logging using mask_auth_header (15 chars)."""
+    """Mask authorization header for safe logging.
+    
+    Rules:
+    - If valid schema (Basic/Bearer/Digest): Show Schema + 15 chars of token + masking
+    - If no schema: Full redaction (*****************)
+    """
+    import re
     masked = dict(headers)
     for key in masked:
         if key.lower() in ('authorization', 'x-api-key'):
-            masked[key] = mask_auth_header(masked[key])
+            value = masked[key]
+            
+            # Check for standard auth schemas
+            match = re.match(r"^(Basic|Bearer|Digest)\s+(.*)$", value, re.IGNORECASE)
+            
+            if match:
+                schema = match.group(1)
+                token = match.group(2)
+                visible_len = 15
+                
+                if len(token) > visible_len:
+                    preview = token[:visible_len]
+                    masked[key] = f"{schema} {preview}" + "*" * (len(token) - visible_len)
+                else:
+                    # Token too short to show preview safely? Or show what we have?
+                    # Usually short tokens are secrets too.
+                    # Standard approach: if shorter than visible_len, mask the rest? 
+                    # If token is tiny (e.g. 5 chars), showing 15 covers it all.
+                    # Let's show all if <= 15 but usually tokens are longer.
+                    # If strict 15 limit:
+                    masked[key] = f"{schema} " + "*" * len(token)
+            else:
+                # No schema detected -> Full redaction as requested
+                masked[key] = "*" * len(value)
     return masked
 
 
