@@ -305,7 +305,7 @@ class TestAuthHeaderFactoryCreate:
         assert header.header_value == "my-api-key-12345"
         assert header.scheme == AuthScheme.X_API_KEY
 
-    def test_create_x_api_key_with_custom_header_name(self):
+    def test_create_x_api_key_with_api_auth_header_name(self):
         """Test create() X_API_KEY with custom header name."""
         header = AuthHeaderFactory.create(
             AuthScheme.X_API_KEY,

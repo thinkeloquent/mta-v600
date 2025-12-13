@@ -748,12 +748,12 @@ class BaseApiToken(ABC):
         # Fall back to env_api_key
         return self._lookup_env_api_key()
 
-    def _get_custom_header_name(self) -> Optional[str]:
+    def _get_api_auth_header_name(self) -> Optional[str]:
         """Get the custom header name from config."""
-        logger.debug(f"{self.__class__.__name__}._get_custom_header_name: Getting custom header name")
+        logger.debug(f"{self.__class__.__name__}._get_api_auth_header_name: Getting custom header name")
         provider_config = self._get_provider_config()
-        # Check api_auth_header_name (preferred) or custom_header_name (legacy)
-        return provider_config.get("api_auth_header_name") or provider_config.get("custom_header_name")
+        # Check api_auth_header_name (preferred) or api_auth_header_name (legacy)
+        return provider_config.get("api_auth_header_name")
 
     # =========================================================================
     # Public getter methods for credential types
@@ -1144,7 +1144,7 @@ class BaseApiToken(ABC):
             header_name = "X-Api-Key"
         elif auth_type in ("custom", "custom_header"):
             # Use custom header name from config or fall back to default
-            custom_header = self._get_custom_header_name()
+            custom_header = self._get_api_auth_header_name()
             header_name = custom_header or self._default_header_name
         else:  # connection_string, hmac, etc.
             header_name = self._default_header_name

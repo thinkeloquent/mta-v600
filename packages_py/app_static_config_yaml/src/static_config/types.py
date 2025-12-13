@@ -99,7 +99,7 @@ class ProviderConfig(BaseModel):
     env_base_url: Optional[str] = None
 
     # Custom header name (for custom/custom_header types)
-    custom_header_name: Optional[str] = None
+    api_auth_header_name: Optional[str] = None
 
     # Token resolver type
     token_resolver: Optional[str] = None  # static, startup, request

@@ -108,7 +108,7 @@ class TestCustomAuthHandler:
     """Tests for CustomAuthHandler class."""
 
     # Decision: custom header name
-    def test_custom_header_name(self, sample_context):
+    def test_api_auth_header_name(self, sample_context):
         handler = CustomAuthHandler("X-My-Auth", "secret")
         result = handler.get_header(sample_context)
 
