@@ -74,15 +74,21 @@ class ElasticsearchApiToken(BaseApiToken):
         """
         logger.debug("ElasticsearchApiToken._build_connection_url: Building URL from components")
 
-        host = os.getenv("ELASTIC_DB_HOST", "localhost")
-        port = os.getenv("ELASTIC_DB_PORT", "9200")
-        username = os.getenv("ELASTIC_DB_USERNAME")
-        password = os.getenv("ELASTIC_DB_ACCESS_KEY")
+        provider_config = self._get_provider_config()
+
+        host = os.getenv("ELASTIC_DB_HOST") or provider_config.get("host", "localhost")
+        port = os.getenv("ELASTIC_DB_PORT") or str(provider_config.get("port", "9200"))
+        username = os.getenv("ELASTIC_DB_USERNAME") or provider_config.get("username") or provider_config.get("user")
+        password = os.getenv("ELASTIC_DB_ACCESS_KEY") or provider_config.get("password") or provider_config.get("access_key")
 
         # Determine if TLS should be used
         # - Explicit ELASTIC_DB_TLS=true
         # - Known TLS ports (443, 9243 is Elastic Cloud, 25060 is DigitalOcean)
-        elastic_tls = os.getenv("ELASTIC_DB_TLS", "").lower() in ("true", "1", "yes")
+        # - YAML use_tls=true
+        elastic_tls_env = os.getenv("ELASTIC_DB_TLS", "").lower() in ("true", "1", "yes")
+        elastic_tls_yaml = provider_config.get("use_tls") is True
+        elastic_tls = elastic_tls_env or elastic_tls_yaml
+        
         tls_ports = {"443", "9243", "25060"}
         use_tls = elastic_tls or port in tls_ports
 
@@ -168,13 +174,18 @@ class ElasticsearchApiToken(BaseApiToken):
         """
         logger.debug("ElasticsearchApiToken.get_connection_config: Building connection config")
 
-        host = os.getenv("ELASTIC_DB_HOST", "localhost")
-        port = os.getenv("ELASTIC_DB_PORT", "9200")
-        username = os.getenv("ELASTIC_DB_USERNAME")
-        password = os.getenv("ELASTIC_DB_ACCESS_KEY")
+        provider_config = self._get_provider_config()
+
+        host = os.getenv("ELASTIC_DB_HOST") or provider_config.get("host", "localhost")
+        port = os.getenv("ELASTIC_DB_PORT") or str(provider_config.get("port", "9200"))
+        username = os.getenv("ELASTIC_DB_USERNAME") or provider_config.get("username") or provider_config.get("user")
+        password = os.getenv("ELASTIC_DB_ACCESS_KEY") or provider_config.get("password") or provider_config.get("access_key")
 
         # Determine if TLS should be used
-        elastic_tls = os.getenv("ELASTIC_DB_TLS", "").lower() in ("true", "1", "yes")
+        elastic_tls_env = os.getenv("ELASTIC_DB_TLS", "").lower() in ("true", "1", "yes")
+        elastic_tls_yaml = provider_config.get("use_tls") is True
+        elastic_tls = elastic_tls_env or elastic_tls_yaml
+        
         tls_ports = {"443", "9243", "25060"}
         use_tls = elastic_tls or port in tls_ports
 
@@ -195,6 +206,11 @@ class ElasticsearchApiToken(BaseApiToken):
         if ssl_cert_verify == "0" or node_tls == "0":
              config["verify_certs"] = False
              logger.info(f"ElasticsearchApiToken: Disable SSL verification (SSL_CERT_VERIFY={ssl_cert_verify}, NODE_TLS={node_tls})")
+        else:
+            network_config = self.get_network_config() or {}
+            if network_config.get("cert_verify") is False:
+                config["verify_certs"] = False
+                logger.info(f"ElasticsearchApiToken: Disable SSL verification (YAML cert_verify=False)")
 
         if username and password:
             config["basic_auth"] = (username, password)

@@ -78,12 +78,15 @@ class PostgresApiToken(BaseApiToken):
         logger.info(f"{LOG_PREFIX} _build_connection_url: START - Building URL from environment variables")
 
         # Read all environment variables
-        host = os.getenv("POSTGRES_HOST")
-        port = os.getenv("POSTGRES_PORT", "5432")
-        user = os.getenv("POSTGRES_USER")
-        password = os.getenv("POSTGRES_PASSWORD")
-        database = os.getenv("POSTGRES_DB")
-        sslmode = os.getenv("POSTGRES_SSLMODE")
+        provider_config = self._get_provider_config()
+        
+        # Priority: Env Var > YAML Config > Default
+        host = os.getenv("POSTGRES_HOST") or provider_config.get("host")
+        port = os.getenv("POSTGRES_PORT") or str(provider_config.get("port", "5432"))
+        user = os.getenv("POSTGRES_USER") or provider_config.get("username") or provider_config.get("user")
+        password = os.getenv("POSTGRES_PASSWORD") or provider_config.get("password")
+        database = os.getenv("POSTGRES_DB") or provider_config.get("database") or provider_config.get("db")
+        sslmode = os.getenv("POSTGRES_SSLMODE") or provider_config.get("sslmode")
         ssl_cert_verify = os.getenv("SSL_CERT_VERIFY")
         node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED")
 
@@ -207,11 +210,13 @@ class PostgresApiToken(BaseApiToken):
         """
         logger.info(f"{LOG_PREFIX} get_connection_config: START - Building connection config dict")
 
-        host = os.getenv("POSTGRES_HOST", "localhost")
-        port_str = os.getenv("POSTGRES_PORT", "5432")
-        database = os.getenv("POSTGRES_DB", "postgres")
-        username = os.getenv("POSTGRES_USER", "postgres")
-        password = os.getenv("POSTGRES_PASSWORD")
+        provider_config = self._get_provider_config()
+
+        host = os.getenv("POSTGRES_HOST") or provider_config.get("host", "localhost")
+        port_str = os.getenv("POSTGRES_PORT") or str(provider_config.get("port", "5432"))
+        database = os.getenv("POSTGRES_DB") or provider_config.get("database") or provider_config.get("db", "postgres")
+        username = os.getenv("POSTGRES_USER") or provider_config.get("username") or provider_config.get("user", "postgres")
+        password = os.getenv("POSTGRES_PASSWORD") or provider_config.get("password")
 
         # Parse port
         try:
@@ -314,7 +319,22 @@ class PostgresApiToken(BaseApiToken):
             )
             return False
 
-        # Priority 2: Check POSTGRES_SSLMODE
+        # Priority 2: Check YAML network config (cert_verify: false)
+        # Note: BaseApiToken injects cert_verify=False if Env Vars are set, so this check naturally follows.
+        # If Env Vars were handled above (Priority 1), we return early.
+        # If we fall through here, it means Env Vars are NOT "0", but YAML might be explicit false.
+        network_config = self.get_network_config() or {}
+        if network_config.get("cert_verify") is False:
+            logger.info(
+                f"{LOG_PREFIX} _get_ssl_context: SSL ENABLED without cert verification\n"
+                f"  Reason: network.cert_verify is False in YAML"
+            )
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+
+        # Priority 3: Check POSTGRES_SSLMODE
         if not sslmode:
             # No SSL mode specified = no SSL (matches Fastify default behavior)
             logger.info(

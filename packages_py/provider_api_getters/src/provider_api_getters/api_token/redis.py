@@ -69,18 +69,29 @@ class RedisApiToken(BaseApiToken):
         """
         logger.debug("RedisApiToken._build_connection_url: Building URL from components")
 
-        host = os.getenv("REDIS_HOST", "localhost")
-        port = os.getenv("REDIS_PORT", "6379")
-        password = os.getenv("REDIS_PASSWORD")
-        db = os.getenv("REDIS_DB", "0")
-        username = os.getenv("REDIS_USERNAME")
+        provider_config = self._get_provider_config()
+
+        host = os.getenv("REDIS_HOST") or provider_config.get("host", "localhost")
+        port = os.getenv("REDIS_PORT") or str(provider_config.get("port", "6379"))
+        password = os.getenv("REDIS_PASSWORD") or provider_config.get("password")
+        db = os.getenv("REDIS_DB") or str(provider_config.get("db", "0"))
+        username = os.getenv("REDIS_USERNAME") or provider_config.get("username") or provider_config.get("user")
 
         # Determine if TLS should be used
         # - Explicit REDIS_TLS=true
         # - Known TLS ports (25061 is DigitalOcean's TLS port)
-        redis_tls = os.getenv("REDIS_TLS", "").lower() in ("true", "1", "yes")
+        # - YAML use_tls=true
+        redis_tls_env = os.getenv("REDIS_TLS", "").lower() in ("true", "1", "yes")
+        redis_tls_yaml = provider_config.get("use_tls") is True
+        redis_tls = redis_tls_env or redis_tls_yaml
+        
         tls_ports = {"25061", "6380"}  # Common TLS ports
-        use_tls = redis_tls or port in tls_ports
+        try:
+            port_val = int(port)
+        except ValueError:
+            port_val = 6379
+            
+        use_tls = redis_tls or port_val in tls_ports
 
         scheme = "rediss" if use_tls else "redis"
 
@@ -167,14 +178,19 @@ class RedisApiToken(BaseApiToken):
         """
         logger.debug("RedisApiToken.get_connection_config: Getting connection config")
 
-        host = os.getenv("REDIS_HOST", "localhost")
-        port = int(os.getenv("REDIS_PORT", "6379"))
-        password = os.getenv("REDIS_PASSWORD")
-        db = int(os.getenv("REDIS_DB", "0"))
-        username = os.getenv("REDIS_USERNAME")
+        provider_config = self._get_provider_config()
+
+        host = os.getenv("REDIS_HOST") or provider_config.get("host", "localhost")
+        port = int(os.getenv("REDIS_PORT") or provider_config.get("port", "6379"))
+        password = os.getenv("REDIS_PASSWORD") or provider_config.get("password")
+        db = int(os.getenv("REDIS_DB") or provider_config.get("db", "0"))
+        username = os.getenv("REDIS_USERNAME") or provider_config.get("username") or provider_config.get("user")
 
         # Determine if TLS should be used
-        redis_tls = os.getenv("REDIS_TLS", "").lower() in ("true", "1", "yes")
+        redis_tls_env = os.getenv("REDIS_TLS", "").lower() in ("true", "1", "yes")
+        redis_tls_yaml = provider_config.get("use_tls") is True
+        redis_tls = redis_tls_env or redis_tls_yaml
+        
         tls_ports = {25061, 6380}  # Common TLS ports
         use_tls = redis_tls or port in tls_ports
 
@@ -191,9 +207,11 @@ class RedisApiToken(BaseApiToken):
         ssl_cert_verify = os.getenv("SSL_CERT_VERIFY", "")
         node_tls = os.getenv("NODE_TLS_REJECT_UNAUTHORIZED", "")
 
-        if use_tls and (ssl_cert_verify == "0" or node_tls == "0"):
-             config["ssl_cert_reqs"] = "none"
-             logger.info(f"RedisApiToken: Disable SSL verification (SSL_CERT_VERIFY={ssl_cert_verify}, NODE_TLS={node_tls})")
+        if use_tls:
+             network_config = self.get_network_config() or {}
+             if (ssl_cert_verify == "0" or node_tls == "0" or network_config.get("cert_verify") is False):
+                 config["ssl_cert_reqs"] = "none"
+                 logger.info(f"RedisApiToken: Disable SSL verification (SSL_CERT_VERIFY={ssl_cert_verify}, YAML cert_verify=False)")
 
         return config
 
