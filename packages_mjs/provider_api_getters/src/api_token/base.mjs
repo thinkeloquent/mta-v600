@@ -1004,6 +1004,58 @@ export class BaseApiToken {
   }
 
   /**
+   * Get provider-specific network configuration.
+   *
+   * @returns {Object|null} Network config dictionary or null if not configured
+   */
+  getNetworkConfig() {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getNetworkConfig: Getting network config from provider config`
+    );
+
+    const providerConfig = this._getProviderConfig();
+    const networkConfig = providerConfig?.network || null;
+
+    if (networkConfig) {
+      logger.debug(
+        `${className}.getNetworkConfig: Found network config with keys: ` +
+        `[${Object.keys(networkConfig).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getNetworkConfig: No network config in provider config`);
+    }
+
+    return networkConfig;
+  }
+
+  /**
+   * Get provider-specific proxy configuration.
+   *
+   * @returns {Object|null} Proxy config dictionary or null if not configured
+   */
+  getProxyConfig() {
+    const className = this.constructor.name;
+    logger.debug(
+      `${className}.getProxyConfig: Getting proxy config from provider config`
+    );
+
+    const providerConfig = this._getProviderConfig();
+    const proxyConfig = providerConfig?.proxy || null;
+
+    if (proxyConfig) {
+      logger.debug(
+        `${className}.getProxyConfig: Found proxy config with keys: ` +
+        `[${Object.keys(proxyConfig).join(', ')}]`
+      );
+    } else {
+      logger.debug(`${className}.getProxyConfig: No proxy config in provider config`);
+    }
+
+    return proxyConfig;
+  }
+
+  /**
    * Get provider-specific headers configuration.
    *
    * @returns {Object|null} Headers config dictionary or null if not configured

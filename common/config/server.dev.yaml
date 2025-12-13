@@ -13,16 +13,17 @@ providers:
     env_api_key: "GEMINI_API_KEY"
     api_auth_type: "bearer"         # bearer, basic, x-api-key, custom
     token_resolver: "static"        # static (default), startup, request
-    # proxy_url: "http://localhost:8080"
+    proxy_url: "http://localhost:8080"
     # Provider-specific configuration overrides (optional)
     # These are deep-merged with global proxy/client settings
-    proxy:
-      # Override proxy for this provider only
-      default_environment: "prod"
-      proxy_urls:
-        prod: "http://gemini-proxy:8080"
-      cert_verify: true
-      ca_bundle: "/path/to/custom-ca.crt"
+    # network:
+    #   # Override proxy for this provider only
+    #   default_environment: "dev"
+    #   proxy_urls:
+    #     dev: "http://localhost:8080"
+    #     prod: "http://localhost:8081"
+    #   cert_verify: true
+    #   ca_bundle: "/path/to/custom-ca.crt"
     client:
       # Override timeout for this provider only
       timeout_seconds: 120.0
@@ -39,13 +40,14 @@ providers:
     paths:
       generateContent: "/models/{model}:generateContent"
       streamGenerateContent: "/models/{model}:streamGenerateContent"
-    proxy:
-      # Override proxy for this provider only
-      default_environment: "prod"
-      proxy_urls:
-        prod: "http://gemini-proxy:8080"
-      cert_verify: true
-      ca_bundle: "/path/to/custom-ca.crt"
+    # network:
+    #   # Override proxy for this provider only
+    #   default_environment: "dev"
+    #   proxy_urls:
+    #     dev: "http://localhost:8080"
+    #     prod: "http://localhost:8081"
+    #   cert_verify: true
+    #   ca_bundle: "/path/to/custom-ca.crt"
     client:
       # Override timeout for this provider only
       timeout_seconds: 120.0
@@ -59,20 +61,20 @@ providers:
     env_api_key: "OPENAI_API_KEY"
     api_auth_type: "bearer"
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
   anthropic:
     base_url: "https://api.anthropic.com/v1"
     model: "claude-3-sonnet"
     env_api_key: "ANTHROPIC_API_KEY"
     api_auth_type: "x-api-key"       # Anthropic uses x-api-key header
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
   figma:
     base_url: "https://api.figma.com/v1"
     env_api_key: "FIGMA_TOKEN"
     api_auth_type: "custom"             # Figma uses custom X-Figma-Token header
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
     headers:
       Accept: "application/json"
     # Custom environment variable mappings
@@ -87,7 +89,7 @@ providers:
       - "GITHUB_PAT"
     api_auth_type: "bearer"
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
     headers:
       Accept: "application/vnd.github+json"
       X-GitHub-Api-Version: "2022-11-28"
@@ -103,7 +105,7 @@ providers:
     health_endpoint: "/user/current"           # Confluence REST API user endpoint
     api_auth_type: "basic_email_token"         # Jira Cloud uses Basic auth with email:token
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
@@ -120,7 +122,7 @@ providers:
     health_endpoint: "/myself"                 # Jira endpoint (ENV swapped)
     api_auth_type: "basic_email_token"         # Confluence Cloud uses Basic auth with email:token
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
     headers:
       Content-Type: "application/json"
       Accept: "application/json"
@@ -153,7 +155,7 @@ providers:
     health_endpoint: "/rest/v1/users/:username"
     api_auth_type: "basic"           # SauceLabs uses Basic auth with username:access_key
     token_resolver: "static"
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
   # Sonar (SonarQube/SonarCloud)
   sonar:
     base_url: "https://sonarcloud.io"  # or https://your-sonar.example.com for SonarQube
@@ -187,7 +189,7 @@ providers:
     # client:
     #   timeout_seconds: 120.0
     #   timeout_ms: 120000
-    proxy_url: "http://localhost:8080"
+    # proxy_url: "http://localhost:8080"
     network:
       default_environment: "dev"
       proxy_urls:
@@ -242,28 +244,7 @@ network:
     http_proxy: null
     https_proxy: null
     
-# shoudld be renamed to network
-# proxy:
-#   # Default environment name for ProxyDispatcherFactory
-#   # Used to select which proxy URL from proxy_urls to use
-#   default_environment: "dev"
-#   # Per-environment proxy URLs (keys are user-defined environment names)
-#   # Keys can be anything: Live, STAGING, Preview, dev, qa, prod, etc.
-#   proxy_urls: {
-#     "dev": "http://localhost:8080",
-#     "qa": "http://localhost:8081",
-#   }  # Empty dict = no per-env proxies configured
-#   # CA bundle path (null means use system default, missing means fall through to ENV)
-#   ca_bundle: null
-#   # Client certificate path (null means no cert, missing means fall through to ENV)
-#   cert: null
-#   # SSL certificate verification (false = disable verification, true = enable)
-#   # Default: false for dev/local environments behind corporate proxy
-#   cert_verify: false
-#   # Agent proxy settings (null means no proxy)
-#   agent_proxy:
-#     http_proxy: "http://localhost:8080"
-#     https_proxy: "http://localhost:8080"
+
 
 # =============================================================================
 # Services Configuration (Downstream Service Configs)
