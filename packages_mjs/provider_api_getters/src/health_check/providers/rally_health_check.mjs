@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..', '..', '..');
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
 const CONFIG_DIR = path.join(PROJECT_ROOT, 'common', 'config');
 
 // ============================================================
@@ -51,11 +51,11 @@ export async function checkRallyHealth() {
   console.log(`  Is placeholder: ${apiKeyResult.isPlaceholder}`);
   console.log(`  Auth type: ${apiKeyResult.authType}`);
   console.log(`  Header name: ${apiKeyResult.headerName}`);
-  console.log('\n[Network Config]');
-  console.log(`  Proxy URL: ${networkConfig.proxyUrl || 'None'}`);
-  console.log(`  Cert verify: ${networkConfig.certVerify}`);
+  console.log(`\n[Network Config]`);
+  console.log(`  Proxy URL: ${networkConfig?.proxyUrl || 'None'}`);
+  console.log(`  Cert verify: ${networkConfig?.certVerify}`);
 
-  if (!apiKeyResult.hasCredentials || apiKeyResult.isPlaceholder) {
+  if (!apiKeyResult.hasCredentials || (apiKeyResult.isPlaceholder && !process.env['FORCE_RALLY_CHECK'])) {
     console.log('\n[ERROR] Missing or placeholder credentials');
     return { success: false, error: 'Missing credentials' };
   }
@@ -79,8 +79,8 @@ export async function checkRallyHealth() {
     headers: {
       'Accept': 'application/json',
     },
-    verify: networkConfig.certVerify,
-    proxy: networkConfig.proxyUrl,
+    verify: networkConfig?.certVerify,
+    proxy: networkConfig?.proxyUrl,
   });
 
   // Make health check request

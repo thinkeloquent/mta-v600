@@ -1,9 +1,7 @@
 /**
- * Rally API token getter (placeholder).
- *
- * This is a placeholder implementation for future Rally integration.
+ * Rally (Broadcom) API token getter.
  */
-import { BaseApiToken, ApiKeyResult } from './base.mjs';
+import { BaseApiToken, ApiKeyResult, maskSensitive } from './base.mjs';
 
 // Simple logger
 const logger = {
@@ -11,8 +9,9 @@ const logger = {
   warn: (msg) => console.warn(`[WARN] provider_api_getters.rally: ${msg}`),
 };
 
-// Default placeholder message
-const DEFAULT_PLACEHOLDER_MESSAGE = 'Rally integration not implemented';
+// Default environment variables
+const DEFAULT_RALLY_API_KEY_ENV = 'RALLY_API_KEY';
+const DEFAULT_RALLY_Z_SESSION_ID_ENV = 'RALLY_Z_SESSION_ID';
 
 export class RallyApiToken extends BaseApiToken {
   get providerName() {
@@ -20,50 +19,56 @@ export class RallyApiToken extends BaseApiToken {
   }
 
   get healthEndpoint() {
-    logger.debug('RallyApiToken.healthEndpoint: Returning /');
-    return '/';
+    // User endpoint to verify connectivity and auth
+    return '/slm/webservice/v2.0/user';
+  }
+
+  getBaseUrl() {
+    logger.debug('RallyApiToken.getBaseUrl: Getting base URL');
+
+    // Try config first
+    let baseUrl = super.getBaseUrl();
+
+    // Default if not configured
+    if (!baseUrl) {
+      baseUrl = 'https://rally1.rallydev.com';
+      logger.debug(`Using default base URL: ${baseUrl}`);
+    }
+
+    return baseUrl;
   }
 
   getApiKey() {
-    logger.debug('RallyApiToken.getApiKey: Starting API key resolution (placeholder)');
+    logger.debug('RallyApiToken.getApiKey: Starting resolution');
 
-    const providerConfig = this._getProviderConfig();
-
-    logger.debug(
-      `RallyApiToken.getApiKey: Checking for custom placeholder message in config ` +
-      `(hasConfig=${providerConfig !== null && providerConfig !== undefined})`
-    );
-
-    let message;
-    if (providerConfig?.message) {
-      message = providerConfig.message;
-      logger.debug(
-        `RallyApiToken.getApiKey: Using custom message from config: '${message}'`
-      );
-    } else {
-      message = DEFAULT_PLACEHOLDER_MESSAGE;
-      logger.debug(
-        `RallyApiToken.getApiKey: Using default placeholder message: '${message}'`
-      );
+    // Get API key from env
+    let apiKey = this._lookupEnvApiKey();
+    if (!apiKey) {
+      apiKey = process.env[DEFAULT_RALLY_API_KEY_ENV];
+    }
+    if (!apiKey) {
+      apiKey = process.env[DEFAULT_RALLY_Z_SESSION_ID_ENV];
     }
 
-    logger.warn(
-      `RallyApiToken.getApiKey: Returning placeholder result - ${message}`
-    );
+    if (apiKey) {
+      logger.debug(
+        `RallyApiToken.getApiKey: Found API key (length=${apiKey.length}, masked=${maskSensitive(apiKey)})`
+      );
+      return new ApiKeyResult({
+        apiKey: apiKey,
+        authType: 'header',
+        headerName: 'Z-Session-ID',
+        rawApiKey: apiKey,
+      });
+    }
 
-    const result = new ApiKeyResult({
+    logger.warn('No API key found for Rally');
+    return new ApiKeyResult({
       apiKey: null,
-      isPlaceholder: true,
-      placeholderMessage: message,
-      email: null,
+      authType: 'header',
+      headerName: 'Z-Session-ID',
       rawApiKey: null,
+      isPlaceholder: false,
     });
-
-    logger.debug(
-      `RallyApiToken.getApiKey: Returning result ` +
-      `hasCredentials=${result.hasCredentials}, isPlaceholder=${result.isPlaceholder}`
-    );
-
-    return result;
   }
 }

@@ -139,6 +139,18 @@ providers:
     api_auth_type: "basic"
     token_resolver: "static"
     # proxy_url: "http://localhost:8080"
+  # Rally (Broadcom)
+  rally:
+    base_url: "https://rally1.rallydev.com"
+    env_api_key: "RALLY_API_KEY"
+    api_auth_type: "header"
+
+  statsig:
+    base_url: "https://statsigapi.net/console/v1"
+    env_api_key: "STATSIG_API_KEY"
+    api_auth_type: "custom_header"
+    api_auth_header_name: "statsig-api-key"
+    # proxy_url: "http://localhost:8080"
   # Sonar (SonarQube/SonarCloud)
   sonar:
     base_url: "https://sonarcloud.io"  # or https://your-sonar.example.com for SonarQube
@@ -162,9 +174,7 @@ providers:
     api_auth_type: "edgegrid"  # Akamai EdgeGrid signature-based auth
     token_resolver: "static"
   # Placeholder providers (not implemented)
-  rally:
-    placeholder: true
-    message: "Rally integration not implemented"
+
   elasticsearch:
     placeholder: true
     message: "Elasticsearch integration not implemented"

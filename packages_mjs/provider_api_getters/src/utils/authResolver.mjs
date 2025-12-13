@@ -42,7 +42,7 @@
  */
 export function resolveAuthConfig(authType, apiKeyResult, headerName = null) {
   // Category 1: Raw passthrough - value used as-is with custom header
-  const rawPassthroughTypes = new Set(['custom', 'x-api-key']);
+  const rawPassthroughTypes = new Set(['custom', 'custom_header', 'x-api-key']);
 
   // Category 2: Bearer types - fetch_client adds "Bearer " prefix
   const isBearerType = authType === 'bearer' || authType.startsWith('bearer_');
@@ -99,7 +99,7 @@ export function resolveAuthConfig(authType, apiKeyResult, headerName = null) {
  * @returns {string} Category string: "raw_passthrough", "bearer", or "pre_computed"
  */
 export function getAuthTypeCategory(authType) {
-  const rawPassthroughTypes = new Set(['custom', 'x-api-key']);
+  const rawPassthroughTypes = new Set(['custom', 'custom_header', 'x-api-key']);
   const isBearerType = authType === 'bearer' || authType.startsWith('bearer_');
 
   if (rawPassthroughTypes.has(authType)) {

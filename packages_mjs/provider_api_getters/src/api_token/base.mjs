@@ -839,6 +839,12 @@ export class BaseApiToken {
       case 'x-api-key':
         headerName = 'X-Api-Key';
         break;
+      case 'custom_header': {
+        // Read header name from provider config's api_auth_header_name
+        const providerConfig = this._getProviderConfig();
+        headerName = providerConfig?.api_auth_header_name || this._defaultHeaderName || 'Authorization';
+        break;
+      }
       case 'custom':
       case 'connection_string':
       default:
