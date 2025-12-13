@@ -4,16 +4,31 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Load env from parent directories if needed, or specific .env
 load_dotenv()
+
+def get_db_url():
+    """Get from env or build from components."""
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return url
+    
+    # Construct
+    host = os.getenv("POSTGRES_HOST", "localhost")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    user = os.getenv("POSTGRES_USER", "postgres")
+    password = os.getenv("POSTGRES_PASSWORD", "postgres")
+    dbname = os.getenv("POSTGRES_DB", "postgres")
+    
+    return f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 
 async def main():
     print("="*60)
-    print("asyncpg Connection Test")
+    print("asyncpg Connection Test (Enhanced)")
     print("="*60)
 
-    # 1. Gather config
-    db_url = os.getenv("DATABASE_URL")
+    db_url = get_db_url()
+    
+    # Components for direct connect
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = os.getenv("POSTGRES_PORT", "5432")
     user = os.getenv("POSTGRES_USER", "postgres")
@@ -21,47 +36,35 @@ async def main():
     dbname = os.getenv("POSTGRES_DB", "postgres")
 
     print(f"Config:")
-    print(f"  DATABASE_URL: {db_url}")
-    print(f"  Host: {host}:{port}")
-    print(f"  User: {user}")
-    print(f"  DB:   {dbname}")
-    
-    # ---------------------------------------------------------
-    # Test 1: Using DATABASE_URL + ssl="disable" (String)
-    # ---------------------------------------------------------
-    print("\n[Test 1] Using DATABASE_URL + ssl='disable' (explicit kwarg)")
-    if db_url:
-        try:
-            # Note: asyncpg requires 'ssl' kwarg to disable SSL explicitly if server doesn't support it 
-            # or if we want to ignore URL params.
-            conn = await asyncpg.connect(db_url, ssl="disable")
-            print("  SUCCESS: Connected!")
-            version = await conn.fetchval("SELECT version()")
-            print(f"  Version: {version}")
-            await conn.close()
-        except Exception as e:
-            print(f"  FAILURE: {e}")
-    else:
-        print("  SKIPPED: DATABASE_URL not set")
+    print(f"  Target URL: {db_url}")
+    print(f"  Components: {host}:{port}")
 
     # ---------------------------------------------------------
-    # Test 2: Using DATABASE_URL + ssl=False (Boolean)
+    # Test 1: Using URL + ssl="disable"
     # ---------------------------------------------------------
-    print("\n[Test 2] Using DATABASE_URL + ssl=False (explicit kwarg)")
-    if db_url:
-        try:
-            conn = await asyncpg.connect(db_url, ssl=False)
-            print("  SUCCESS: Connected!")
-            await conn.close()
-        except Exception as e:
-            print(f"  FAILURE: {e}")
-    else:
-        print("  SKIPPED")
+    print("\n[Test 1] Using URL + ssl='disable'")
+    try:
+        conn = await asyncpg.connect(db_url, ssl="disable")
+        print("  SUCCESS: Connected!")
+        await conn.close()
+    except Exception as e:
+        print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 3: Using Components + ssl="disable"
+    # Test 2: Using URL + ssl=False
     # ---------------------------------------------------------
-    print("\n[Test 3] Using Components (host, user...) + ssl='disable'")
+    print("\n[Test 2] Using URL + ssl=False")
+    try:
+        conn = await asyncpg.connect(db_url, ssl=False)
+        print("  SUCCESS: Connected!")
+        await conn.close()
+    except Exception as e:
+        print(f"  FAILURE: {e}")
+
+    # ---------------------------------------------------------
+    # Test 3: Components + ssl="disable"
+    # ---------------------------------------------------------
+    print("\n[Test 3] Components + ssl='disable'")
     try:
         conn = await asyncpg.connect(
             host=host,
@@ -77,9 +80,9 @@ async def main():
         print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 4: Using Components + ssl=False
+    # Test 4: Components + ssl=False
     # ---------------------------------------------------------
-    print("\n[Test 4] Using Components + ssl=False")
+    print("\n[Test 4] Components + ssl=False")
     try:
         conn = await asyncpg.connect(
             host=host,

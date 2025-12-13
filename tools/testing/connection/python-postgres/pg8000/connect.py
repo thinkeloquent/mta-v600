@@ -6,12 +6,15 @@ import ssl
 
 load_dotenv()
 
+# pg8000 uses minimal URL parsing or components. 
+# We'll focus on components since that's its native style, 
+# but we can try to parse a URL if given for logging.
+
 def main():
     print("="*60)
-    print("pg8000 Connection Test")
+    print("pg8000 Connection Test (Enhanced)")
     print("="*60)
 
-    # pg8000.native.Connection uses keyword args
     host = os.getenv("POSTGRES_HOST", "localhost")
     port = int(os.getenv("POSTGRES_PORT", "5432"))
     user = os.getenv("POSTGRES_USER", "postgres")
@@ -22,9 +25,9 @@ def main():
     print(f"  Host: {host}:{port}")
     
     # ---------------------------------------------------------
-    # Test 1: Components + ssl_context=None (Default: No SSL)
+    # Test 1: Components + ssl_context=None (Default/Disable)
     # ---------------------------------------------------------
-    print("\n[Test 1] Components + ssl_context=None (Default/Disable)")
+    print("\n[Test 1] Components + ssl_context=None")
     try:
         conn = pg8000.native.Connection(
             host=host,
@@ -32,19 +35,17 @@ def main():
             user=user,
             password=password,
             database=dbname,
-            ssl_context=None # Explicitly None to disable
+            ssl_context=None
         )
         print("  SUCCESS: Connected!")
-        print(f"  Version: {conn.run('SELECT version()')[0][0][:50]}...")
         conn.close()
     except Exception as e:
         print(f"  FAILURE: {e}")
 
     # ---------------------------------------------------------
-    # Test 2: Components + ssl_context (Verify=False intent)
-    # If user meant "disable verification" but use SSL.
+    # Test 2: Components + ssl_context (No Verify)
     # ---------------------------------------------------------
-    print("\n[Test 2] Components + ssl_context (check_hostname=False, CERT_NONE)")
+    print("\n[Test 2] Components + ssl_context (check_hostname=False)")
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
